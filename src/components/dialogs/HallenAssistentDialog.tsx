@@ -75,22 +75,23 @@ export function HallenAssistentDialog() {
       // Auto-distribute gates if enabled
       if (newConfig.autoDistribute && 'totalTore' in updates) {
         const total = updates.totalTore || prev.totalTore;
-        // 80% on long sides, 20% on short sides
+        // 80% on long sides (West/Ost = height axis), 20% on short sides (Nord/Süd = width axis)
+        // In hall layout: width = horizontal (Nord/Süd walls), height = vertical (West/Ost walls)
         const longSide = Math.floor(total * 0.4);
         const shortSide = Math.floor(total * 0.1);
 
-        if (newConfig.width > newConfig.height) {
-          // Width is longer
-          newConfig.toreNord = longSide;
-          newConfig.toreSued = longSide;
-          newConfig.toreWest = shortSide;
-          newConfig.toreOst = total - longSide * 2 - shortSide;
-        } else {
-          // Height is longer
+        if (newConfig.height >= newConfig.width) {
+          // Height (West/Ost walls) is longer — typical for logistics halls
           newConfig.toreWest = longSide;
           newConfig.toreOst = longSide;
           newConfig.toreNord = shortSide;
           newConfig.toreSued = total - longSide * 2 - shortSide;
+        } else {
+          // Width (Nord/Süd walls) is longer
+          newConfig.toreNord = longSide;
+          newConfig.toreSued = longSide;
+          newConfig.toreWest = shortSide;
+          newConfig.toreOst = total - longSide * 2 - shortSide;
         }
       }
 
@@ -180,8 +181,8 @@ export function HallenAssistentDialog() {
 
     // Add Anbau if configured
     if (config.hasAnbau) {
-      const anbauWidth = Math.sqrt(config.anbauFlaeche * (config.width / config.height));
-      const anbauHeight = config.anbauFlaeche / anbauWidth;
+      const anbauWidth = Math.round(Math.sqrt(config.anbauFlaeche * (config.width / config.height)) * 10) / 10;
+      const anbauHeight = Math.round((config.anbauFlaeche / anbauWidth) * 10) / 10;
 
       let anbauX = 0, anbauY = 0;
       switch (config.anbauPosition) {
@@ -268,7 +269,7 @@ export function HallenAssistentDialog() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Breite (m)</Label>
+                <Label>Breite (m) — Nord/Süd</Label>
                 <Input
                   type="number"
                   min={10}
@@ -278,7 +279,7 @@ export function HallenAssistentDialog() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Länge (m)</Label>
+                <Label>Länge (m) — West/Ost</Label>
                 <Input
                   type="number"
                   min={10}
