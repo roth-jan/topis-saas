@@ -35,20 +35,26 @@ interface TopisStore extends TopisState {
   deletePath: (id: number) => void;
   selectPath: (path: Path | null) => void;
 
-  // PathArea Actions
-  addPathArea: (area: Omit<PathArea, 'id'>) => PathArea;
-  deletePathArea: (id: number) => void;
-
   // Gang Actions
   setGaenge: (gaenge: Gang[]) => void;
   addGang: (gang: Gang) => void;
+  updateGang: (id: number, updates: Partial<Gang>) => void;
+  deleteGang: (id: number) => void;
+  selectGang: (gang: Gang | null) => void;
   toggleShowGaenge: () => void;
 
   // FFZ Actions
   setFFZ: (ffz: FFZ[]) => void;
 
+  // PathArea Actions
+  addPathArea: (area: Omit<PathArea, 'id'>) => PathArea;
+  updatePathArea: (id: number, updates: Partial<PathArea>) => void;
+  deletePathArea: (id: number) => void;
+  selectPathArea: (area: PathArea | null) => void;
+
   // Conveyor Actions
   addConveyor: (conveyor: Omit<Conveyor, 'id'>) => Conveyor;
+  updateConveyor: (id: number, updates: Partial<Conveyor>) => void;
   deleteConveyor: (id: number) => void;
   selectConveyor: (conveyor: Conveyor | null) => void;
 
@@ -89,7 +95,9 @@ const initialState: TopisState = {
   pathAreaIdCounter: 1,
   gaenge: [],
   showGaenge: true,
+  selectedGang: null,
   ffz: [...DEFAULT_FFZ],
+  selectedPathArea: null,
   conveyors: [],
   conveyorIdCounter: 1,
   selectedConveyor: null,
@@ -175,7 +183,7 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
     objects: state.objects.filter(o => o.id !== id),
     selectedObject: state.selectedObject?.id === id ? null : state.selectedObject
   })),
-  selectObject: (obj) => set({ selectedObject: obj, selectedPath: null }),
+  selectObject: (obj) => set({ selectedObject: obj, selectedPath: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null }),
 
   // Path Actions
   addPath: (path) => set((state) => ({
@@ -194,7 +202,7 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
     paths: state.paths.filter(p => p.id !== id),
     selectedPath: state.selectedPath?.id === id ? null : state.selectedPath
   })),
-  selectPath: (path) => set({ selectedPath: path, selectedObject: null }),
+  selectPath: (path) => set({ selectedPath: path, selectedObject: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null }),
 
   // PathArea Actions
   addPathArea: (area) => {
@@ -206,15 +214,40 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
     }));
     return newArea;
   },
+  updatePathArea: (id, updates) => set((state) => {
+    const updatedAreas = state.pathAreas.map(a => a.id === id ? { ...a, ...updates } : a);
+    return {
+      pathAreas: updatedAreas,
+      selectedPathArea: state.selectedPathArea?.id === id
+        ? { ...state.selectedPathArea, ...updates }
+        : state.selectedPathArea
+    };
+  }),
   deletePathArea: (id) => set((state) => ({
-    pathAreas: state.pathAreas.filter(a => a.id !== id)
+    pathAreas: state.pathAreas.filter(a => a.id !== id),
+    selectedPathArea: state.selectedPathArea?.id === id ? null : state.selectedPathArea
   })),
+  selectPathArea: (area) => set({ selectedPathArea: area, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedGang: null }),
 
   // Gang Actions
   setGaenge: (gaenge) => set({ gaenge }),
   addGang: (gang) => set((state) => ({
     gaenge: [...state.gaenge, gang]
   })),
+  updateGang: (id, updates) => set((state) => {
+    const updatedGaenge = state.gaenge.map(g => g.id === id ? { ...g, ...updates } : g);
+    return {
+      gaenge: updatedGaenge,
+      selectedGang: state.selectedGang?.id === id
+        ? { ...state.selectedGang, ...updates }
+        : state.selectedGang
+    };
+  }),
+  deleteGang: (id) => set((state) => ({
+    gaenge: state.gaenge.filter(g => g.id !== id),
+    selectedGang: state.selectedGang?.id === id ? null : state.selectedGang
+  })),
+  selectGang: (gang) => set({ selectedGang: gang, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedPathArea: null }),
   toggleShowGaenge: () => set((state) => ({ showGaenge: !state.showGaenge })),
 
   // FFZ Actions
@@ -230,11 +263,20 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
     }));
     return newConveyor;
   },
+  updateConveyor: (id, updates) => set((state) => {
+    const updatedConveyors = state.conveyors.map(c => c.id === id ? { ...c, ...updates } : c);
+    return {
+      conveyors: updatedConveyors,
+      selectedConveyor: state.selectedConveyor?.id === id
+        ? { ...state.selectedConveyor, ...updates }
+        : state.selectedConveyor
+    };
+  }),
   deleteConveyor: (id) => set((state) => ({
     conveyors: state.conveyors.filter(c => c.id !== id),
     selectedConveyor: state.selectedConveyor?.id === id ? null : state.selectedConveyor
   })),
-  selectConveyor: (conveyor) => set({ selectedConveyor: conveyor, selectedObject: null, selectedPath: null }),
+  selectConveyor: (conveyor) => set({ selectedConveyor: conveyor, selectedObject: null, selectedPath: null, selectedGang: null, selectedPathArea: null }),
 
   // View Actions
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
@@ -288,3 +330,6 @@ export const useActiveHall = () => useTopisStore((state) =>
 export const useTool = () => useTopisStore((state) => state.currentTool);
 export const useZoom = () => useTopisStore((state) => state.zoom);
 export const usePan = () => useTopisStore((state) => state.pan);
+export const useSelectedGang = () => useTopisStore((state) => state.selectedGang);
+export const useSelectedPathArea = () => useTopisStore((state) => state.selectedPathArea);
+export const useSelectedConveyor = () => useTopisStore((state) => state.selectedConveyor);

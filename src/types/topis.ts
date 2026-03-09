@@ -233,9 +233,13 @@ export interface TopisState {
   // Gangs
   gaenge: Gang[];
   showGaenge: boolean;
+  selectedGang: Gang | null;
 
   // FFZ
   ffz: FFZ[];
+
+  // PathAreas
+  selectedPathArea: PathArea | null;
 
   // Conveyors
   conveyors: Conveyor[];

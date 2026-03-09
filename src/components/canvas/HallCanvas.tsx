@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } from '@/lib/store';
-import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, Gang } from '@/types/topis';
+import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, Gang, PathArea, Conveyor } from '@/types/topis';
 import { toast } from 'sonner';
 
 export function HallCanvas() {
@@ -35,6 +35,12 @@ export function HallCanvas() {
   const updateObject = useTopisStore((s) => s.updateObject);
   const addObject = useTopisStore((s) => s.addObject);
   const addGang = useTopisStore((s) => s.addGang);
+  const selectGang = useTopisStore((s) => s.selectGang);
+  const selectedGang = useTopisStore((s) => s.selectedGang);
+  const selectPathArea = useTopisStore((s) => s.selectPathArea);
+  const selectedPathArea = useTopisStore((s) => s.selectedPathArea);
+  const selectConveyor = useTopisStore((s) => s.selectConveyor);
+  const selectedConveyor = useTopisStore((s) => s.selectedConveyor);
   const setTool = useTopisStore((s) => s.setTool);
 
   const [isDragging, setIsDragging] = useState(false);
@@ -179,6 +185,60 @@ export function HallCanvas() {
     }
     return nearest;
   }, [objects]);
+
+  // Find gang at position (point-to-line-segment distance with breite tolerance)
+  const findGangAt = useCallback((wx: number, wy: number): Gang | null => {
+    if (!showGaenge) return null;
+    for (const gang of gaenge) {
+      if (gang.points.length < 2) continue;
+      const p1 = gang.points[0];
+      const p2 = gang.points[1];
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq === 0) continue;
+      const t = Math.max(0, Math.min(1, ((wx - p1.x) * dx + (wy - p1.y) * dy) / lenSq));
+      const projX = p1.x + t * dx;
+      const projY = p1.y + t * dy;
+      const dist = Math.sqrt((wx - projX) ** 2 + (wy - projY) ** 2);
+      if (dist <= gang.breite / 2 + 0.5) return gang;
+    }
+    return null;
+  }, [gaenge, showGaenge]);
+
+  // Find pathArea at position
+  const findPathAreaAt = useCallback((wx: number, wy: number): PathArea | null => {
+    for (const area of pathAreas) {
+      if (area.x != null && area.y != null && area.width != null && area.height != null) {
+        if (wx >= area.x && wx <= area.x + area.width &&
+            wy >= area.y && wy <= area.y + area.height) {
+          return area;
+        }
+      }
+    }
+    return null;
+  }, [pathAreas]);
+
+  // Find conveyor at position
+  const findConveyorAt = useCallback((wx: number, wy: number): Conveyor | null => {
+    const tolerance = Math.max(1, 2 / zoom);
+    for (const conv of conveyors) {
+      for (let i = 0; i < conv.points.length - 1; i++) {
+        const p1 = conv.points[i];
+        const p2 = conv.points[i + 1];
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) continue;
+        const t = Math.max(0, Math.min(1, ((wx - p1.x) * dx + (wy - p1.y) * dy) / lenSq));
+        const projX = p1.x + t * dx;
+        const projY = p1.y + t * dy;
+        const dist = Math.sqrt((wx - projX) ** 2 + (wy - projY) ** 2);
+        if (dist <= tolerance) return conv;
+      }
+    }
+    return null;
+  }, [conveyors, zoom]);
 
   // Save path with automatic object linking
   const savePathWithLinks = useCallback((waypoints: { x: number; y: number; objectId: number | null }[], color: string = '#f59e0b') => {
@@ -329,9 +389,10 @@ export function HallCanvas() {
     // Draw PathAreas (before objects for transparency)
     if (pathAreas.length > 0) {
       pathAreas.forEach(area => {
-        ctx.fillStyle = 'rgba(100, 150, 255, 0.2)';
-        ctx.strokeStyle = 'rgba(100, 150, 255, 0.6)';
-        ctx.lineWidth = 2;
+        const isSelectedArea = selectedPathArea?.id === area.id;
+        ctx.fillStyle = isSelectedArea ? 'rgba(100, 150, 255, 0.4)' : 'rgba(100, 150, 255, 0.2)';
+        ctx.strokeStyle = isSelectedArea ? '#00bcd4' : 'rgba(100, 150, 255, 0.6)';
+        ctx.lineWidth = isSelectedArea ? 3 : 2;
 
         if (area.x !== undefined && area.y !== undefined && area.width !== undefined && area.height !== undefined) {
           // Rectangle format
@@ -376,8 +437,19 @@ export function HallCanvas() {
         const start = worldToScreen(gang.points[0].x, gang.points[0].y);
         const end = worldToScreen(gang.points[1].x, gang.points[1].y);
         const breite = gang.breite * SCALE * zoom;
+        const isSelectedGangItem = selectedGang?.id === gang.id;
 
         ctx.save();
+        // Selection glow
+        if (isSelectedGangItem) {
+          ctx.strokeStyle = '#00bcd4';
+          ctx.lineWidth = breite + 4;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+          ctx.stroke();
+        }
         ctx.strokeStyle = gang.farbe || 'rgba(100, 200, 100, 0.6)';
         ctx.lineWidth = breite;
         ctx.lineCap = 'round';
@@ -525,7 +597,23 @@ export function HallCanvas() {
     // Draw saved Conveyors
     conveyors.forEach(conveyor => {
       if (conveyor.points.length < 2) return;
+      const isSelectedConv = selectedConveyor?.id === conveyor.id;
       ctx.save();
+      // Selection glow
+      if (isSelectedConv) {
+        ctx.strokeStyle = '#00bcd4';
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        const gf = worldToScreen(conveyor.points[0].x, conveyor.points[0].y);
+        ctx.moveTo(gf.x, gf.y);
+        conveyor.points.slice(1).forEach(p => {
+          const sp = worldToScreen(p.x, p.y);
+          ctx.lineTo(sp.x, sp.y);
+        });
+        ctx.stroke();
+      }
       ctx.strokeStyle = '#06b6d4'; // Cyan for conveyors
       ctx.lineWidth = 6;
       ctx.lineCap = 'round';
@@ -728,7 +816,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -921,13 +1009,35 @@ export function HallCanvas() {
       if (path) {
         selectPath(path);
         setSelectedWaypointIndex(null);
-        selectObject(null);
+        return;
+      }
+
+      // Check for gangs (Fahrgänge)
+      const gang = findGangAt(world.x, world.y);
+      if (gang) {
+        selectGang(gang);
+        setSelectedWaypointIndex(null);
+        return;
+      }
+
+      // Check for path areas
+      const pathArea = findPathAreaAt(world.x, world.y);
+      if (pathArea) {
+        selectPathArea(pathArea);
+        setSelectedWaypointIndex(null);
+        return;
+      }
+
+      // Check for conveyors
+      const conv = findConveyorAt(world.x, world.y);
+      if (conv) {
+        selectConveyor(conv);
+        setSelectedWaypointIndex(null);
         return;
       }
 
       // Nothing found - deselect all
       selectObject(null);
-      selectPath(null);
       setSelectedWaypointIndex(null);
       return;
     } else if (tool === 'pan') {
