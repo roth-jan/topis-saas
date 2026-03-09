@@ -1182,36 +1182,47 @@ export function HallCanvas() {
     setDragObject(null);
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
+  // Wheel zoom is handled via native event listener above (non-passive)
 
-    // Pinch-to-zoom (ctrlKey is set for trackpad pinch gestures)
-    if (e.ctrlKey || e.metaKey) {
-      const rect = canvasRef.current?.getBoundingClientRect();
-      if (!rect) return;
+  // Native wheel listener (non-passive) to allow preventDefault for zoom
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      // Zoom towards mouse position
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+    const nativeWheelHandler = (e: WheelEvent) => {
+      e.preventDefault();
 
-      const delta = e.deltaY > 0 ? 0.95 : 1.05;
-      const newZoom = Math.max(0.1, Math.min(5, zoom * delta));
+      const rect = canvas.getBoundingClientRect();
 
-      // Adjust pan to zoom towards mouse position
-      const zoomRatio = newZoom / zoom;
-      const newPanX = mouseX - (mouseX - pan.x) * zoomRatio;
-      const newPanY = mouseY - (mouseY - pan.y) * zoomRatio;
+      // Shift+Wheel = horizontal pan
+      if (e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        setPan({ x: pan.x - e.deltaY, y: pan.y });
+        return;
+      }
 
-      setZoom(newZoom);
-      setPan({ x: newPanX, y: newPanY });
-    } else {
-      // Two-finger scroll → Pan
-      setPan({
-        x: pan.x - e.deltaX,
-        y: pan.y - e.deltaY
-      });
-    }
-  };
+      // Trackpad two-finger scroll (has deltaX) → Pan
+      // Mouse wheel (only deltaY) or Ctrl/pinch → Zoom
+      const isTrackpadPan = !e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > 0;
+
+      if (isTrackpadPan) {
+        setPan({ x: pan.x - e.deltaX, y: pan.y - e.deltaY });
+      } else {
+        // Zoom towards mouse position
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        const newZoom = Math.max(0.1, Math.min(5, zoom * delta));
+        const zoomRatio = newZoom / zoom;
+        const newPanX = mouseX - (mouseX - pan.x) * zoomRatio;
+        const newPanY = mouseY - (mouseY - pan.y) * zoomRatio;
+        setZoom(newZoom);
+        setPan({ x: newPanX, y: newPanY });
+      }
+    };
+
+    canvas.addEventListener('wheel', nativeWheelHandler, { passive: false });
+    return () => canvas.removeEventListener('wheel', nativeWheelHandler);
+  }, [zoom, pan, setZoom, setPan]);
 
   // Handle keyboard events for drawing cancellation and deletion
   useEffect(() => {
@@ -1477,7 +1488,6 @@ export function HallCanvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
       />
