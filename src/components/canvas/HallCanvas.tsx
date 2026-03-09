@@ -92,24 +92,29 @@ export function HallCanvas() {
     y: (y - pan.y) / (SCALE * zoom)
   }), [zoom, pan]);
 
-  // Find object at position (with tolerance for small objects)
+  // Find object at position — prefers smaller objects over large areas
   const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
-    // Tolerance in meters — scales with zoom so small objects are easier to click
     const tolerance = Math.max(0.5, 2 / zoom);
 
-    // First pass: exact hit
-    for (let i = objects.length - 1; i >= 0; i--) {
-      const obj = objects[i];
+    // Collect all objects that contain the click point
+    const hits: TopisObject[] = [];
+    for (const obj of objects) {
       if (wx >= obj.x && wx <= obj.x + obj.width &&
           wy >= obj.y && wy <= obj.y + obj.height) {
-        return obj;
+        hits.push(obj);
       }
     }
-    // Second pass: with tolerance for small objects (e.g. Tore)
+
+    if (hits.length > 0) {
+      // Prefer smallest object (e.g. Tor over Sektion/Bereich)
+      hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
+      return hits[0];
+    }
+
+    // Second pass: tolerance for small objects near click
     let nearest: TopisObject | null = null;
     let minDist = tolerance;
-    for (let i = objects.length - 1; i >= 0; i--) {
-      const obj = objects[i];
+    for (const obj of objects) {
       if (wx >= obj.x - tolerance && wx <= obj.x + obj.width + tolerance &&
           wy >= obj.y - tolerance && wy <= obj.y + obj.height + tolerance) {
         const cx = obj.x + obj.width / 2;
