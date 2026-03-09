@@ -862,8 +862,7 @@ export function HallCanvas() {
       // First check for objects
       const obj = findObjectAt(world.x, world.y);
       if (obj) {
-        selectObject(obj);
-        selectPath(null);
+        selectObject(obj); // also clears selectedPath
         setSelectedWaypointIndex(null);
         setDragObject(obj);
         setDragStart({ x: world.x - obj.x, y: world.y - obj.y });
