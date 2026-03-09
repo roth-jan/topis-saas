@@ -92,8 +92,12 @@ export function HallCanvas() {
     y: (y - pan.y) / (SCALE * zoom)
   }), [zoom, pan]);
 
-  // Find object at position (exact hit)
+  // Find object at position (with tolerance for small objects)
   const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
+    // Tolerance in meters — scales with zoom so small objects are easier to click
+    const tolerance = Math.max(0.5, 2 / zoom);
+
+    // First pass: exact hit
     for (let i = objects.length - 1; i >= 0; i--) {
       const obj = objects[i];
       if (wx >= obj.x && wx <= obj.x + obj.width &&
@@ -101,8 +105,24 @@ export function HallCanvas() {
         return obj;
       }
     }
-    return null;
-  }, [objects]);
+    // Second pass: with tolerance for small objects (e.g. Tore)
+    let nearest: TopisObject | null = null;
+    let minDist = tolerance;
+    for (let i = objects.length - 1; i >= 0; i--) {
+      const obj = objects[i];
+      if (wx >= obj.x - tolerance && wx <= obj.x + obj.width + tolerance &&
+          wy >= obj.y - tolerance && wy <= obj.y + obj.height + tolerance) {
+        const cx = obj.x + obj.width / 2;
+        const cy = obj.y + obj.height / 2;
+        const dist = Math.sqrt((wx - cx) ** 2 + (wy - cy) ** 2);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = obj;
+        }
+      }
+    }
+    return nearest;
+  }, [objects, zoom]);
 
   // Find nearest object within tolerance (for path endpoint linking)
   const findNearestObject = useCallback((wx: number, wy: number, tolerance: number = 3): TopisObject | null => {
@@ -1060,8 +1080,9 @@ export function HallCanvas() {
         updatePath(draggingWaypoint.pathId, { waypoints: newWaypoints });
       }
     } else if (tool === 'select' && dragObject) {
-      let newX = Math.round(world.x - dragStart.x);
-      let newY = Math.round(world.y - dragStart.y);
+      // Snap to 0.1m grid (not 1m) for precise repositioning
+      let newX = Math.round((world.x - dragStart.x) * 10) / 10;
+      let newY = Math.round((world.y - dragStart.y) * 10) / 10;
 
       // Clamp position within hall bounds
       if (hall) {
