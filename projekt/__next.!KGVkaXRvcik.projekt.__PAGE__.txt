@@ -3,7 +3,7 @@
 3:I[49629,["/topis-saas/_next/static/chunks/909d5653e854dd19.js","/topis-saas/_next/static/chunks/348408aa3c1389e8.js","/topis-saas/_next/static/chunks/42a7674c19b7b78e.js"],"default"]
 6:I[47602,["/topis-saas/_next/static/chunks/acda75804ed64036.js","/topis-saas/_next/static/chunks/0e88c31008156e6e.js"],"OutletBoundary"]
 7:"$Sreact.suspense"
-0:{"buildId":"xnYcmjIPClsL4hBxLa2xw","rsc":["$","$1","c",{"children":[["$","$L2",null,{"Component":"$3","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@4","$@5"]}}],[["$","script","script-0",{"src":"/topis-saas/_next/static/chunks/42a7674c19b7b78e.js","async":true}]],["$","$L6",null,{"children":["$","$7",null,{"name":"Next.MetadataOutlet","children":"$@8"}]}]]}],"loading":null,"isPartial":false}
+0:{"buildId":"Hy3Ak8PaUXGTLhrHdJBvR","rsc":["$","$1","c",{"children":[["$","$L2",null,{"Component":"$3","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@4","$@5"]}}],[["$","script","script-0",{"src":"/topis-saas/_next/static/chunks/42a7674c19b7b78e.js","async":true}]],["$","$L6",null,{"children":["$","$7",null,{"name":"Next.MetadataOutlet","children":"$@8"}]}]]}],"loading":null,"isPartial":false}
 4:{}
 5:"$0:rsc:props:children:0:props:serverProvidedParams:params"
 8:null
