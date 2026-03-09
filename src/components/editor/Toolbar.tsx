@@ -78,6 +78,7 @@ import { HallenAssistentDialog } from '@/components/dialogs/HallenAssistentDialo
 import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
+import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
 import {
   MousePointer2,
   Hand,
@@ -396,6 +397,12 @@ export function Toolbar() {
               <Upload className="mr-2 h-4 w-4" />
               Importieren...
               <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Vorlagen</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => { loadSchmidLayout(); toast.success('Andreas Schmid Halle 6 geladen'); }}>
+              <Warehouse className="mr-2 h-4 w-4" />
+              Andreas Schmid - Halle 6
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSave}>

@@ -9,7 +9,6 @@ import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
 import { AnalyticsPanel } from '@/components/panels/AnalyticsPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { useInitialLayout } from '@/hooks/useInitialLayout';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -22,8 +21,6 @@ import { LayoutGrid, Truck, BarChart3, Settings, Route } from 'lucide-react';
 export default function EditorPage() {
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
-  // Load Andreas Schmid layout on first visit
-  useInitialLayout();
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
