@@ -23,7 +23,7 @@ export default function EditorPage() {
   useKeyboardShortcuts();
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Command Palette (Cmd+K) */}
       <CommandPalette />
 
@@ -31,9 +31,9 @@ export default function EditorPage() {
       <Toolbar />
 
       {/* Main Content */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
+      <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="topis-editor-layout">
         {/* Left Sidebar - Object List & Gänge */}
-        <ResizablePanel defaultSize={18} minSize={15} maxSize={30}>
+        <ResizablePanel defaultSize={18} minSize={12} maxSize={30} order={1}>
           <div className="h-full border-r bg-card flex flex-col">
             <Tabs defaultValue="objects" className="flex-1 flex flex-col">
               <TabsList className="w-full justify-start rounded-none border-b h-10 px-2">

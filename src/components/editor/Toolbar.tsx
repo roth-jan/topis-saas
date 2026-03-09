@@ -359,7 +359,7 @@ export function Toolbar() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="h-12 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-2 gap-1">
+      <div className="h-12 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-2 gap-1 overflow-x-auto min-w-0">
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-2">
