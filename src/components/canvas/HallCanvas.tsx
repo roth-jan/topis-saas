@@ -63,12 +63,27 @@ export function HallCanvas() {
   const [currentConveyor, setCurrentConveyor] = useState<{ points: { x: number; y: number }[] } | null>(null);
   const [conveyorMousePos, setConveyorMousePos] = useState<{ x: number; y: number } | null>(null);
 
-  // Context menu state
+  // Context menu state (for paths)
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
     pathId: number;
-    waypointIndex?: number; // If clicking on a specific waypoint
+    waypointIndex?: number;
+  } | null>(null);
+
+  // Object context menu state (right-click on overlapping objects)
+  const [objectContextMenu, setObjectContextMenu] = useState<{
+    x: number;
+    y: number;
+    objects: TopisObject[];
+  } | null>(null);
+
+  // Click-cycling state: track last click position and cycle index
+  const [clickCycle, setClickCycle] = useState<{
+    wx: number;
+    wy: number;
+    index: number;
+    timestamp: number;
   } | null>(null);
 
   // Selected waypoint index (for highlighting)
@@ -92,11 +107,10 @@ export function HallCanvas() {
     y: (y - pan.y) / (SCALE * zoom)
   }), [zoom, pan]);
 
-  // Find object at position — prefers smaller objects over large areas
-  const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
+  // Find ALL objects at position, sorted smallest first
+  const findAllObjectsAt = useCallback((wx: number, wy: number): TopisObject[] => {
     const tolerance = Math.max(0.5, 2 / zoom);
 
-    // Collect all objects that contain the click point
     const hits: TopisObject[] = [];
     for (const obj of objects) {
       if (wx >= obj.x && wx <= obj.x + obj.width &&
@@ -105,29 +119,42 @@ export function HallCanvas() {
       }
     }
 
-    if (hits.length > 0) {
-      // Prefer smallest object (e.g. Tor over Sektion/Bereich)
-      hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
-      return hits[0];
-    }
-
-    // Second pass: tolerance for small objects near click
-    let nearest: TopisObject | null = null;
-    let minDist = tolerance;
-    for (const obj of objects) {
-      if (wx >= obj.x - tolerance && wx <= obj.x + obj.width + tolerance &&
-          wy >= obj.y - tolerance && wy <= obj.y + obj.height + tolerance) {
-        const cx = obj.x + obj.width / 2;
-        const cy = obj.y + obj.height / 2;
-        const dist = Math.sqrt((wx - cx) ** 2 + (wy - cy) ** 2);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = obj;
+    // Also check with tolerance for small nearby objects
+    if (hits.length === 0) {
+      for (const obj of objects) {
+        if (wx >= obj.x - tolerance && wx <= obj.x + obj.width + tolerance &&
+            wy >= obj.y - tolerance && wy <= obj.y + obj.height + tolerance) {
+          hits.push(obj);
         }
       }
     }
-    return nearest;
+
+    // Sort by area: smallest first
+    hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
+    return hits;
   }, [objects, zoom]);
+
+  // Find object at position with click-cycling support
+  const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
+    const hits = findAllObjectsAt(wx, wy);
+    if (hits.length === 0) return null;
+
+    // Check if this is a repeated click at the same position (within 3m tolerance)
+    const now = Date.now();
+    if (clickCycle &&
+        Math.abs(wx - clickCycle.wx) < 3 &&
+        Math.abs(wy - clickCycle.wy) < 3 &&
+        now - clickCycle.timestamp < 2000) {
+      // Cycle to next object
+      const nextIndex = (clickCycle.index + 1) % hits.length;
+      setClickCycle({ wx, wy, index: nextIndex, timestamp: now });
+      return hits[nextIndex];
+    }
+
+    // First click at this position: pick smallest
+    setClickCycle({ wx, wy, index: 0, timestamp: now });
+    return hits[0];
+  }, [findAllObjectsAt, clickCycle]);
 
   // Find nearest object within tolerance (for path endpoint linking)
   const findNearestObject = useCallback((wx: number, wy: number, tolerance: number = 3): TopisObject | null => {
@@ -746,10 +773,9 @@ export function HallCanvas() {
 
   // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Close context menu on any click
-    if (contextMenu) {
-      setContextMenu(null);
-    }
+    // Close context menus on any click
+    if (contextMenu) setContextMenu(null);
+    if (objectContextMenu) setObjectContextMenu(null);
 
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -1287,6 +1313,9 @@ export function HallCanvas() {
         if (contextMenu) {
           setContextMenu(null);
         }
+        if (objectContextMenu) {
+          setObjectContextMenu(null);
+        }
       }
 
       // Delete selected path with Delete or Backspace key
@@ -1438,15 +1467,28 @@ export function HallCanvas() {
       setSelectedWaypointIndex(null);
       selectObject(null);
       setContextMenu({ x: e.clientX, y: e.clientY, pathId: clickedPath.id });
+      setObjectContextMenu(null);
+      return;
+    }
+
+    // Check for overlapping objects → show object context menu
+    const objectsHere = findAllObjectsAt(world.x, world.y);
+    if (objectsHere.length > 0) {
+      setObjectContextMenu({ x: e.clientX, y: e.clientY, objects: objectsHere });
+      setContextMenu(null);
+      // Select the first/smallest one immediately
+      selectObject(objectsHere[0]);
     } else {
       setContextMenu(null);
+      setObjectContextMenu(null);
       setSelectedWaypointIndex(null);
     }
   };
 
-  // Close context menu when clicking elsewhere
+  // Close context menus when clicking elsewhere
   const handleCloseContextMenu = () => {
     setContextMenu(null);
+    setObjectContextMenu(null);
   };
 
   // Handle context menu delete path
@@ -1634,6 +1676,45 @@ export function HallCanvas() {
             >
               🗑️ Gesamten Weg löschen
             </button>
+          </div>
+        </>
+      )}
+
+      {/* Context Menu for Objects (right-click on overlapping objects) */}
+      {objectContextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={handleCloseContextMenu}
+          />
+          <div
+            className="fixed z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[200px]"
+            style={{ left: objectContextMenu.x, top: objectContextMenu.y }}
+          >
+            <div className="px-3 py-1.5 text-xs text-muted-foreground border-b">
+              {objectContextMenu.objects.length} Objekte an dieser Position
+            </div>
+            {objectContextMenu.objects.map((obj) => (
+              <button
+                key={obj.id}
+                className={`w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2 ${
+                  selectedObject?.id === obj.id ? 'bg-primary/10 font-medium' : ''
+                }`}
+                onClick={() => {
+                  selectObject(obj);
+                  setObjectContextMenu(null);
+                }}
+              >
+                <span
+                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: obj.color || '#3498db' }}
+                />
+                <span className="truncate">{obj.name}</span>
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {obj.width}×{obj.height}m
+                </span>
+              </button>
+            ))}
           </div>
         </>
       )}
