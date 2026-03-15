@@ -15,8 +15,53 @@ import {
   OBJECT_DEFAULTS,
   ProjektSnapshot
 } from '@/types/topis';
+import type { LayoutSnapshot } from '@/types/betriebsdaten';
+
+// ==================== UNDO/REDO ====================
+const MAX_UNDO_STACK = 50;
+
+function captureLayoutSnapshot(state: TopisState): LayoutSnapshot {
+  return {
+    objects: JSON.parse(JSON.stringify(state.objects)),
+    gaenge: JSON.parse(JSON.stringify(state.gaenge)),
+    ffz: JSON.parse(JSON.stringify(state.ffz)),
+    halls: JSON.parse(JSON.stringify(state.halls)),
+    paths: JSON.parse(JSON.stringify(state.paths)),
+    pathAreas: JSON.parse(JSON.stringify(state.pathAreas)),
+    conveyors: JSON.parse(JSON.stringify(state.conveyors)),
+  };
+}
+
+function restoreLayoutSnapshot(snapshot: LayoutSnapshot): Partial<TopisState> {
+  return {
+    objects: JSON.parse(JSON.stringify(snapshot.objects)) as TopisObject[],
+    gaenge: JSON.parse(JSON.stringify(snapshot.gaenge)) as Gang[],
+    ffz: JSON.parse(JSON.stringify(snapshot.ffz)) as FFZ[],
+    halls: JSON.parse(JSON.stringify(snapshot.halls)) as Hall[],
+    paths: JSON.parse(JSON.stringify(snapshot.paths || [])) as Path[],
+    pathAreas: JSON.parse(JSON.stringify(snapshot.pathAreas || [])) as PathArea[],
+    conveyors: JSON.parse(JSON.stringify(snapshot.conveyors || [])) as Conveyor[],
+    selectedObject: null,
+    selectedPath: null,
+    selectedGang: null,
+    selectedPathArea: null,
+    selectedConveyor: null,
+  };
+}
 
 interface TopisStore extends TopisState {
+  // Undo/Redo
+  undoStack: LayoutSnapshot[];
+  redoStack: LayoutSnapshot[];
+  originalLayout: LayoutSnapshot | null;
+  pushSnapshot: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  saveOriginalLayout: () => void;
+  resetToOriginal: () => void;
+
   // Hall Actions
   setHalls: (halls: Hall[]) => void;
   setActiveHall: (id: number) => void;
@@ -120,51 +165,106 @@ const initialState: TopisState = {
 export const useTopisStore = create<TopisStore>((set, get) => ({
   ...initialState,
 
-  // Hall Actions
-  setHalls: (halls) => set({ halls }),
-  setActiveHall: (id) => set({ activeHallId: id }),
-  updateHall: (id, updates) => set((state) => ({
-    halls: state.halls.map(h => h.id === id ? { ...h, ...updates } : h)
+  // Undo/Redo state
+  undoStack: [],
+  redoStack: [],
+  originalLayout: null,
+
+  pushSnapshot: () => set((state) => {
+    const snapshot = captureLayoutSnapshot(state);
+    const newStack = [...state.undoStack, snapshot].slice(-MAX_UNDO_STACK);
+    return { undoStack: newStack, redoStack: [] };
+  }),
+
+  undo: () => {
+    const { undoStack } = get();
+    if (undoStack.length === 0) return;
+
+    const currentSnapshot = captureLayoutSnapshot(get());
+    const previousSnapshot = undoStack[undoStack.length - 1];
+    const restored = restoreLayoutSnapshot(previousSnapshot);
+
+    set((state) => ({
+      ...restored,
+      undoStack: state.undoStack.slice(0, -1),
+      redoStack: [...state.redoStack, currentSnapshot],
+    }));
+  },
+
+  redo: () => {
+    const { redoStack } = get();
+    if (redoStack.length === 0) return;
+
+    const currentSnapshot = captureLayoutSnapshot(get());
+    const nextSnapshot = redoStack[redoStack.length - 1];
+    const restored = restoreLayoutSnapshot(nextSnapshot);
+
+    set((state) => ({
+      ...restored,
+      undoStack: [...state.undoStack, currentSnapshot],
+      redoStack: state.redoStack.slice(0, -1),
+    }));
+  },
+
+  canUndo: () => get().undoStack.length > 0,
+  canRedo: () => get().redoStack.length > 0,
+
+  saveOriginalLayout: () => set((state) => ({
+    originalLayout: captureLayoutSnapshot(state),
   })),
 
-  rotateHall90: () => set((state) => {
-    const hall = state.halls.find(h => h.id === state.activeHallId);
-    if (!hall) return state;
+  resetToOriginal: () => {
+    const { originalLayout } = get();
+    if (!originalLayout) return;
+    const currentSnapshot = captureLayoutSnapshot(get());
+    const restored = restoreLayoutSnapshot(originalLayout);
+    set((state) => ({
+      ...restored,
+      undoStack: [...state.undoStack, currentSnapshot],
+      redoStack: [],
+    }));
+  },
 
-    const oldWidth = hall.width;
-    const oldHeight = hall.height;
+  // Hall Actions
+  setHalls: (halls) => { get().pushSnapshot(); set({ halls }); },
+  setActiveHall: (id) => set({ activeHallId: id }),
+  updateHall: (id, updates) => {
+    get().pushSnapshot();
+    set((state) => ({
+      halls: state.halls.map(h => h.id === id ? { ...h, ...updates } : h)
+    }));
+  },
 
-    // Rotate all objects
-    const rotatedObjects = state.objects.map(obj => {
-      const oldX = obj.x;
-      const oldY = obj.y;
-      const oldObjWidth = obj.width;
-      const oldObjHeight = obj.height;
+  rotateHall90: () => {
+    get().pushSnapshot();
+    set((state) => {
+      const hall = state.halls.find(h => h.id === state.activeHallId);
+      if (!hall) return state;
 
-      return {
+      const oldWidth = hall.width;
+      const oldHeight = hall.height;
+
+      const rotatedObjects = state.objects.map(obj => ({
         ...obj,
-        x: Math.round(oldY),
-        y: Math.round(oldWidth - oldX - oldObjWidth),
-        width: oldObjHeight,
-        height: oldObjWidth
-      };
+        x: Math.round(obj.y),
+        y: Math.round(oldWidth - obj.x - obj.width),
+        width: obj.height,
+        height: obj.width
+      }));
+
+      const rotatedHalls = state.halls.map(h =>
+        h.id === state.activeHallId
+          ? { ...h, width: oldHeight, height: oldWidth }
+          : h
+      );
+
+      return { halls: rotatedHalls, objects: rotatedObjects };
     });
-
-    // Swap hall dimensions
-    const rotatedHalls = state.halls.map(h =>
-      h.id === state.activeHallId
-        ? { ...h, width: oldHeight, height: oldWidth }
-        : h
-    );
-
-    return {
-      halls: rotatedHalls,
-      objects: rotatedObjects
-    };
-  }),
+  },
 
   // Object Actions
   addObject: (obj) => {
+    get().pushSnapshot();
     const id = get().objectIdCounter;
     const newObj = { ...obj, id } as TopisObject;
     set((state) => ({
@@ -173,23 +273,32 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
     }));
     return newObj;
   },
-  updateObject: (id, updates) => set((state) => ({
-    objects: state.objects.map(o => o.id === id ? { ...o, ...updates } : o),
-    selectedObject: state.selectedObject?.id === id
-      ? { ...state.selectedObject, ...updates }
-      : state.selectedObject
-  })),
-  deleteObject: (id) => set((state) => ({
-    objects: state.objects.filter(o => o.id !== id),
-    selectedObject: state.selectedObject?.id === id ? null : state.selectedObject
-  })),
+  updateObject: (id, updates) => {
+    get().pushSnapshot();
+    set((state) => ({
+      objects: state.objects.map(o => o.id === id ? { ...o, ...updates } : o),
+      selectedObject: state.selectedObject?.id === id
+        ? { ...state.selectedObject, ...updates }
+        : state.selectedObject
+    }));
+  },
+  deleteObject: (id) => {
+    get().pushSnapshot();
+    set((state) => ({
+      objects: state.objects.filter(o => o.id !== id),
+      selectedObject: state.selectedObject?.id === id ? null : state.selectedObject
+    }));
+  },
   selectObject: (obj) => set({ selectedObject: obj, selectedPath: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null }),
 
   // Path Actions
-  addPath: (path) => set((state) => ({
-    paths: [...state.paths, { ...path, id: state.pathIdCounter }],
-    pathIdCounter: state.pathIdCounter + 1
-  })),
+  addPath: (path) => {
+    get().pushSnapshot();
+    set((state) => ({
+      paths: [...state.paths, { ...path, id: state.pathIdCounter }],
+      pathIdCounter: state.pathIdCounter + 1
+    }));
+  },
   updatePath: (id, updates) => set((state) => {
     const updatedPaths = state.paths.map(p => p.id === id ? { ...p, ...updates } : p);
     const updatedPath = updatedPaths.find(p => p.id === id) || null;
@@ -198,14 +307,18 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
       selectedPath: state.selectedPath?.id === id ? updatedPath : state.selectedPath
     };
   }),
-  deletePath: (id) => set((state) => ({
-    paths: state.paths.filter(p => p.id !== id),
-    selectedPath: state.selectedPath?.id === id ? null : state.selectedPath
-  })),
+  deletePath: (id) => {
+    get().pushSnapshot();
+    set((state) => ({
+      paths: state.paths.filter(p => p.id !== id),
+      selectedPath: state.selectedPath?.id === id ? null : state.selectedPath
+    }));
+  },
   selectPath: (path) => set({ selectedPath: path, selectedObject: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null }),
 
   // PathArea Actions
   addPathArea: (area) => {
+    get().pushSnapshot();
     const id = get().pathAreaIdCounter;
     const newArea = { ...area, id } as PathArea;
     set((state) => ({
@@ -223,17 +336,21 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
         : state.selectedPathArea
     };
   }),
-  deletePathArea: (id) => set((state) => ({
-    pathAreas: state.pathAreas.filter(a => a.id !== id),
-    selectedPathArea: state.selectedPathArea?.id === id ? null : state.selectedPathArea
-  })),
+  deletePathArea: (id) => {
+    get().pushSnapshot();
+    set((state) => ({
+      pathAreas: state.pathAreas.filter(a => a.id !== id),
+      selectedPathArea: state.selectedPathArea?.id === id ? null : state.selectedPathArea
+    }));
+  },
   selectPathArea: (area) => set({ selectedPathArea: area, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedGang: null }),
 
   // Gang Actions
-  setGaenge: (gaenge) => set({ gaenge }),
-  addGang: (gang) => set((state) => ({
-    gaenge: [...state.gaenge, gang]
-  })),
+  setGaenge: (gaenge) => { get().pushSnapshot(); set({ gaenge }); },
+  addGang: (gang) => {
+    get().pushSnapshot();
+    set((state) => ({ gaenge: [...state.gaenge, gang] }));
+  },
   updateGang: (id, updates) => set((state) => {
     const updatedGaenge = state.gaenge.map(g => g.id === id ? { ...g, ...updates } : g);
     return {
@@ -243,10 +360,13 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
         : state.selectedGang
     };
   }),
-  deleteGang: (id) => set((state) => ({
-    gaenge: state.gaenge.filter(g => g.id !== id),
-    selectedGang: state.selectedGang?.id === id ? null : state.selectedGang
-  })),
+  deleteGang: (id) => {
+    get().pushSnapshot();
+    set((state) => ({
+      gaenge: state.gaenge.filter(g => g.id !== id),
+      selectedGang: state.selectedGang?.id === id ? null : state.selectedGang
+    }));
+  },
   selectGang: (gang) => set({ selectedGang: gang, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedPathArea: null }),
   toggleShowGaenge: () => set((state) => ({ showGaenge: !state.showGaenge })),
 
@@ -255,6 +375,7 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
 
   // Conveyor Actions
   addConveyor: (conveyor) => {
+    get().pushSnapshot();
     const id = get().conveyorIdCounter;
     const newConveyor = { ...conveyor, id } as Conveyor;
     set((state) => ({
@@ -272,10 +393,13 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
         : state.selectedConveyor
     };
   }),
-  deleteConveyor: (id) => set((state) => ({
-    conveyors: state.conveyors.filter(c => c.id !== id),
-    selectedConveyor: state.selectedConveyor?.id === id ? null : state.selectedConveyor
-  })),
+  deleteConveyor: (id) => {
+    get().pushSnapshot();
+    set((state) => ({
+      conveyors: state.conveyors.filter(c => c.id !== id),
+      selectedConveyor: state.selectedConveyor?.id === id ? null : state.selectedConveyor
+    }));
+  },
   selectConveyor: (conveyor) => set({ selectedConveyor: conveyor, selectedObject: null, selectedPath: null, selectedGang: null, selectedPathArea: null }),
 
   // View Actions
@@ -316,7 +440,7 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
   },
 
   // Bulk Actions
-  resetState: () => set(initialState),
+  resetState: () => set({ ...initialState, undoStack: [], redoStack: [], originalLayout: null }),
   loadState: (newState) => set((state) => ({ ...state, ...newState }))
 }));
 

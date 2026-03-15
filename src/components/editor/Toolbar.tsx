@@ -76,6 +76,8 @@ import { MultiInsertDialog } from '@/components/dialogs/MultiInsertDialog';
 import { MatrixDialog } from '@/components/dialogs/MatrixDialog';
 import { HallenAssistentDialog } from '@/components/dialogs/HallenAssistentDialog';
 import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog';
+import { BetriebsdatenImportDialog } from '@/components/dialogs/BetriebsdatenImportDialog';
+import { SzenarienDialog } from '@/components/dialogs/SzenarienDialog';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
@@ -155,6 +157,8 @@ import {
   Footprints,
   Square,
   RectangleHorizontal,
+  Database,
+  GitBranch,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -234,6 +238,12 @@ export function Toolbar() {
   const rotateHall90 = useTopisStore((s) => s.rotateHall90);
   const updateHall = useTopisStore((s) => s.updateHall);
   const addObject = useTopisStore((s) => s.addObject);
+  const undo = useTopisStore((s) => s.undo);
+  const redo = useTopisStore((s) => s.redo);
+  const canUndo = useTopisStore((s) => s.undoStack.length > 0);
+  const canRedo = useTopisStore((s) => s.redoStack.length > 0);
+  const resetToOriginal = useTopisStore((s) => s.resetToOriginal);
+  const originalLayout = useTopisStore((s) => s.originalLayout);
 
   // Get active hall
   const activeHall = halls.find(h => h.id === activeHallId) || halls[0];
@@ -399,6 +409,16 @@ export function Toolbar() {
               <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Betriebsdaten</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => {
+              // Trigger the BetriebsdatenImportDialog by clicking its trigger
+              const btn = document.querySelector('[data-betriebsdaten-trigger]') as HTMLButtonElement;
+              if (btn) btn.click();
+            }}>
+              <Database className="mr-2 h-4 w-4" />
+              Betriebsdaten importieren...
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuLabel>Vorlagen</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => { loadSchmidLayout(); toast.success('Andreas Schmid Halle 6 geladen'); }}>
               <Warehouse className="mr-2 h-4 w-4" />
@@ -469,12 +489,12 @@ export function Toolbar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56">
-            <DropdownMenuItem onClick={() => toast.info('Rückgängig')}>
+            <DropdownMenuItem onClick={() => { undo(); toast.info('Rückgängig'); }} disabled={!canUndo}>
               <Undo2 className="mr-2 h-4 w-4" />
               Rückgängig
               <DropdownMenuShortcut>⌘Z</DropdownMenuShortcut>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info('Wiederholen')}>
+            <DropdownMenuItem onClick={() => { redo(); toast.info('Wiederholt'); }} disabled={!canRedo}>
               <Redo2 className="mr-2 h-4 w-4" />
               Wiederholen
               <DropdownMenuShortcut>⇧⌘Z</DropdownMenuShortcut>
@@ -831,6 +851,39 @@ export function Toolbar() {
 
           {/* Tor-Kalkulation Dialog */}
           <TorKalkulationDialog />
+        </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* ============ BETRIEBSDATEN & SZENARIEN ============ */}
+        <div className="flex items-center gap-1">
+          <BetriebsdatenImportDialog />
+          <SzenarienDialog />
+          {originalLayout && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1 text-xs">
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Reset
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Layout zurücksetzen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Das Layout wird auf den ursprünglich importierten Zustand zurückgesetzt.
+                    Der aktuelle Zustand wird im Undo-Verlauf gespeichert.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { resetToOriginal(); toast.success('Layout zurückgesetzt'); }}>
+                    Zurücksetzen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-1" />

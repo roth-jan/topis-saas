@@ -2,7 +2,9 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } from '@/lib/store';
+import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
 import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, Gang, PathArea, Conveyor } from '@/types/topis';
+import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
 import { toast } from 'sonner';
 
 export function HallCanvas() {
@@ -42,6 +44,8 @@ export function HallCanvas() {
   const selectConveyor = useTopisStore((s) => s.selectConveyor);
   const selectedConveyor = useTopisStore((s) => s.selectedConveyor);
   const setTool = useTopisStore((s) => s.setTool);
+  const heatmapConfig = useHeatmapConfig();
+  const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
 
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -754,6 +758,40 @@ export function HallCanvas() {
       ctx.restore();
     });
 
+    // Draw heatmap overlay
+    if (heatmapConfig.aktiv && betriebsAnalyse && betriebsAnalyse.objektMetriken.length > 0) {
+      const metriken = betriebsAnalyse.objektMetriken;
+      const values = metriken.map(m => getMetrikWert(m, heatmapConfig.modus));
+      const maxWert = Math.max(...values, 1);
+
+      metriken.forEach(metrik => {
+        const obj = objects.find(o => o.id === metrik.objectId);
+        if (!obj) return;
+
+        const pos = worldToScreen(obj.x, obj.y);
+        const w = obj.width * SCALE * zoom;
+        const h = obj.height * SCALE * zoom;
+        const wert = getMetrikWert(metrik, heatmapConfig.modus);
+        const intensity = wert / maxWert;
+
+        ctx.save();
+        // Colored overlay
+        ctx.fillStyle = getHeatmapColor(intensity, heatmapConfig.farbskala, heatmapConfig.intensitaet);
+        ctx.fillRect(pos.x, pos.y, w, h);
+
+        // Value label
+        if (zoom > 0.4) {
+          const label = formatMetrikWert(wert, heatmapConfig.modus);
+          ctx.fillStyle = 'rgba(255,255,255,0.95)';
+          ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, pos.x + w / 2, pos.y + h / 2 + (zoom > 0.5 ? 12 * zoom : 0));
+        }
+        ctx.restore();
+      });
+    }
+
     // Draw selection handles
     if (selectedObject) {
       const pos = worldToScreen(selectedObject.x, selectedObject.y);
@@ -816,7 +854,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -857,7 +895,7 @@ export function HallCanvas() {
   useEffect(() => {
     const animationId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animationId);
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse]);
 
   // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
