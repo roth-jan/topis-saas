@@ -2,8 +2,8 @@
  * Berechnet den gewichteten Verteilweg aus einer gemessenen Distanzmatrix.
  * Ersetzt die A*-basierte Berechnung durch echte Messwerte.
  *
- * Formel: Σ(distanz_EZ_zu_Tor × colli_Relation) / Σ(colli)
- * Referenzwert AS Gersthofen: ≈ 138.8m
+ * Formel: Σ(distanzDoppelt_EZ_zu_Tor × colli_Relation) / Σ(colli)
+ * Referenzwert AS Gersthofen: ≈ 138.8m (Doppelweg = Hin+Rück)
  */
 
 import type { Distanzmatrix, DistanzmatrixErgebnis, VerteilwegDetail } from '@/types/distanzmatrix';
@@ -43,20 +43,22 @@ function findeTorFuerRelation(dm: Distanzmatrix, relation: string): { tor: strin
 
 /**
  * Findet die Distanz von einer Entladezone zu einem Tor.
+ * Verwendet distanzDoppeltM (Hin+Rück), da der Verteilweg im Prozessmodell
+ * als Doppelweg (Hin + Rück) kalibriert ist (Referenz: 138.8m für AS Gersthofen).
  */
 function findeDistanz(dm: Distanzmatrix, ezName: string, torName: string): number | null {
   const eintrag = dm.eintraege.find(e => e.vonName === ezName && e.nachName === torName);
-  return eintrag ? eintrag.distanzM : null;
+  return eintrag ? eintrag.distanzDoppeltM : null;
 }
 
 /**
- * Berechnet die durchschnittliche Distanz über alle EZ→Tor-Paare für eine EZ.
+ * Berechnet die durchschnittliche Distanz (Doppelweg) über alle EZ→Tor-Paare für eine EZ.
  * Wird als Fallback für nicht zugeordnete Relationen verwendet.
  */
 function berechneDurchschnittsDistanz(dm: Distanzmatrix, ezName: string): number {
   const ezEntries = dm.eintraege.filter(e => e.vonName === ezName);
-  if (ezEntries.length === 0) return 60; // Harter Fallback
-  return ezEntries.reduce((sum, e) => sum + e.distanzM, 0) / ezEntries.length;
+  if (ezEntries.length === 0) return 120; // Harter Fallback (Doppelweg)
+  return ezEntries.reduce((sum, e) => sum + e.distanzDoppeltM, 0) / ezEntries.length;
 }
 
 /**
