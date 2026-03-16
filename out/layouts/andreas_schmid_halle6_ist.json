@@ -1,0 +1,1866 @@
+{
+  "version": "1.0.0",
+  "name": "Andreas Schmid Gersthofen - Halle 6 IST (01.10.2018)",
+  "createdAt": "2026-03-09T12:15:57.798041Z",
+  "modifiedAt": "2026-03-09T12:15:57.798041Z",
+  "data": {
+    "halls": [
+      {
+        "id": 1,
+        "shape": "rect",
+        "width": 151,
+        "height": 50,
+        "name": "AS Gersthofen Halle 6",
+        "walls": [],
+        "offsetX": 0,
+        "offsetY": 0,
+        "color": "#16213e"
+      }
+    ],
+    "activeHallId": 1,
+    "objects": [
+      {
+        "id": 1,
+        "type": "tor",
+        "x": 0.9,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 1",
+        "side": "south",
+        "torNummer": 1
+      },
+      {
+        "id": 2,
+        "type": "tor",
+        "x": 4.65,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 2",
+        "side": "south",
+        "torNummer": 2
+      },
+      {
+        "id": 3,
+        "type": "tor",
+        "x": 8.4,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 3",
+        "side": "south",
+        "torNummer": 3
+      },
+      {
+        "id": 4,
+        "type": "tor",
+        "x": 12.15,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 4",
+        "side": "south",
+        "torNummer": 4
+      },
+      {
+        "id": 5,
+        "type": "tor",
+        "x": 15.9,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 5",
+        "side": "south",
+        "torNummer": 5
+      },
+      {
+        "id": 6,
+        "type": "tor",
+        "x": 19.65,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 6",
+        "side": "south",
+        "torNummer": 6
+      },
+      {
+        "id": 7,
+        "type": "tor",
+        "x": 23.4,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 7",
+        "side": "south",
+        "torNummer": 7
+      },
+      {
+        "id": 8,
+        "type": "tor",
+        "x": 27.15,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 8",
+        "side": "south",
+        "torNummer": 8
+      },
+      {
+        "id": 9,
+        "type": "tor",
+        "x": 30.9,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 9",
+        "side": "south",
+        "torNummer": 9
+      },
+      {
+        "id": 10,
+        "type": "tor",
+        "x": 34.65,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 10",
+        "side": "south",
+        "torNummer": 10
+      },
+      {
+        "id": 11,
+        "type": "tor",
+        "x": 38.4,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 11",
+        "side": "south",
+        "torNummer": 11
+      },
+      {
+        "id": 12,
+        "type": "tor",
+        "x": 42.15,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 12",
+        "side": "south",
+        "torNummer": 12
+      },
+      {
+        "id": 13,
+        "type": "tor",
+        "x": 45.9,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 13",
+        "side": "south",
+        "torNummer": 13
+      },
+      {
+        "id": 14,
+        "type": "tor",
+        "x": 49.65,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 14",
+        "side": "south",
+        "torNummer": 14
+      },
+      {
+        "id": 15,
+        "type": "tor",
+        "x": 53.4,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 15",
+        "side": "south",
+        "torNummer": 15
+      },
+      {
+        "id": 16,
+        "type": "tor",
+        "x": 57.15,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 16",
+        "side": "south",
+        "torNummer": 16
+      },
+      {
+        "id": 17,
+        "type": "tor",
+        "x": 60.9,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 17",
+        "side": "south",
+        "torNummer": 17
+      },
+      {
+        "id": 18,
+        "type": "tor",
+        "x": 64.65,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 18",
+        "side": "south",
+        "torNummer": 18
+      },
+      {
+        "id": 19,
+        "type": "tor",
+        "x": 68.4,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 19",
+        "side": "south",
+        "torNummer": 19
+      },
+      {
+        "id": 20,
+        "type": "tor",
+        "x": 72.15,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 20",
+        "side": "south",
+        "torNummer": 20
+      },
+      {
+        "id": 21,
+        "type": "tor",
+        "x": 75.9,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 21",
+        "side": "south",
+        "torNummer": 21
+      },
+      {
+        "id": 22,
+        "type": "tor",
+        "x": 79.65,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 22",
+        "side": "south",
+        "torNummer": 22
+      },
+      {
+        "id": 23,
+        "type": "tor",
+        "x": 90.45,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 23",
+        "side": "south",
+        "torNummer": 23
+      },
+      {
+        "id": 24,
+        "type": "tor",
+        "x": 94.2,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 24",
+        "side": "south",
+        "torNummer": 24
+      },
+      {
+        "id": 25,
+        "type": "tor",
+        "x": 97.95,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 25",
+        "side": "south",
+        "torNummer": 25
+      },
+      {
+        "id": 26,
+        "type": "tor",
+        "x": 101.7,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 26",
+        "side": "south",
+        "torNummer": 26
+      },
+      {
+        "id": 27,
+        "type": "tor",
+        "x": 105.45,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 27",
+        "side": "south",
+        "torNummer": 27
+      },
+      {
+        "id": 28,
+        "type": "tor",
+        "x": 109.2,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 28",
+        "side": "south",
+        "torNummer": 28
+      },
+      {
+        "id": 29,
+        "type": "tor",
+        "x": 112.95,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 29",
+        "side": "south",
+        "torNummer": 29
+      },
+      {
+        "id": 30,
+        "type": "tor",
+        "x": 116.7,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 30",
+        "side": "south",
+        "torNummer": 30
+      },
+      {
+        "id": 31,
+        "type": "tor",
+        "x": 120.45,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 31",
+        "side": "south",
+        "torNummer": 31
+      },
+      {
+        "id": 32,
+        "type": "tor",
+        "x": 124.2,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 32",
+        "side": "south",
+        "torNummer": 32
+      },
+      {
+        "id": 33,
+        "type": "tor",
+        "x": 127.95,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 33",
+        "side": "south",
+        "torNummer": 33
+      },
+      {
+        "id": 34,
+        "type": "tor",
+        "x": 131.7,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 34",
+        "side": "south",
+        "torNummer": 34
+      },
+      {
+        "id": 35,
+        "type": "tor",
+        "x": 135.45,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 35",
+        "side": "south",
+        "torNummer": 35
+      },
+      {
+        "id": 36,
+        "type": "tor",
+        "x": 139.2,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 36",
+        "side": "south",
+        "torNummer": 36
+      },
+      {
+        "id": 37,
+        "type": "tor",
+        "x": 142.95,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 37",
+        "side": "south",
+        "torNummer": 37
+      },
+      {
+        "id": 38,
+        "type": "tor",
+        "x": 146.7,
+        "y": 48.5,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 38",
+        "side": "south",
+        "torNummer": 38
+      },
+      {
+        "id": 39,
+        "type": "tor",
+        "x": 1.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 85",
+        "side": "north",
+        "torNummer": 85
+      },
+      {
+        "id": 40,
+        "type": "tor",
+        "x": 4.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 84",
+        "side": "north",
+        "torNummer": 84
+      },
+      {
+        "id": 41,
+        "type": "tor",
+        "x": 8.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 83",
+        "side": "north",
+        "torNummer": 83
+      },
+      {
+        "id": 42,
+        "type": "tor",
+        "x": 12.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 82",
+        "side": "north",
+        "torNummer": 82
+      },
+      {
+        "id": 43,
+        "type": "tor",
+        "x": 16.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 81",
+        "side": "north",
+        "torNummer": 81
+      },
+      {
+        "id": 44,
+        "type": "tor",
+        "x": 19.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 80",
+        "side": "north",
+        "torNummer": 80
+      },
+      {
+        "id": 45,
+        "type": "tor",
+        "x": 23.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 79",
+        "side": "north",
+        "torNummer": 79
+      },
+      {
+        "id": 46,
+        "type": "tor",
+        "x": 27.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 78",
+        "side": "north",
+        "torNummer": 78
+      },
+      {
+        "id": 47,
+        "type": "tor",
+        "x": 31.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 77",
+        "side": "north",
+        "torNummer": 77
+      },
+      {
+        "id": 48,
+        "type": "tor",
+        "x": 34.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 76",
+        "side": "north",
+        "torNummer": 76
+      },
+      {
+        "id": 49,
+        "type": "tor",
+        "x": 38.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 75",
+        "side": "north",
+        "torNummer": 75
+      },
+      {
+        "id": 50,
+        "type": "tor",
+        "x": 42.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 74",
+        "side": "north",
+        "torNummer": 74
+      },
+      {
+        "id": 51,
+        "type": "tor",
+        "x": 46.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 73",
+        "side": "north",
+        "torNummer": 73
+      },
+      {
+        "id": 52,
+        "type": "tor",
+        "x": 49.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 72",
+        "side": "north",
+        "torNummer": 72
+      },
+      {
+        "id": 53,
+        "type": "tor",
+        "x": 53.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 71",
+        "side": "north",
+        "torNummer": 71
+      },
+      {
+        "id": 54,
+        "type": "tor",
+        "x": 57.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 70",
+        "side": "north",
+        "torNummer": 70
+      },
+      {
+        "id": 55,
+        "type": "tor",
+        "x": 61.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 69",
+        "side": "north",
+        "torNummer": 69
+      },
+      {
+        "id": 56,
+        "type": "tor",
+        "x": 64.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 68",
+        "side": "north",
+        "torNummer": 68
+      },
+      {
+        "id": 57,
+        "type": "tor",
+        "x": 68.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 67",
+        "side": "north",
+        "torNummer": 67
+      },
+      {
+        "id": 58,
+        "type": "tor",
+        "x": 72.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 66",
+        "side": "north",
+        "torNummer": 66
+      },
+      {
+        "id": 59,
+        "type": "tor",
+        "x": 76.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 65",
+        "side": "north",
+        "torNummer": 65
+      },
+      {
+        "id": 60,
+        "type": "tor",
+        "x": 79.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 64",
+        "side": "north",
+        "torNummer": 64
+      },
+      {
+        "id": 61,
+        "type": "tor",
+        "x": 83.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 63",
+        "side": "north",
+        "torNummer": 63
+      },
+      {
+        "id": 62,
+        "type": "tor",
+        "x": 87.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 62",
+        "side": "north",
+        "torNummer": 62
+      },
+      {
+        "id": 63,
+        "type": "tor",
+        "x": 91.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 61",
+        "side": "north",
+        "torNummer": 61
+      },
+      {
+        "id": 64,
+        "type": "tor",
+        "x": 94.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 60",
+        "side": "north",
+        "torNummer": 60
+      },
+      {
+        "id": 65,
+        "type": "tor",
+        "x": 98.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 59",
+        "side": "north",
+        "torNummer": 59
+      },
+      {
+        "id": 66,
+        "type": "tor",
+        "x": 102.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 58",
+        "side": "north",
+        "torNummer": 58
+      },
+      {
+        "id": 67,
+        "type": "tor",
+        "x": 106.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 57",
+        "side": "north",
+        "torNummer": 57
+      },
+      {
+        "id": 68,
+        "type": "tor",
+        "x": 109.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 56",
+        "side": "north",
+        "torNummer": 56
+      },
+      {
+        "id": 69,
+        "type": "tor",
+        "x": 113.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 55",
+        "side": "north",
+        "torNummer": 55
+      },
+      {
+        "id": 70,
+        "type": "tor",
+        "x": 117.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 54",
+        "side": "north",
+        "torNummer": 54
+      },
+      {
+        "id": 71,
+        "type": "tor",
+        "x": 121.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 53",
+        "side": "north",
+        "torNummer": 53
+      },
+      {
+        "id": 72,
+        "type": "tor",
+        "x": 124.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 52",
+        "side": "north",
+        "torNummer": 52
+      },
+      {
+        "id": 73,
+        "type": "tor",
+        "x": 128.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 51",
+        "side": "north",
+        "torNummer": 51
+      },
+      {
+        "id": 74,
+        "type": "tor",
+        "x": 132.25,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 50",
+        "side": "north",
+        "torNummer": 50
+      },
+      {
+        "id": 75,
+        "type": "tor",
+        "x": 136.0,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 49",
+        "side": "north",
+        "torNummer": 49
+      },
+      {
+        "id": 76,
+        "type": "tor",
+        "x": 139.75,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 48",
+        "side": "north",
+        "torNummer": 48
+      },
+      {
+        "id": 77,
+        "type": "tor",
+        "x": 143.5,
+        "y": 0,
+        "width": 2.75,
+        "height": 1.5,
+        "name": "Tor 47",
+        "side": "north",
+        "torNummer": 47
+      },
+      {
+        "id": 78,
+        "type": "tor",
+        "x": 149.5,
+        "y": 4.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 39",
+        "side": "east",
+        "torNummer": 39
+      },
+      {
+        "id": 79,
+        "type": "tor",
+        "x": 149.5,
+        "y": 10.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 40",
+        "side": "east",
+        "torNummer": 40
+      },
+      {
+        "id": 80,
+        "type": "tor",
+        "x": 149.5,
+        "y": 16.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 41",
+        "side": "east",
+        "torNummer": 41
+      },
+      {
+        "id": 81,
+        "type": "tor",
+        "x": 149.5,
+        "y": 22.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 42",
+        "side": "east",
+        "torNummer": 42
+      },
+      {
+        "id": 82,
+        "type": "tor",
+        "x": 149.5,
+        "y": 28.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 43",
+        "side": "east",
+        "torNummer": 43
+      },
+      {
+        "id": 83,
+        "type": "tor",
+        "x": 149.5,
+        "y": 34.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 44",
+        "side": "east",
+        "torNummer": 44
+      },
+      {
+        "id": 84,
+        "type": "tor",
+        "x": 149.5,
+        "y": 40.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 45",
+        "side": "east",
+        "torNummer": 45
+      },
+      {
+        "id": 85,
+        "type": "tor",
+        "x": 149.5,
+        "y": 46.0,
+        "width": 1.5,
+        "height": 2.75,
+        "name": "Tor 46",
+        "side": "east",
+        "torNummer": 46
+      },
+      {
+        "id": 86,
+        "type": "bereich",
+        "x": 0,
+        "y": 46,
+        "width": 24,
+        "height": 4,
+        "name": "Sektion 1 - AS",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 87,
+        "type": "bereich",
+        "x": 24,
+        "y": 46,
+        "width": 20,
+        "height": 4,
+        "name": "Sektion 1A - Logistix/Murphy",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 88,
+        "type": "bereich",
+        "x": 44,
+        "y": 46,
+        "width": 39,
+        "height": 4,
+        "name": "Sektion 2 - Strauss/A.Sigl",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 89,
+        "type": "bereich",
+        "x": 95,
+        "y": 46,
+        "width": 25,
+        "height": 4,
+        "name": "Sektion 3 - VT",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 90,
+        "type": "bereich",
+        "x": 120,
+        "y": 46,
+        "width": 31,
+        "height": 4,
+        "name": "Sektion EX - G.Sigl/Export",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 91,
+        "type": "bereich",
+        "x": 0,
+        "y": 0,
+        "width": 28,
+        "height": 4,
+        "name": "Sektion 8 - AS",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 92,
+        "type": "bereich",
+        "x": 28,
+        "y": 0,
+        "width": 24,
+        "height": 4,
+        "name": "Sektion 7 - Strauss/VT",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 93,
+        "type": "bereich",
+        "x": 52,
+        "y": 0,
+        "width": 32,
+        "height": 4,
+        "name": "Sektion 6 - Fischer/VT",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 94,
+        "type": "bereich",
+        "x": 84,
+        "y": 0,
+        "width": 40,
+        "height": 4,
+        "name": "Sektion 5 - G.Sigl",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 95,
+        "type": "bereich",
+        "x": 124,
+        "y": 0,
+        "width": 27,
+        "height": 4,
+        "name": "Sektion 4 - Huber",
+        "color": "rgba(165, 36, 44, 0.08)"
+      },
+      {
+        "id": 96,
+        "type": "stellplatz",
+        "x": 1.0,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N1a",
+        "capacity": 60
+      },
+      {
+        "id": 97,
+        "type": "stellplatz",
+        "x": 16.2,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N2a",
+        "capacity": 60
+      },
+      {
+        "id": 98,
+        "type": "stellplatz",
+        "x": 31.4,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N3a",
+        "capacity": 60
+      },
+      {
+        "id": 99,
+        "type": "stellplatz",
+        "x": 46.6,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N4a",
+        "capacity": 60
+      },
+      {
+        "id": 100,
+        "type": "stellplatz",
+        "x": 61.8,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N5a",
+        "capacity": 60
+      },
+      {
+        "id": 101,
+        "type": "stellplatz",
+        "x": 77.0,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N6a",
+        "capacity": 60
+      },
+      {
+        "id": 102,
+        "type": "stellplatz",
+        "x": 92.2,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N7a",
+        "capacity": 60
+      },
+      {
+        "id": 103,
+        "type": "stellplatz",
+        "x": 107.4,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N8a",
+        "capacity": 60
+      },
+      {
+        "id": 104,
+        "type": "stellplatz",
+        "x": 122.6,
+        "y": 4.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N9a",
+        "capacity": 60
+      },
+      {
+        "id": 105,
+        "type": "stellplatz",
+        "x": 1.0,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N1b",
+        "capacity": 60
+      },
+      {
+        "id": 106,
+        "type": "stellplatz",
+        "x": 16.2,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N2b",
+        "capacity": 60
+      },
+      {
+        "id": 107,
+        "type": "stellplatz",
+        "x": 31.4,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N3b",
+        "capacity": 60
+      },
+      {
+        "id": 108,
+        "type": "stellplatz",
+        "x": 46.6,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N4b",
+        "capacity": 60
+      },
+      {
+        "id": 109,
+        "type": "stellplatz",
+        "x": 61.8,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N5b",
+        "capacity": 60
+      },
+      {
+        "id": 110,
+        "type": "stellplatz",
+        "x": 77.0,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N6b",
+        "capacity": 60
+      },
+      {
+        "id": 111,
+        "type": "stellplatz",
+        "x": 92.2,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N7b",
+        "capacity": 60
+      },
+      {
+        "id": 112,
+        "type": "stellplatz",
+        "x": 107.4,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N8b",
+        "capacity": 60
+      },
+      {
+        "id": 113,
+        "type": "stellplatz",
+        "x": 122.6,
+        "y": 11.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-N9b",
+        "capacity": 60
+      },
+      {
+        "id": 114,
+        "type": "stellplatz",
+        "x": 1.0,
+        "y": 18.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-N1c",
+        "capacity": 40
+      },
+      {
+        "id": 115,
+        "type": "stellplatz",
+        "x": 16.2,
+        "y": 18.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-N2c",
+        "capacity": 40
+      },
+      {
+        "id": 116,
+        "type": "stellplatz",
+        "x": 31.4,
+        "y": 18.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-N3c",
+        "capacity": 40
+      },
+      {
+        "id": 117,
+        "type": "stellplatz",
+        "x": 46.6,
+        "y": 18.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-N4c",
+        "capacity": 40
+      },
+      {
+        "id": 118,
+        "type": "stellplatz",
+        "x": 107.4,
+        "y": 18.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-N8c",
+        "capacity": 40
+      },
+      {
+        "id": 119,
+        "type": "stellplatz",
+        "x": 122.6,
+        "y": 18.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-N9c",
+        "capacity": 40
+      },
+      {
+        "id": 120,
+        "type": "stellplatz",
+        "x": 1.0,
+        "y": 26.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-S1a",
+        "capacity": 40
+      },
+      {
+        "id": 121,
+        "type": "stellplatz",
+        "x": 16.2,
+        "y": 26.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-S2a",
+        "capacity": 40
+      },
+      {
+        "id": 122,
+        "type": "stellplatz",
+        "x": 31.4,
+        "y": 26.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-S3a",
+        "capacity": 40
+      },
+      {
+        "id": 123,
+        "type": "stellplatz",
+        "x": 46.6,
+        "y": 26.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-S4a",
+        "capacity": 40
+      },
+      {
+        "id": 124,
+        "type": "stellplatz",
+        "x": 122.6,
+        "y": 26.0,
+        "width": 15.0,
+        "height": 5.0,
+        "name": "SP-S9a",
+        "capacity": 40
+      },
+      {
+        "id": 125,
+        "type": "stellplatz",
+        "x": 1.0,
+        "y": 32.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S1b",
+        "capacity": 60
+      },
+      {
+        "id": 126,
+        "type": "stellplatz",
+        "x": 16.2,
+        "y": 32.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S2b",
+        "capacity": 60
+      },
+      {
+        "id": 127,
+        "type": "stellplatz",
+        "x": 31.4,
+        "y": 32.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S3b",
+        "capacity": 60
+      },
+      {
+        "id": 128,
+        "type": "stellplatz",
+        "x": 46.6,
+        "y": 32.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S4b",
+        "capacity": 60
+      },
+      {
+        "id": 129,
+        "type": "stellplatz",
+        "x": 122.6,
+        "y": 32.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S9b",
+        "capacity": 60
+      },
+      {
+        "id": 130,
+        "type": "stellplatz",
+        "x": 1.0,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S1c",
+        "capacity": 60
+      },
+      {
+        "id": 131,
+        "type": "stellplatz",
+        "x": 16.2,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S2c",
+        "capacity": 60
+      },
+      {
+        "id": 132,
+        "type": "stellplatz",
+        "x": 31.4,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S3c",
+        "capacity": 60
+      },
+      {
+        "id": 133,
+        "type": "stellplatz",
+        "x": 46.6,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S4c",
+        "capacity": 60
+      },
+      {
+        "id": 134,
+        "type": "stellplatz",
+        "x": 61.8,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S5c",
+        "capacity": 60
+      },
+      {
+        "id": 135,
+        "type": "stellplatz",
+        "x": 77.0,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S6c",
+        "capacity": 60
+      },
+      {
+        "id": 136,
+        "type": "stellplatz",
+        "x": 92.2,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S7c",
+        "capacity": 60
+      },
+      {
+        "id": 137,
+        "type": "stellplatz",
+        "x": 107.4,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S8c",
+        "capacity": 60
+      },
+      {
+        "id": 138,
+        "type": "stellplatz",
+        "x": 122.6,
+        "y": 39.0,
+        "width": 15.0,
+        "height": 6.0,
+        "name": "SP-S9c",
+        "capacity": 60
+      },
+      {
+        "id": 139,
+        "type": "bereich",
+        "x": 60,
+        "y": 14,
+        "width": 15,
+        "height": 9,
+        "name": "BP 2 (Nord)",
+        "color": "rgba(59, 130, 246, 0.15)"
+      },
+      {
+        "id": 140,
+        "type": "bereich",
+        "x": 76,
+        "y": 14,
+        "width": 15,
+        "height": 9,
+        "name": "BP 1 (Nord)",
+        "color": "rgba(59, 130, 246, 0.15)"
+      },
+      {
+        "id": 141,
+        "type": "klaerplatz",
+        "x": 62,
+        "y": 27,
+        "width": 10,
+        "height": 8,
+        "name": "ÜZ SE"
+      },
+      {
+        "id": 142,
+        "type": "bereich",
+        "x": 73,
+        "y": 27,
+        "width": 20,
+        "height": 8,
+        "name": "Paletten",
+        "color": "rgba(245, 158, 11, 0.2)"
+      },
+      {
+        "id": 143,
+        "type": "bereich",
+        "x": 65,
+        "y": 36,
+        "width": 13,
+        "height": 9,
+        "name": "BP 1 (Süd)",
+        "color": "rgba(59, 130, 246, 0.15)"
+      },
+      {
+        "id": 144,
+        "type": "bereich",
+        "x": 79,
+        "y": 36,
+        "width": 13,
+        "height": 9,
+        "name": "BP 2 (Süd)",
+        "color": "rgba(59, 130, 246, 0.15)"
+      },
+      {
+        "id": 145,
+        "type": "klaerplatz",
+        "x": 95,
+        "y": 30,
+        "width": 8,
+        "height": 5,
+        "name": "AD-AV"
+      },
+      {
+        "id": 146,
+        "type": "klaerplatz",
+        "x": 105,
+        "y": 30,
+        "width": 8,
+        "height": 5,
+        "name": "ÜZ-SA"
+      },
+      {
+        "id": 147,
+        "type": "bereich",
+        "x": 1,
+        "y": 26,
+        "width": 14,
+        "height": 3,
+        "name": "Langgut 1",
+        "color": "rgba(107, 114, 128, 0.2)"
+      },
+      {
+        "id": 148,
+        "type": "bereich",
+        "x": 16,
+        "y": 26,
+        "width": 14,
+        "height": 3,
+        "name": "Langgut 2",
+        "color": "rgba(107, 114, 128, 0.2)"
+      },
+      {
+        "id": 149,
+        "type": "bereich",
+        "x": 31,
+        "y": 26,
+        "width": 14,
+        "height": 3,
+        "name": "Langgut 3",
+        "color": "rgba(107, 114, 128, 0.2)"
+      },
+      {
+        "id": 150,
+        "type": "stellplatz",
+        "x": 1,
+        "y": 30,
+        "width": 10,
+        "height": 4,
+        "name": "SP-Avise 1"
+      },
+      {
+        "id": 151,
+        "type": "stellplatz",
+        "x": 12,
+        "y": 30,
+        "width": 10,
+        "height": 4,
+        "name": "SP-Avise 2"
+      },
+      {
+        "id": 152,
+        "type": "bereich",
+        "x": 135,
+        "y": 26,
+        "width": 14,
+        "height": 8,
+        "name": "Garantie/Export",
+        "color": "rgba(239, 68, 68, 0.1)"
+      },
+      {
+        "id": 153,
+        "type": "bereich",
+        "x": 46,
+        "y": 24,
+        "width": 14,
+        "height": 2,
+        "name": "TOP-STARRE TOURE",
+        "color": "rgba(165, 36, 44, 0.1)"
+      },
+      {
+        "id": 154,
+        "type": "buero",
+        "x": 142,
+        "y": 2,
+        "width": 8,
+        "height": 9,
+        "name": "Büro (71 qm)"
+      },
+      {
+        "id": 155,
+        "type": "buero",
+        "x": 146,
+        "y": 42,
+        "width": 4,
+        "height": 3,
+        "name": "Büro (10 qm)"
+      }
+    ],
+    "paths": [],
+    "pathAreas": [],
+    "gaenge": [
+      {
+        "id": 1,
+        "name": "Hauptgang Mitte",
+        "points": [
+          {
+            "x": 0,
+            "y": 24
+          },
+          {
+            "x": 151,
+            "y": 24
+          }
+        ],
+        "breite": 4.0,
+        "typ": "hauptgang",
+        "istHauptgang": true,
+        "farbe": "#3b82f6"
+      },
+      {
+        "id": 2,
+        "name": "Quergang Nord 1",
+        "points": [
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 23
+          }
+        ],
+        "breite": 3.0,
+        "typ": "quergang"
+      },
+      {
+        "id": 3,
+        "name": "Quergang Nord 2",
+        "points": [
+          {
+            "x": 76,
+            "y": 2
+          },
+          {
+            "x": 76,
+            "y": 23
+          }
+        ],
+        "breite": 3.0,
+        "typ": "quergang"
+      },
+      {
+        "id": 4,
+        "name": "Quergang Nord 3",
+        "points": [
+          {
+            "x": 149,
+            "y": 2
+          },
+          {
+            "x": 149,
+            "y": 23
+          }
+        ],
+        "breite": 3.0,
+        "typ": "quergang"
+      },
+      {
+        "id": 5,
+        "name": "Quergang Süd 1",
+        "points": [
+          {
+            "x": 1,
+            "y": 26
+          },
+          {
+            "x": 1,
+            "y": 48
+          }
+        ],
+        "breite": 3.0,
+        "typ": "quergang"
+      },
+      {
+        "id": 6,
+        "name": "Quergang Süd 2",
+        "points": [
+          {
+            "x": 76,
+            "y": 26
+          },
+          {
+            "x": 76,
+            "y": 48
+          }
+        ],
+        "breite": 3.0,
+        "typ": "quergang"
+      },
+      {
+        "id": 7,
+        "name": "Quergang Süd 3",
+        "points": [
+          {
+            "x": 149,
+            "y": 26
+          },
+          {
+            "x": 149,
+            "y": 48
+          }
+        ],
+        "breite": 3.0,
+        "typ": "quergang"
+      }
+    ],
+    "ffz": [
+      {
+        "id": 1,
+        "name": "Gabelstapler",
+        "type": "gabelstapler",
+        "mindestBreite": 3.5,
+        "geschwindigkeit": 12,
+        "aufnahmeZeit": 15,
+        "abgabeZeit": 12,
+        "maxHubhoehe": 6,
+        "tragkraft": 2500
+      },
+      {
+        "id": 2,
+        "name": "Ameise",
+        "type": "ameise",
+        "mindestBreite": 2.5,
+        "geschwindigkeit": 6,
+        "aufnahmeZeit": 20,
+        "abgabeZeit": 15,
+        "maxHubhoehe": 0.2,
+        "tragkraft": 2000
+      },
+      {
+        "id": 3,
+        "name": "Handhubwagen",
+        "type": "handhubwagen",
+        "mindestBreite": 1.8,
+        "geschwindigkeit": 4,
+        "aufnahmeZeit": 30,
+        "abgabeZeit": 25,
+        "maxHubhoehe": 0.2,
+        "tragkraft": 2500
+      },
+      {
+        "id": 4,
+        "name": "Schlepper",
+        "type": "schlepper",
+        "mindestBreite": 2.0,
+        "geschwindigkeit": 15,
+        "aufnahmeZeit": 10,
+        "abgabeZeit": 10,
+        "tragkraft": 5000
+      }
+    ],
+    "conveyors": [
+      {
+        "id": 1,
+        "name": "Unterflurförderkette",
+        "points": [
+          {
+            "x": 2,
+            "y": 24
+          },
+          {
+            "x": 20,
+            "y": 24
+          },
+          {
+            "x": 40,
+            "y": 24
+          },
+          {
+            "x": 60,
+            "y": 24
+          },
+          {
+            "x": 80,
+            "y": 24
+          },
+          {
+            "x": 100,
+            "y": 24
+          },
+          {
+            "x": 120,
+            "y": 24
+          },
+          {
+            "x": 140,
+            "y": 24
+          },
+          {
+            "x": 149,
+            "y": 24
+          }
+        ],
+        "speed": 0.5,
+        "capacity": 500
+      }
+    ]
+  },
+  "meta": {
+    "objectCount": 155,
+    "pathCount": 0,
+    "gangCount": 7
+  }
+}
