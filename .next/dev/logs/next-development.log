@@ -1,7 +1,0 @@
-[00:00:00.855] Server  LOG     ✓ Ready in 639ms
-[00:00:14.358] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[03:53:23.028] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[05:29:50.787] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[07:57:48.504] Server  ERROR   Error: ENOENT: no such file or directory, scandir '/Users/jhrothntconsult.de/aws-projekte/topis-saas/src/app'
-[07:57:48.505] Server  ERROR   ⨯ "unhandledRejection:" Error: ENOENT: no such file or directory, scandir '/Users/jhrothntconsult.de/aws-projekte/topis-saas/src/app'
-[07:57:48.508] Server  ERROR   ⨯ "unhandledRejection: " Error: ENOENT: no such file or directory, scandir '/Users/jhrothntconsult.de/aws-projekte/topis-saas/src/app'
