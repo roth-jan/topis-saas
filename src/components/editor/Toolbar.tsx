@@ -74,6 +74,7 @@ import { SimulationDialog } from '@/components/dialogs/SimulationDialog';
 import { ShowcaseDialog } from '@/components/dialogs/ShowcaseDialog';
 import { MultiInsertDialog } from '@/components/dialogs/MultiInsertDialog';
 import { MatrixDialog } from '@/components/dialogs/MatrixDialog';
+import { WegeberechnungDialog } from '@/components/dialogs/WegeberechnungDialog';
 import { HallenAssistentDialog } from '@/components/dialogs/HallenAssistentDialog';
 import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog';
 import { BetriebsdatenImportDialog } from '@/components/dialogs/BetriebsdatenImportDialog';
@@ -85,6 +86,7 @@ import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
+import { PROJEKT_VORLAGEN, ladeProjektVorlage } from '@/lib/projekt-vorlagen';
 import {
   MousePointer2,
   Hand,
@@ -424,10 +426,15 @@ export function Toolbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Vorlagen</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => { loadSchmidLayout(); toast.success('Andreas Schmid Halle 6 geladen'); }}>
-              <Warehouse className="mr-2 h-4 w-4" />
-              Andreas Schmid - Halle 6
-            </DropdownMenuItem>
+            {PROJEKT_VORLAGEN.map(vorlage => (
+              <DropdownMenuItem key={vorlage.id} onClick={() => {
+                ladeProjektVorlage(vorlage.id);
+                toast.success(`"${vorlage.name} — ${vorlage.standort}" geladen`);
+              }}>
+                <Warehouse className="mr-2 h-4 w-4" />
+                {vorlage.name} — {vorlage.standort}
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSave}>
               <Save className="mr-2 h-4 w-4" />
@@ -729,6 +736,17 @@ export function Toolbar() {
               Lager mit Regalen (80×60m)
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Reale Projekte</DropdownMenuLabel>
+            {PROJEKT_VORLAGEN.map(vorlage => (
+              <DropdownMenuItem key={vorlage.id} onClick={() => {
+                ladeProjektVorlage(vorlage.id);
+                toast.success(`"${vorlage.name}" geladen`);
+              }}>
+                <Warehouse className="mr-2 h-4 w-4" />
+                {vorlage.name} — {vorlage.standort} ({vorlage.jahr})
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
             <DropdownMenuLabel>Assistenten</DropdownMenuLabel>
             <DropdownMenuItem onClick={handleGenerateGaenge}>
               <Truck className="mr-2 h-4 w-4" />
@@ -849,6 +867,9 @@ export function Toolbar() {
 
           {/* Matrix Dialog */}
           <MatrixDialog />
+
+          {/* Wegeberechnung Dialog */}
+          <WegeberechnungDialog />
 
           {/* Hallen-Assistent Dialog */}
           <HallenAssistentDialog />
