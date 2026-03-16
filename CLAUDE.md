@@ -199,9 +199,13 @@ wobei: zeitSek = verteilweg / geschwindigkeit / colliProFahrt  (bei wegAusLayout
 ### Gemessene Distanzmatrix (distanzmatrix-rechner.ts + WegeberechnungDialog)
 - **Datenquelle:** `schmid-distanzmatrix.ts` — 204 Distanzpaare (3 EZ × 68 Tore) + 158 Leerhubwagen-Einträge (82.120 Colli)
 - **Berechnung:** `berechneVerteilwegAusDistanzmatrix(dm, standardEZ)` → gewichteter Verteilweg
+- **WICHTIG: Verwendet `distanzDoppeltM` (Hin+Rück)**, nicht `distanzM` (Einfachweg), da der SE-Verteilweg als Doppelweg kalibriert ist
 - **Matching:** 3-Level: Exakte SE-Relation → Prefix-Match (z.B. "0100"→"01") → SA-Fallback → Ø-Distanz
-- **Referenzwert:** 138.8m (Colli-gewichtet aus vollständiger AS-Datenbank)
-- **WegeberechnungDialog:** Neuer Bereich "Gemessene Distanzmatrix" mit Dropdown, Berechnung, Vergleich (Berechnet vs. Gemessen + Δ%)
+- **Matching-Rate:** 63.6% (52.196/82.120 Colli) — 33 von 158 Relationen unmatched (nutzen Ø-Fallback)
+- **Referenzwert:** 138.8m (Colli-gewichtet aus vollständiger AS-Datenbank, Doppelweg)
+- **TOPIS-Ergebnis:** 122.7m (12% unter Referenz, wegen 36.4% ungematchter Relationen → Ø-Fallback drückt Wert)
+- **Validierung:** 122.7m Verteilweg → 1.975 Min/Colli (Referenz: 1.917 = nur 3% Abweichung)
+- **WegeberechnungDialog:** Bereich "Gemessene Distanzmatrix" mit Dropdown, Berechnung, Vergleich (Berechnet vs. Gemessen + Δ%)
 - **Store:** `distanzmatrix`, `distanzmatrixErgebnis` in `betriebsdaten-store.ts`
 
 ### Torbelegung/Verladeplan (torbelegung-rechner.ts + TorbelegungDialog)
