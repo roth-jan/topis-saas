@@ -78,6 +78,10 @@ import { HallenAssistentDialog } from '@/components/dialogs/HallenAssistentDialo
 import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog';
 import { BetriebsdatenImportDialog } from '@/components/dialogs/BetriebsdatenImportDialog';
 import { SzenarienDialog } from '@/components/dialogs/SzenarienDialog';
+import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
+import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
+import { BenchmarkDialog } from '@/components/dialogs/BenchmarkDialog';
+import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
@@ -858,6 +862,10 @@ export function Toolbar() {
         {/* ============ BETRIEBSDATEN & SZENARIEN ============ */}
         <div className="flex items-center gap-1">
           <BetriebsdatenImportDialog />
+          <ProzessmodellDialog />
+          <FlaechenbedarfDialog />
+          <BenchmarkDialog />
+          <IstSollDialog />
           <SzenarienDialog />
           {originalLayout && (
             <AlertDialog>
@@ -885,6 +893,16 @@ export function Toolbar() {
             </AlertDialog>
           )}
         </div>
+
+        <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* ============ DASHBOARD ============ */}
+        <a href="/topis-saas/dashboard">
+          <Button variant="outline" size="sm" className="gap-1 text-xs">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Dashboard
+          </Button>
+        </a>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 

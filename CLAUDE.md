@@ -3,7 +3,7 @@
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router) + React 19 + TypeScript
 - **Styling:** Tailwind CSS 4 + shadcn/ui (Radix UI)
-- **State:** Zustand (2 Stores: `store.ts` Layout + `betriebsdaten-store.ts` Betriebsdaten)
+- **State:** Zustand (3 Stores: `store.ts` Layout + `betriebsdaten-store.ts` Betriebsdaten + `prozessmodell-store.ts` Prozessmodell)
 - **Canvas:** HTML5 Canvas 2D (kein SVG, kein WebGL)
 - **Deployment:** GitHub Pages (Static Export), `output: "export"`, `basePath: "/topis-saas"`
 - **Repo:** `roth-jan/topis-saas`, Live: https://roth-jan.github.io/topis-saas/
@@ -47,13 +47,25 @@ src/
     analytics.ts                     # Produktivitätsanalyse
     pathfinding.ts                   # Wegberechnung (A*)
     gang-generator.ts                # Automatische Gang-Generierung
+    prozessmodell-store.ts           # Zustand Store (Prozessmodell, Parameter, Ergebnis)
+    prozessrechner.ts                # Min/Colli-Berechnung (Kernformel + Batch-Faktor)
+    benchmarking.ts                  # Vergleich mit Referenzhallen
+    flaechenrechner.ts               # Flächenbedarfsrechnung (Colli/qm)
+    ist-soll-rechner.ts              # IST-SOLL Produktivitätsanalyse
+    verteilweg-rechner.ts            # Gewichteter Verteilweg aus Layout
     simulation.ts                    # Simulations-Engine
     export.ts                        # Export-Funktionen
     showcase.ts                      # Demo-Szenarien
     layouts/schmid-halle6.ts         # Andreas Schmid Halle 6 Vorlage (85 Tore, 19 Sektionen)
+    data/
+      prozessmodell-se.ts            # SE-Prozessmodell (Stückgut-Eingang, 3 Abteilungen)
+      prozessmodell-sa.ts            # SA-Prozessmodell (Stückgut-Ausgang, 3 Abteilungen)
+      prozessmodell-templates.ts     # Registry aller verfügbaren Modelle
+      referenzhallen.ts              # 8 Referenzhallen für Benchmarking
   types/
     topis.ts                         # Layout-Typen (TopisObject, Gang, Path, PathArea, Conveyor, Hall, FFZ)
     betriebsdaten.ts                 # LayoutSnapshot
+    prozessmodell.ts                 # Prozessmodell-Typen (AbteilungDefinition, Prozessschritt, etc.)
 ```
 
 ## Architektur-Entscheidungen
@@ -74,7 +86,44 @@ src/
   - Selector Hooks: `useObjects()`, `useSelectedGang()`, etc. für Performance
 - **Store 2 — `useBetriebsdatenStore`:** Betriebsdaten (scanRecords, analyse, heatmapConfig, szenarien)
   - Selector Hooks: `useHeatmapConfig()`, `useBetriebsAnalyse()`, `useSzenarien()`
+- **Store 3 — `useProzessmodellStore`:** Prozessmodell (modell, parameter, ergebnis)
+  - Actions: `updateParameter`, `setVerteilweg`, `setColliProTag`, `ladeModell`, `berechne`, `reset`
+  - Selector Hooks: `useProzessErgebnis()`, `useProzessParameter()`, `useProzessAbteilungen()`
+  - Auto-Berechnung bei Parameter-Änderungen
 - Kein Backend/Persistierung - State lebt nur im Browser-Memory
+
+### Prozessmodell-System (Kalibriert auf AS Gersthofen: 1.917 Min/Colli)
+
+**Architektur: Dynamische Abteilungen + Multi-Modell**
+- `AbteilungDefinition { id, label, color }` — keine hardcodierten Abteilungs-Enums
+- `ProzessmodellConfig.abteilungen[]` definiert Abteilungen pro Modell
+- `prozessmodell-templates.ts` — Registry für SE, SA, künftige Modelle
+- UI-Komponenten lesen Labels/Farben aus dem Modell, nicht aus globalen Konstanten
+
+**Verfügbare Modelle:**
+| Modell | ID | Abteilungen | Beschreibung |
+|--------|----|-------------|-------------|
+| SE (Stückgut-Eingang) | `se_standard` | Entlader, Scanner, Verteiler | Entladen → Scannen → Verteilen |
+| SA (Stückgut-Ausgang) | `sa_standard` | Kommissionierer, Belader, Verlader | Kommissionieren → Beladen → Verladen |
+
+**Kalibrierung SE (Referenz: AS Gersthofen):**
+- Belader-Steps entfernt (gehören zu SA)
+- Batch-Faktor `colliProFahrt` (3.39): Teilt Verteiler-Wegzeit
+- Scanner Step 23: anteil 1.0 (war 0.3)
+- Entlader Steps 1/2: haeufigkeit 0.1 (war 0.05)
+- Entlader Step 10: anteil 0.25 (war 0.15)
+- 2 neue Entlader-Steps: "Gefäß öffnen" + "Rampe andocken"
+
+**Kernformel in `prozessrechner.ts`:**
+```
+Min/Colli = Σ(zeitSek × anteil × häufigkeit) / 60
+wobei: zeitSek = verteilweg / geschwindigkeit / colliProFahrt  (bei wegAusLayout)
+```
+
+**Wichtige Parameter (aus Store, nicht hardcodiert):**
+- `arbeitsminProStunde` (52.9) — in allen MA-Berechnungen
+- `colliProQm` (1.25) — in Flächenbedarfsrechnung
+- `colliProFahrt` (3.39 SE / 2.0 SA) — Batch-Faktor für Wegzeit
 
 ### Element-Typen
 | Typ | Array | Selection | Properties Panel |
@@ -130,10 +179,10 @@ src/
 8. **Dashboard/Cockpit** — KPI-Übersicht (Colli/MA-Stunde, Min/Colli, FTE-Bedarf)
 
 ### Kernformeln:
-- **Min/Colli** = Σ(Standardzeit × Anteil × Häufigkeit) / Arbeitsmenge
-- **MA-Stundenbedarf** = Menge × Min/Colli / 52.9 (Arbeitsminuten/Stunde)
-- **Wegzeit** = (Anteil_FFG × Weg) / Geschwindigkeit_FFG + Zeit_Aufnehmen + Zeit_Absetzen
-- **Flächenbedarf** = Colli_pro_Tag / 1.25 Colli/qm
+- **Min/Colli** = Σ(Standardzeit × Anteil × Häufigkeit) / 60
+- **Wegzeit bei Layout-Schritten** = Verteilweg / Geschwindigkeit / colliProFahrt
+- **MA-Stundenbedarf** = Colli/Tag × Min/Colli / arbeitsminProStunde (Parameter, Standard 52.9)
+- **Flächenbedarf** = Colli/Tag / colliProQm (Parameter, Standard 1.25)
 
 ## Entwicklung
 

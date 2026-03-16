@@ -8,13 +8,17 @@ export function getMetrikWert(metrik: ObjektMetrik, modus: HeatmapModus): number
     case 'sendungen':
       return metrik.sendungen;
     case 'colli':
+    case 'colliVerteilung':
       return metrik.colli;
     case 'gewicht':
       return metrik.gewicht;
     case 'auslastung':
+    case 'flaechenbedarf':
       return metrik.auslastung;
     case 'ladezeit':
       return metrik.durchschnittLadezeit;
+    case 'verteilweg':
+      return metrik.fahrtenProTag; // Wird in Phase 3 durch echten Verteilweg ersetzt
     default:
       return metrik.sendungen;
   }
@@ -28,6 +32,7 @@ export function formatMetrikWert(wert: number, modus: HeatmapModus): string {
     case 'sendungen':
       return `${Math.round(wert)} Sdg`;
     case 'colli':
+    case 'colliVerteilung':
       return `${Math.round(wert)} Cll`;
     case 'gewicht':
       return wert >= 1000 ? `${(wert / 1000).toFixed(1)}t` : `${Math.round(wert)}kg`;
@@ -35,6 +40,10 @@ export function formatMetrikWert(wert: number, modus: HeatmapModus): string {
       return `${Math.round(wert * 100)}%`;
     case 'ladezeit':
       return wert >= 60 ? `${(wert / 60).toFixed(1)}min` : `${Math.round(wert)}s`;
+    case 'flaechenbedarf':
+      return `${Math.round(wert * 100)}%`;
+    case 'verteilweg':
+      return `${Math.round(wert)}m`;
     default:
       return `${Math.round(wert)}`;
   }
@@ -83,5 +92,8 @@ export function getModusLabel(modus: HeatmapModus): string {
     case 'gewicht': return 'Gewicht';
     case 'auslastung': return 'Auslastung';
     case 'ladezeit': return 'Ø Ladezeit';
+    case 'flaechenbedarf': return 'Flächenbedarf';
+    case 'verteilweg': return 'Verteilweg';
+    case 'colliVerteilung': return 'Colli-Verteilung';
   }
 }
