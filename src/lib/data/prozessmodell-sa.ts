@@ -23,7 +23,7 @@ const SA_SCHRITTE: Prozessschritt[] = [
 
   // ==================== BELADER ====================
   { nr: 20, beschreibung: 'Sendung zusammenstellen', abteilung: 'belader', hilfsmittel: 'Hand', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 10.0, anteil: 1.0, haeufigkeit: 0.2 },
-  { nr: 21, beschreibung: 'Palette/Gitterbox zum Tor fahren', abteilung: 'belader', hilfsmittel: 'Ameise', wegM: 15, wegAusLayout: false, geschwindigkeitMs: 1.5, standardzeitSek: 10.0, anteil: 1.0, haeufigkeit: 0.15 },
+  { nr: 21, beschreibung: 'Palette/Gitterbox zum Tor fahren', abteilung: 'belader', hilfsmittel: 'Ameise', wegM: 15, wegAusLayout: false, geschwindigkeitMs: 1.5, standardzeitSek: 10.0, anteil: 1.0, haeufigkeit: 0.15, geschwindigkeitsParameter: 'ameiseGeschwindigkeit' },
   { nr: 22, beschreibung: 'In LKW verladen', abteilung: 'belader', hilfsmittel: 'Ameise', wegM: 6, wegAusLayout: false, geschwindigkeitMs: 1.0, standardzeitSek: 6.0, anteil: 1.0, haeufigkeit: 0.15 },
   { nr: 23, beschreibung: 'Palette positionieren im LKW', abteilung: 'belader', hilfsmittel: 'Hand', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 8.0, anteil: 1.0, haeufigkeit: 0.15 },
   { nr: 24, beschreibung: 'Ladungssicherung', abteilung: 'belader', hilfsmittel: 'Zurrgurt', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 20.0, anteil: 0.3, haeufigkeit: 0.15 },
@@ -63,7 +63,7 @@ export const SA_STANDARD_PARAMETER: ProzessParameter[] = [
 
   // Kommissionierer
   { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 120.0, aktuellerWert: 120.0, quelle: 'layout', kategorie: 'kommissionierer', beschreibung: 'Durchschnittlicher Kommissionierweg (aus Layout)' },
-  { id: 'schnellaeuferGeschwindigkeit', name: 'Schnelläufer-Geschwindigkeit', einheit: 'm/s', standardwert: 2.44, aktuellerWert: 2.44, quelle: 'eingabe', kategorie: 'kommissionierer' },
+  { id: 'schnellaeuferGeschwindigkeit', name: 'Kommissionier-Geschwindigkeit', einheit: 'm/s', standardwert: 2.44, aktuellerWert: 2.44, quelle: 'eingabe', kategorie: 'kommissionierer' },
   { id: 'colliProFahrt', name: 'Colli pro Kommissionier-Fahrt', einheit: 'Cll/Fahrt', standardwert: 2.0, aktuellerWert: 2.0, quelle: 'eingabe', kategorie: 'kommissionierer', beschreibung: 'Batch: Wie viele Colli pro Fahrt' },
 
   // Belader

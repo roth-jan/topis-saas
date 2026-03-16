@@ -22,6 +22,9 @@ import { toast } from 'sonner';
 import { TopisObject, Gang } from '@/types/topis';
 import { generateGaenge, DEFAULT_GANG_SETTINGS } from '@/lib/gang-generator';
 import { analyzeProduktivitaet } from '@/lib/analytics';
+import { NAILA_KENNZAHLEN } from '@/lib/layouts/geis-naila';
+import { useProzessmodellStore } from '@/lib/prozessmodell-store';
+import { PROJEKT_VORLAGEN, ladeProjektVorlage } from '@/lib/projekt-vorlagen';
 
 // Showcase overlay component that appears at bottom of screen
 function ShowcaseOverlay({
@@ -530,6 +533,118 @@ export function ShowcaseDialog() {
     }
   }, [updatePhase, resetState, updateHall, addObject, setGaenge, saveVorher, saveNachher, calculateMetrics, getScreenshot]);
 
+  // Run Naila showcase — loads real project data
+  const runNailaShowcase = useCallback(async () => {
+    stoppedRef.current = false;
+    setIsRunning(true);
+    setShowOverlay(true);
+    setIsOpen(false);
+
+    try {
+      // Phase 1: Intro
+      updatePhase('Projekt: Geis Naila (Bischoff International)', 'Reale Projektdaten Oktober 2013 — 6.975 qm L-Shape Umschlaghalle', 5);
+      await wait(2500);
+      if (stoppedRef.current) return;
+
+      // Phase 2: Layout + Prozessmodell laden via ProjektVorlage
+      updatePhase('Phase 1: Projekt laden', 'Lade Layout + Prozessmodell aus ProjektVorlage...', 10);
+      await wait(500);
+      if (stoppedRef.current) return;
+
+      const vorlage = ladeProjektVorlage('geis_naila');
+      if (!vorlage) { toast.error('Naila-Vorlage nicht gefunden'); return; }
+
+      updatePhase('Phase 1: Layout komplett', `${vorlage.beschreibung}`, 30);
+      await wait(1500);
+      if (stoppedRef.current) return;
+
+      // Gänge generieren
+      updatePhase('Phase 2: Wegenetz erstellen', 'Generiere Fahrgänge für L-Shape Halle...', 40);
+      await wait(500);
+      const currentHall = useTopisStore.getState().halls[0];
+      const currentObjects = useTopisStore.getState().objects;
+      const gaenge = generateGaenge(currentHall, currentObjects, {
+        ...DEFAULT_GANG_SETTINGS,
+        hauptgangBreite: 4,
+        regalgangBreite: 3,
+      });
+      setGaenge(gaenge);
+      await wait(1000);
+      if (stoppedRef.current) return;
+
+      // Phase 3: Ergebnis anzeigen
+      updatePhase('Phase 3: Prozessmodell-Ergebnis', 'Berechnung aus ProjektVorlage...', 55);
+      await wait(500);
+      if (stoppedRef.current) return;
+
+      const ergebnis = useProzessmodellStore.getState().ergebnis;
+      const arbeitsmin = vorlage.parameterOverrides.arbeitsminProStunde || 52.2;
+      const colliProMAStd = ergebnis ? Math.round(arbeitsmin / ergebnis.minProColli) : 0;
+      updatePhase(
+        'Phase 3: Prozessmodell-Ergebnis',
+        ergebnis
+          ? `SE-Prozesszeit: ${ergebnis.minProColli.toFixed(3)} Min/Colli | ${colliProMAStd} Colli/MA-Std | ${ergebnis.fte.toFixed(1)} FTE`
+          : 'Berechnung läuft...',
+        65
+      );
+      await wait(2500);
+      if (stoppedRef.current) return;
+
+      // Phase 4: Vergleich mit Referenz aus ProjektVorlage
+      if (vorlage.referenz) {
+        const ref = vorlage.referenz;
+        const delta = ergebnis ? ((ergebnis.minProColli - ref.minProColli) / ref.minProColli * 100).toFixed(1) : '?';
+        updatePhase(
+          'Phase 4: Vergleich mit Original-Analyse',
+          `${ref.quelle}: ${ref.minProColli} Min/Colli, ${ref.colliProMAStd} Colli/MA-Std, ${ref.fte} FTE — Delta: ${delta}%`,
+          80
+        );
+      } else {
+        updatePhase('Phase 4: Keine Referenzdaten', 'Kein Vergleich möglich', 80);
+      }
+      await wait(3000);
+      if (stoppedRef.current) return;
+
+      // Phase 5: Speichern
+      updatePhase('Phase 5: Layout speichern', 'Sichere Naila-Projekt für weitere Analyse...', 90);
+      const vorherMetrics = calculateMetrics();
+      const vorherScreenshot = getScreenshot();
+      const state = useTopisStore.getState();
+      saveVorher(
+        {
+          halls: state.halls,
+          objects: state.objects,
+          paths: state.paths || [],
+          pathAreas: state.pathAreas || [],
+          gaenge: state.gaenge,
+          ffz: state.ffz || [],
+          conveyors: state.conveyors || [],
+          avgDistanz: vorherMetrics.avgDistanz,
+          prozesszeit: vorherMetrics.prozesszeit,
+          timestamp: new Date().toISOString(),
+        },
+        vorherScreenshot
+      );
+      await wait(1500);
+      if (stoppedRef.current) return;
+
+      updatePhase(
+        'Geis Naila — Projekt geladen',
+        'Layout + Prozessmodell bereit. Nutze Fläche & Wege, Benchmark und IST-SOLL für weitere Analyse.',
+        100
+      );
+      await wait(2500);
+
+      toast.success('Geis Naila geladen — Prozessmodell-Dialog zeigt Ergebnis');
+    } catch (error) {
+      console.error('Naila-Showcase Fehler:', error);
+      toast.error('Fehler während der Naila-Demo');
+    } finally {
+      setShowOverlay(false);
+      setIsRunning(false);
+    }
+  }, [updatePhase, resetState, updateHall, addObject, setGaenge, saveVorher, calculateMetrics, getScreenshot]);
+
   // Stop showcase
   const stopShowcase = useCallback(() => {
     stoppedRef.current = true;
@@ -612,6 +727,36 @@ export function ShowcaseDialog() {
             <p className="text-xs text-muted-foreground text-center">
               Die Demo dauert ca. 30 Sekunden und kann jederzeit gestoppt werden.
             </p>
+
+            {/* Separator */}
+            <div className="border-t pt-4">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-3">
+                <h4 className="font-medium flex items-center gap-2">
+                  <span className="text-2xl">📊</span>
+                  Geis Naila — Reales Projekt
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Echte Projektdaten aus der ROTH-Beratung (Oktober 2013):
+                </p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• L-Shape: 121×45m + 45×34m Anbau (6.975 qm)</li>
+                  <li>• 60.331 Colli SE + 128.070 Colli SA / Monat</li>
+                  <li>• Unterflurförderkette, 40 Tore, 24 Relationsplätze</li>
+                  <li>• 7 Kundenlogistik-Bereiche (Rehau, Ghost, Nokian...)</li>
+                  <li>• Prozessmodell mit echten Messzeiten</li>
+                </ul>
+                <Button
+                  className="w-full"
+                  size="lg"
+                  variant="outline"
+                  onClick={runNailaShowcase}
+                  disabled={isRunning}
+                >
+                  <Play className="h-5 w-5 mr-2" />
+                  Geis Naila laden
+                </Button>
+              </div>
+            </div>
           </div>
         </SheetContent>
       </Sheet>

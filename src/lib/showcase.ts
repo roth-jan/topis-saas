@@ -1,4 +1,5 @@
 import { TopisObject, Hall, Gang, OBJECT_DEFAULTS, OBJECT_COLORS } from '@/types/topis';
+import { generateGeisNailaObjects, NAILA_KENNZAHLEN } from '@/lib/layouts/geis-naila';
 
 // Showcase step definition
 export interface ShowcaseStep {
@@ -485,6 +486,18 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
       { type: 'bereich' as const, x: 5, y: 52, width: 15, height: 6, name: 'Wareneingang', color: OBJECT_COLORS.bereich },
       { type: 'bereich' as const, x: 60, y: 52, width: 15, height: 6, name: 'Warenausgang', color: OBJECT_COLORS.bereich },
     ],
+    gaenge: [],
+  },
+  naila: {
+    name: 'Geis Naila (Real)',
+    description: `Bischoff International, Naila — echte Projektdaten Oktober 2013. L-Shape 121×45m + 45×34m Anbau, ${NAILA_KENNZAHLEN.se_colli_gesamt.toLocaleString('de-DE')} Colli SE, Unterflurförderkette, ${NAILA_KENNZAHLEN.fte_gesamt} FTE.`,
+    hall: {
+      width: 165,  // Haupthalle 121 + Anbau 45 = 166, mit Rand
+      height: 80,  // Haupthalle 45 + Anbau 34 = 79, mit Rand
+      name: 'Geis Naila',
+      color: '#1a1a2e',
+    },
+    objects: generateGeisNailaObjects(),
     gaenge: [],
   },
   umschlag: {

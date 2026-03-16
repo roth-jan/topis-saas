@@ -26,6 +26,8 @@ export interface Prozessschritt {
   haeufigkeit: number;
   /** Berechnete Zeit: standardzeitSek * anteil * haeufigkeit */
   berechneteZeitSek?: number;
+  /** Optional: Parameter-ID für dynamische Geschwindigkeit (z.B. 'staplerGeschwindigkeit') */
+  geschwindigkeitsParameter?: string;
 }
 
 export interface ProzessmodellConfig {

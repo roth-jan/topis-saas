@@ -1,5 +1,6 @@
 import { useTopisStore } from '@/lib/store';
 import { TopisObject, Gang } from '@/types/topis';
+import type { ProjektVorlage } from '@/types/projekt';
 
 /**
  * Andreas Schmid Gersthofen - Halle 6 IST-Stand (01.10.2018)
@@ -179,3 +180,31 @@ export function loadSchmidLayout() {
   layout.objects.forEach(obj => addObject(obj));
   setGaenge(layout.gaenge);
 }
+
+/**
+ * Andreas Schmid Gersthofen als ProjektVorlage.
+ */
+export const PROJEKT_GERSTHOFEN: ProjektVorlage = {
+  id: 'as_gersthofen',
+  name: 'Andreas Schmid',
+  standort: 'Gersthofen (Halle 6)',
+  jahr: 2019,
+  beschreibung: '85 Tore, Schnelläufer-Verteilung, 150×42m',
+  hall: { width: 151, height: 42, name: 'Halle 6 - Andreas Schmid Gersthofen', color: '#16213e' },
+  objects: createSchmidHalle6().objects,
+  prozessmodell: 'se_standard',
+  parameterOverrides: {
+    colliProTag: 15000,
+    verteilweg: 138.8,
+    schnellaeuferGeschwindigkeit: 2.44,
+    colliProFahrt: 3.39,
+    arbeitsminProStunde: 52.9,
+    staplerGeschwindigkeit: 2.86,
+  },
+  referenz: {
+    minProColli: 1.917,
+    colliProMAStd: 27.6,
+    fte: 54.5,
+    quelle: 'ROTH Prozessmodell 2019 (kalibriert)',
+  },
+};

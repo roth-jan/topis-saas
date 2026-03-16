@@ -83,6 +83,7 @@ import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
 import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
 import { BenchmarkDialog } from '@/components/dialogs/BenchmarkDialog';
 import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
+import { TorbelegungDialog } from '@/components/dialogs/TorbelegungDialog';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
@@ -887,6 +888,7 @@ export function Toolbar() {
           <FlaechenbedarfDialog />
           <BenchmarkDialog />
           <IstSollDialog />
+          <TorbelegungDialog />
           <SzenarienDialog />
           {originalLayout && (
             <AlertDialog>

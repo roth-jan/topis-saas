@@ -2,6 +2,8 @@
 
 import { create } from 'zustand';
 import type { ScandatenRecord, TorZuordnung, RelationZuordnung, Spaltenzuordnung } from '@/types/scandaten';
+import type { Distanzmatrix, DistanzmatrixErgebnis } from '@/types/distanzmatrix';
+import type { Fahrplan } from '@/types/torbelegung';
 
 // Legacy-compatible ScanRecord (alte Schnittstelle bleibt erhalten)
 export interface ScanRecord {
@@ -97,6 +99,13 @@ interface BetriebsdatenState {
   // Stündliche Aggregation
   stundenAggregation: StundenAggregation[];
 
+  // Distanzmatrix (gemessene Wege)
+  distanzmatrix: Distanzmatrix | null;
+  distanzmatrixErgebnis: DistanzmatrixErgebnis | null;
+
+  // Fahrplan / Torbelegung
+  fahrplan: Fahrplan | null;
+
   // Actions
   importScanRecords: (records: ScanRecord[]) => void;
   importScandatenRecords: (records: ScandatenRecord[]) => void;
@@ -111,6 +120,9 @@ interface BetriebsdatenState {
   removeSzenario: (id: string) => void;
   setAktivSzenario: (id: string | null) => void;
   setStundenAggregation: (agg: StundenAggregation[]) => void;
+  setDistanzmatrix: (dm: Distanzmatrix | null) => void;
+  setDistanzmatrixErgebnis: (erg: DistanzmatrixErgebnis | null) => void;
+  setFahrplan: (fp: Fahrplan | null) => void;
   reset: () => void;
 }
 
@@ -132,6 +144,9 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>((set) => ({
   szenarien: [],
   aktivSzenario: null,
   stundenAggregation: [],
+  distanzmatrix: null,
+  distanzmatrixErgebnis: null,
+  fahrplan: null,
 
   importScanRecords: (records) => set({ scanRecords: records }),
 
@@ -191,6 +206,10 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>((set) => ({
 
   setStundenAggregation: (agg) => set({ stundenAggregation: agg }),
 
+  setDistanzmatrix: (dm) => set({ distanzmatrix: dm }),
+  setDistanzmatrixErgebnis: (erg) => set({ distanzmatrixErgebnis: erg }),
+  setFahrplan: (fp) => set({ fahrplan: fp }),
+
   reset: () =>
     set({
       scanRecords: [],
@@ -203,6 +222,9 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>((set) => ({
       szenarien: [],
       aktivSzenario: null,
       stundenAggregation: [],
+      distanzmatrix: null,
+      distanzmatrixErgebnis: null,
+      fahrplan: null,
     }),
 }));
 
@@ -214,3 +236,6 @@ export const useTorZuordnungen = () => useBetriebsdatenStore((s) => s.torZuordnu
 export const useRelationZuordnungen = () => useBetriebsdatenStore((s) => s.relationZuordnungen);
 export const useScandatenRecords = () => useBetriebsdatenStore((s) => s.scandatenRecords);
 export const useStundenAggregation = () => useBetriebsdatenStore((s) => s.stundenAggregation);
+export const useDistanzmatrix = () => useBetriebsdatenStore((s) => s.distanzmatrix);
+export const useDistanzmatrixErgebnis = () => useBetriebsdatenStore((s) => s.distanzmatrixErgebnis);
+export const useFahrplan = () => useBetriebsdatenStore((s) => s.fahrplan);

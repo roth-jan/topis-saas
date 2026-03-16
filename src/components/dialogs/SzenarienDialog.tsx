@@ -54,6 +54,9 @@ export function SzenarienDialog() {
     const sz = szenarien.find((s) => s.id === id);
     if (sz && aktivSzenario !== id) {
       toast.info(`Szenario "${sz.name}" aktiviert`);
+      toast('Layout geladen — Verteilweg ggf. im Fläche-Dialog neu berechnen', {
+        duration: 5000,
+      });
     }
   };
 

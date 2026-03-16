@@ -26,11 +26,14 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Route, Calculator, Trash2, ArrowRight, Download } from 'lucide-react';
+import { Route, Calculator, Trash2, ArrowRight, Download, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { computeAllPaths, pathResultToPath, buildGangGraph, findPath } from '@/lib/pathfinding';
+import { berechneVerteilwegAusDistanzmatrix } from '@/lib/distanzmatrix-rechner';
+import { SCHMID_DISTANZMATRIX } from '@/lib/data/schmid-distanzmatrix';
 import type { PathResult } from '@/lib/pathfinding';
 import type { TopisObject, Path } from '@/types/topis';
+import type { Distanzmatrix } from '@/types/distanzmatrix';
 
 interface WegeResult {
   start: TopisObject;
@@ -47,6 +50,11 @@ export function WegeberechnungDialog() {
   const [results, setResults] = useState<WegeResult[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [verteilweg, setVerteilweg] = useState<number | null>(null);
+  const [selectedDM, setSelectedDM] = useState<string>('');
+  const [dmErgebnis, setDmErgebnis] = useState<{ gewichteterWegM: number; gesamtColli: number; abgedeckteColli: number; nichtZugeordnet: number } | null>(null);
+
+  const setDistanzmatrix = useBetriebsdatenStore((s) => s.setDistanzmatrix);
+  const setDistanzmatrixErgebnis = useBetriebsdatenStore((s) => s.setDistanzmatrixErgebnis);
 
   const objects = useTopisStore((s) => s.objects);
   const gaenge = useTopisStore((s) => s.gaenge);
@@ -405,7 +413,7 @@ export function WegeberechnungDialog() {
 
               {/* Verteilweg Section */}
               <div className="space-y-3">
-                <h4 className="font-medium text-sm">Verteilweg</h4>
+                <h4 className="font-medium text-sm">Verteilweg (aus Layout-Berechnung)</h4>
                 <div className="flex gap-2 items-center flex-wrap">
                   {hasScanData ? (
                     <Button onClick={calculateWeightedVerteilweg} variant="outline" size="sm">
@@ -430,6 +438,96 @@ export function WegeberechnungDialog() {
                     <Button onClick={handleVerteilwegUebernehmen} size="sm">
                       <ArrowRight className="h-4 w-4 mr-2" />
                       Ins Prozessmodell übernehmen
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Gemessene Distanzmatrix Section */}
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Gemessene Distanzmatrix
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Echte Messwerte statt A*-Berechnung. Distanzen aus physischen Messungen in der Halle.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Select value={selectedDM} onValueChange={setSelectedDM}>
+                    <SelectTrigger className="w-64">
+                      <SelectValue placeholder="Distanzmatrix auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="schmid_halle6">Schmid Halle 6 (204 Paare, 82.120 Colli)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={() => {
+                      if (selectedDM === 'schmid_halle6') {
+                        const erg = berechneVerteilwegAusDistanzmatrix(SCHMID_DISTANZMATRIX);
+                        setDmErgebnis(erg);
+                        setDistanzmatrix(SCHMID_DISTANZMATRIX);
+                        setDistanzmatrixErgebnis(erg);
+                        toast.success(`Gemessener Verteilweg: ${erg.gewichteterWegM.toFixed(1)}m`);
+                      }
+                    }}
+                    disabled={!selectedDM}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Calculator className="h-4 w-4 mr-2" />
+                    Verteilweg aus Messungen berechnen
+                  </Button>
+                </div>
+
+                {dmErgebnis && (
+                  <div className="space-y-2">
+                    <div className="bg-muted/50 p-3 rounded-lg space-y-2">
+                      <div className="grid grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <div className="text-muted-foreground text-xs">Gemessener Verteilweg</div>
+                          <div className="text-xl font-bold text-primary">{dmErgebnis.gewichteterWegM.toFixed(1)} m</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Abgedeckte Colli</div>
+                          <div className="font-medium">{dmErgebnis.abgedeckteColli.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Gesamt Colli</div>
+                          <div className="font-medium">{dmErgebnis.gesamtColli.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div className="text-muted-foreground text-xs">Nicht zugeordnet</div>
+                          <div className="font-medium">{dmErgebnis.nichtZugeordnet.toLocaleString()}</div>
+                        </div>
+                      </div>
+
+                      {/* Vergleich */}
+                      {verteilweg !== null && (
+                        <div className="flex items-center gap-2 text-sm border-t pt-2">
+                          <span className="text-muted-foreground">Vergleich:</span>
+                          <Badge variant="outline">Berechnet: {verteilweg.toFixed(1)}m</Badge>
+                          <span className="text-muted-foreground">|</span>
+                          <Badge variant="default">Gemessen: {dmErgebnis.gewichteterWegM.toFixed(1)}m</Badge>
+                          <span className="text-muted-foreground">|</span>
+                          <Badge variant={Math.abs(dmErgebnis.gewichteterWegM - verteilweg) / verteilweg > 0.15 ? 'destructive' : 'secondary'}>
+                            {((dmErgebnis.gewichteterWegM - verteilweg) / verteilweg * 100) > 0 ? '+' : ''}
+                            {((dmErgebnis.gewichteterWegM - verteilweg) / verteilweg * 100).toFixed(1)}%
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      onClick={() => {
+                        setVerteilwegProzessmodell(dmErgebnis.gewichteterWegM);
+                        toast.success(`Gemessener Verteilweg ${dmErgebnis.gewichteterWegM.toFixed(1)}m ins Prozessmodell übernommen`);
+                      }}
+                      size="sm"
+                    >
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Gemessenen Verteilweg ins Prozessmodell übernehmen
                     </Button>
                   </div>
                 )}

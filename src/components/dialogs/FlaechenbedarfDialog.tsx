@@ -239,7 +239,7 @@ export function FlaechenbedarfDialog() {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        // Verteilweg als Parameter ins Prozessmodell übernehmen
+                        useProzessmodellStore.getState().setVerteilweg(verteilwegAnalyse.gesamtGewichteterWegM);
                         toast.success(
                           `Verteilweg ${verteilwegAnalyse.gesamtGewichteterWegM.toFixed(1)}m in Prozessmodell übernommen`
                         );

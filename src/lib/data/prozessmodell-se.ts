@@ -15,15 +15,15 @@ import type { Prozessschritt, ProzessmodellConfig, ProzessParameter } from '@/ty
 const SE_SCHRITTE: Prozessschritt[] = [
   // ==================== ENTLADER ====================
   // Fahrt zum Tor + Tor öffnen
-  { nr: 1, beschreibung: 'Zum Tor fahren (leer)', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 30, wegAusLayout: false, geschwindigkeitMs: 2.86, standardzeitSek: 10.5, anteil: 1.0, haeufigkeit: 0.1 },
+  { nr: 1, beschreibung: 'Zum Tor fahren (leer)', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 30, wegAusLayout: false, geschwindigkeitMs: 2.86, standardzeitSek: 10.5, anteil: 1.0, haeufigkeit: 0.1, geschwindigkeitsParameter: 'staplerGeschwindigkeit' },
   { nr: 2, beschreibung: 'Tor öffnen / Andockstellung prüfen', abteilung: 'entlader', hilfsmittel: '-', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 15.0, anteil: 1.0, haeufigkeit: 0.1 },
   { nr: 3, beschreibung: 'In LKW einfahren', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 12, wegAusLayout: false, geschwindigkeitMs: 1.5, standardzeitSek: 8.0, anteil: 1.0, haeufigkeit: 1.0 },
   { nr: 4, beschreibung: 'Palette/Gitterbox aufnehmen', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 12.0, anteil: 1.0, haeufigkeit: 1.0 },
   { nr: 5, beschreibung: 'Rangieren im LKW', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 3, wegAusLayout: false, geschwindigkeitMs: 1.0, standardzeitSek: 3.0, anteil: 0.3, haeufigkeit: 1.0 },
   { nr: 6, beschreibung: 'Aus LKW rausfahren', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 12, wegAusLayout: false, geschwindigkeitMs: 2.0, standardzeitSek: 6.0, anteil: 1.0, haeufigkeit: 1.0 },
-  { nr: 7, beschreibung: 'Zur Entladestellfläche fahren', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 8, wegAusLayout: false, geschwindigkeitMs: 2.86, standardzeitSek: 2.8, anteil: 1.0, haeufigkeit: 1.0 },
+  { nr: 7, beschreibung: 'Zur Entladestellfläche fahren', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 8, wegAusLayout: false, geschwindigkeitMs: 2.86, standardzeitSek: 2.8, anteil: 1.0, haeufigkeit: 1.0, geschwindigkeitsParameter: 'staplerGeschwindigkeit' },
   { nr: 8, beschreibung: 'Palette abstellen auf Entladefläche', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 8.0, anteil: 1.0, haeufigkeit: 1.0 },
-  { nr: 9, beschreibung: 'Zurückfahren zum LKW', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 8, wegAusLayout: false, geschwindigkeitMs: 2.86, standardzeitSek: 2.8, anteil: 1.0, haeufigkeit: 1.0 },
+  { nr: 9, beschreibung: 'Zurückfahren zum LKW', abteilung: 'entlader', hilfsmittel: 'Stapler', wegM: 8, wegAusLayout: false, geschwindigkeitMs: 2.86, standardzeitSek: 2.8, anteil: 1.0, haeufigkeit: 1.0, geschwindigkeitsParameter: 'staplerGeschwindigkeit' },
   { nr: 10, beschreibung: 'Wartezeit (LKW wechsel etc.)', abteilung: 'entlader', hilfsmittel: '-', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 20.0, anteil: 0.25, haeufigkeit: 1.0 },
   { nr: 11, beschreibung: 'Gefäß öffnen (Plane, Deckel)', abteilung: 'entlader', hilfsmittel: 'Hand', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 23.0, anteil: 0.3, haeufigkeit: 1.0 },
   { nr: 12, beschreibung: 'Rampe andocken', abteilung: 'entlader', hilfsmittel: '-', wegM: 0, wegAusLayout: false, geschwindigkeitMs: 0, standardzeitSek: 16.0, anteil: 0.15, haeufigkeit: 1.0 },
@@ -85,7 +85,7 @@ export const SE_STANDARD_PARAMETER: ProzessParameter[] = [
 
   // Verteiler
   { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 138.8, aktuellerWert: 138.8, quelle: 'layout', kategorie: 'verteiler', beschreibung: 'Colli-gewichteter Durchschnittsweg (aus Layout)' },
-  { id: 'schnellaeuferGeschwindigkeit', name: 'Schnelläufer-Geschwindigkeit', einheit: 'm/s', standardwert: 2.44, aktuellerWert: 2.44, quelle: 'eingabe', kategorie: 'verteiler' },
+  { id: 'schnellaeuferGeschwindigkeit', name: 'Verteilgeschwindigkeit (Schnelläufer/Ameise)', einheit: 'm/s', standardwert: 2.44, aktuellerWert: 2.44, quelle: 'eingabe', kategorie: 'verteiler' },
   { id: 'colliAbstellenZeit', name: 'Colli abstellen', einheit: 'Sek', standardwert: 3.0, aktuellerWert: 3.0, quelle: 'eingabe', kategorie: 'verteiler' },
   { id: 'colliProFahrt', name: 'Colli pro Verteiler-Fahrt', einheit: 'Cll/Fahrt', standardwert: 3.39, aktuellerWert: 3.39, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Batch: Wie viele Colli pro Verteiler-Fahrt (teilt Wegzeit)' },
 ];

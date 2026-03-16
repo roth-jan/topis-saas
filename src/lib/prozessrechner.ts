@@ -36,11 +36,18 @@ export function berechneMinProColli(
 
     // Weg-abhängige Schritte: Zeit aus Layout-Verteilweg berechnen
     if (schritt.wegAusLayout && verteilweg > 0) {
-      const geschwindigkeit = schritt.geschwindigkeitMs || schnellaeuferGeschwindigkeit;
+      const geschwindigkeit = schnellaeuferGeschwindigkeit || schritt.geschwindigkeitMs || 2.44;
       zeitSek = verteilweg / geschwindigkeit;
       // Batch-Faktor: Mehrere Colli pro Fahrt → Wegzeit teilen
       if (colliProFahrt > 1) {
         zeitSek = zeitSek / colliProFahrt;
+      }
+    }
+    // Equipment-parametrische Schritte (Stapler, Ameise auf offenem Boden)
+    else if (schritt.geschwindigkeitsParameter && schritt.wegM > 0) {
+      const paramSpeed = getParam(schritt.geschwindigkeitsParameter);
+      if (paramSpeed > 0) {
+        zeitSek = schritt.wegM / paramSpeed;
       }
     }
 
