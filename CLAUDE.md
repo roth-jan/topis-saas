@@ -13,8 +13,9 @@
 src/
   app/
     (editor)/projekt/page.tsx       # Hauptseite (3-Panel Layout: Links/Canvas/Rechts)
+    check/page.tsx                   # Kunden-Check Self-Service (/check)
     layout.tsx                       # Root Layout (ThemeProvider, Toaster)
-    page.tsx                         # Landing Page
+    page.tsx                         # Landing Page (+ Hallen-Check CTA)
   components/
     canvas/HallCanvas.tsx            # Canvas-Rendering + Hit-Detection + Heatmap-Overlay
     editor/
@@ -27,6 +28,11 @@ src/
       PathPanel.tsx                  # Wege-Verwaltung
       AnalyticsPanel.tsx             # Analyse-Panel (Kennzahlen)
       SimulationPanel.tsx            # Simulation
+    check/
+      HallPreview.tsx                # Read-Only Canvas (Auto-Zoom, Heatmap)
+      AmpelCard.tsx                  # KPI-Ampelkarte (grün/gelb/rot)
+      BeratungCTA.tsx                # Call-to-Action (mailto + Editor-Link)
+      KundenCheckResults.tsx         # Ergebnis-Dashboard (assembliert alle Komponenten)
     dialogs/
       BetriebsdatenImportDialog.tsx  # CSV-Import + Heatmap-Steuerung
       SzenarienDialog.tsx            # Layout-Snapshots speichern/laden/vergleichen
@@ -55,6 +61,8 @@ src/
     flaechenrechner.ts               # Flächenbedarfsrechnung (Colli/qm)
     ist-soll-rechner.ts              # IST-SOLL Produktivitätsanalyse
     verteilweg-rechner.ts            # Gewichteter Verteilweg aus Layout + berechneVerteilwegEffizient
+    auto-layout-generator.ts         # Auto-Layout aus CSV (Tore, Bereiche, Gänge)
+    ampel-system.ts                  # KPI-Ampelbewertung (4 KPIs: Min/Colli, Produktivität, Rang, Spitze)
     simulation.ts                    # Simulations-Engine
     export.ts                        # Export-Funktionen
     showcase.ts                      # Demo-Szenarien
@@ -222,6 +230,23 @@ wobei: zeitSek = verteilweg / geschwindigkeit / colliProFahrt  (bei wegAusLayout
 - **Wegzeit bei Layout-Schritten** = Verteilweg / Geschwindigkeit / colliProFahrt
 - **MA-Stundenbedarf** = Colli/Tag × Min/Colli / arbeitsminProStunde (Parameter, Standard 52.9)
 - **Flächenbedarf** = Colli/Tag / colliProQm (Parameter, Standard 1.25)
+
+### Kunden-Check Self-Service (`/check`)
+- **Zweck:** Kunden laden Scandaten hoch → sehen Ampeln, Hallenplan, Benchmark → rufen ROTH an
+- **Route:** `/check` — Upload → Analyzing → Results (3 Phasen, State Machine)
+- **Kein Store nötig:** Alles lokal im Component-State (records, ergebnis, layout)
+- **Pipeline:** `parseCsvMitProfil()` → `generateAutoLayout()` → `berechneMinProColli()` → `berechneBenchmark()` → `bewerteKPIs()`
+- **Auto-Layout:** Unique Stellplätze → Tore (Süd+Nord), Unique Relationen → Bereiche (Innenraum), 1 Hauptgang + 2 Quergänge
+- **Ampel-KPIs (4):**
+  | KPI | Grün | Gelb | Rot |
+  |-----|------|------|-----|
+  | Min/Colli | ≤110% Best | ≤150% | >150% |
+  | Colli/MA-h | ≥90% Best | ≥70% | <70% |
+  | Rang | Top 3 | 4-6 | 7+ |
+  | Spitze/Ø | ≤1.5 | ≤2.0 | >2.0 |
+- **"Im Experten-Editor öffnen":** Befüllt alle 3 Stores (Layout + Betriebsdaten + Prozessmodell) und navigiert zu `/projekt`
+- **Reuse:** `parseCsvMitProfil`, `berechneMinProColli`, `berechneBenchmark`, `StundenChart`, `BenchmarkRadar`, `getHeatmapColor`
+- **CTA:** `mailto:info@roth-logistik.de` mit vorgefülltem Betreff
 
 ## Entwicklung
 

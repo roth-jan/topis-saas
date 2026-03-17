@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, LayoutGrid, Route, BarChart3, Users } from 'lucide-react';
+import { ArrowRight, LayoutGrid, Route, BarChart3, Users, Upload } from 'lucide-react';
 
 export default function Home() {
   return (
@@ -16,6 +16,9 @@ export default function Home() {
             <span className="font-semibold text-xl">TOPIS</span>
           </div>
           <nav className="flex items-center gap-4">
+            <Link href="/check" className="text-sm text-muted-foreground hover:text-foreground font-medium">
+              Hallen-Check
+            </Link>
             <Link href="/projekt" className="text-sm text-muted-foreground hover:text-foreground">
               Editor
             </Link>
@@ -46,6 +49,33 @@ export default function Home() {
             Demo ansehen
           </Button>
         </div>
+      </section>
+
+      {/* Hallen-Check CTA */}
+      <section className="container mx-auto px-4 py-8">
+        <Card className="border-2 border-primary/30 bg-primary/5">
+          <CardContent className="py-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Upload className="h-7 w-7 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Kostenloser Hallen-Check</h3>
+                  <p className="text-muted-foreground">
+                    Scandaten hochladen, sofort Produktivitätspotenzial sehen — Benchmark gegen {8} Referenzhallen
+                  </p>
+                </div>
+              </div>
+              <Button size="lg" asChild className="shrink-0">
+                <Link href="/check">
+                  Jetzt testen
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       {/* Features */}

@@ -425,6 +425,12 @@ export function Toolbar() {
               <Database className="mr-2 h-4 w-4" />
               Betriebsdaten importieren...
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              window.location.href = '/topis-saas/check';
+            }}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Kunden-Check (Self-Service)...
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Vorlagen</DropdownMenuLabel>
             {PROJEKT_VORLAGEN.map(vorlage => (
