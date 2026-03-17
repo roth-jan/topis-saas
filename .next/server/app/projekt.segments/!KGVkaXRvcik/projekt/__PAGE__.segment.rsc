@@ -1,9 +1,0 @@
-1:"$Sreact.fragment"
-2:I[47257,["/topis-saas/_next/static/chunks/ff1a16fafef87110.js","/topis-saas/_next/static/chunks/650b0d2d0b895b93.js"],"ClientPageRoot"]
-3:I[41218,["/topis-saas/_next/static/chunks/6ecee1dbe326314c.js","/topis-saas/_next/static/chunks/4e0ce4eef3c42fa0.js","/topis-saas/_next/static/chunks/b91c5a2f1c477767.js","/topis-saas/_next/static/chunks/236b228be620235b.js","/topis-saas/_next/static/chunks/a5325fd2d5cbb840.js","/topis-saas/_next/static/chunks/9f66f08b0883bd58.js"],"default"]
-6:I[97367,["/topis-saas/_next/static/chunks/ff1a16fafef87110.js","/topis-saas/_next/static/chunks/650b0d2d0b895b93.js"],"OutletBoundary"]
-7:"$Sreact.suspense"
-0:{"buildId":"drbPbM-TAI7SaQRiH7U6e","rsc":["$","$1","c",{"children":[["$","$L2",null,{"Component":"$3","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@4","$@5"]}}],[["$","script","script-0",{"src":"/topis-saas/_next/static/chunks/b91c5a2f1c477767.js","async":true}],["$","script","script-1",{"src":"/topis-saas/_next/static/chunks/236b228be620235b.js","async":true}],["$","script","script-2",{"src":"/topis-saas/_next/static/chunks/a5325fd2d5cbb840.js","async":true}],["$","script","script-3",{"src":"/topis-saas/_next/static/chunks/9f66f08b0883bd58.js","async":true}]],["$","$L6",null,{"children":["$","$7",null,{"name":"Next.MetadataOutlet","children":"$@8"}]}]]}],"loading":null,"isPartial":false}
-4:{}
-5:"$0:rsc:props:children:0:props:serverProvidedParams:params"
-8:null
