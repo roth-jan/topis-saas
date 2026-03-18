@@ -1,9 +1,0 @@
-{
-  "/(editor)/dashboard/page": "/dashboard",
-  "/(editor)/projekt/page": "/projekt",
-  "/_global-error/page": "/_global-error",
-  "/_not-found/page": "/_not-found",
-  "/check/page": "/check",
-  "/favicon.ico/route": "/favicon.ico",
-  "/page": "/"
-}
