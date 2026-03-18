@@ -106,7 +106,12 @@ src/
   - Actions: `updateParameter`, `setVerteilweg`, `setColliProTag`, `ladeModell`, `berechne`, `reset`
   - Selector Hooks: `useProzessErgebnis()`, `useProzessParameter()`, `useProzessAbteilungen()`
   - Auto-Berechnung bei Parameter-Änderungen
-- Kein Backend/Persistierung - State lebt nur im Browser-Memory
+- **Persistierung via `zustand/middleware` persist → localStorage**
+  - `topis-layout`: Hallen, Objekte, Pfade, Gänge, FFZ, Conveyors (ohne UI-State wie Zoom, Selection, Undo)
+  - `topis-betriebsdaten`: Scandaten, Analyse, Heatmap, Szenarien, Stundenaggregation
+  - `topis-prozessmodell`: Modell, Parameter, Ergebnis
+  - Überlebt Page Reloads, Tab-Wechsel (iPad Safari), Navigation zwischen /check und /projekt
+  - Kein Backend — localStorage only
 
 ### Prozessmodell-System (Kalibriert auf AS Gersthofen: 1.917 Min/Colli)
 
