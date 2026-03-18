@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, FileUp, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Upload, FileUp, Loader2, ArrowLeft, CheckCircle, BarChart3, ClipboardList, Eye } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 import { parseCsvMitProfil } from '@/lib/spaltenzuordnungen';
 import { generateAutoLayout } from '@/lib/auto-layout-generator';
@@ -16,6 +18,8 @@ import { REFERENZHALLEN } from '@/lib/data/referenzhallen';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from '@/lib/data/prozessmodell-se';
 import { berechneIstSoll } from '@/lib/ist-soll-rechner';
 import { KundenCheckResults } from '@/components/check/KundenCheckResults';
+import { generateRecordsFromEckdaten, generateDemoRecords } from '@/lib/eckdaten-analyse';
+import type { Eckdaten } from '@/lib/eckdaten-analyse';
 
 import type { ScandatenRecord } from '@/types/scandaten';
 import type { Hall, TopisObject, Gang } from '@/types/topis';
@@ -31,7 +35,8 @@ import { useTopisStore } from '@/lib/store';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 
-type Phase = 'upload' | 'analyzing' | 'results';
+type Phase = 'choose' | 'upload' | 'eckdaten' | 'analyzing' | 'results';
+type Datenquelle = 'scandaten' | 'eckdaten' | 'demo';
 
 interface AnalyseErgebnis {
   layout: AutoLayoutResult;
@@ -48,7 +53,7 @@ interface AnalyseErgebnis {
 
 // Fortschritts-Schritte
 const ANALYSE_STEPS = [
-  'CSV einlesen...',
+  'Daten einlesen...',
   'Format erkennen...',
   'Halle generieren...',
   'Prozessmodell berechnen...',
@@ -61,13 +66,21 @@ export default function CheckPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [phase, setPhase] = useState<Phase>('upload');
+  const [phase, setPhase] = useState<Phase>('choose');
+  const [datenquelle, setDatenquelle] = useState<Datenquelle>('scandaten');
   const [dragOver, setDragOver] = useState(false);
   const [analyseSchritt, setAnalyseSchritt] = useState(0);
   const [ergebnis, setErgebnis] = useState<AnalyseErgebnis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dateiName, setDateiName] = useState<string>('');
   const [dateiInfo, setDateiInfo] = useState<string>('');
+
+  // Eckdaten-Formular
+  const [eckTore, setEckTore] = useState('');
+  const [eckColli, setEckColli] = useState('');
+  const [eckFlaeche, setEckFlaeche] = useState('');
+  const [eckFte, setEckFte] = useState('');
+  const [eckName, setEckName] = useState('');
 
   // Store-Referenzen für Editor-Übernahme
   const loadState = useTopisStore((s) => s.loadState);
@@ -81,20 +94,20 @@ export default function CheckPage() {
   const setRelationZuordnungenStore = useBetriebsdatenStore((s) => s.setRelationZuordnungen);
   const ladeModell = useProzessmodellStore((s) => s.ladeModell);
 
-  // ============ Analyse-Pipeline ============
-  const runAnalyse = useCallback(async (csvText: string, fileName: string) => {
+  // ============ Analyse-Pipeline (records → Ergebnis) ============
+  const runAnalyseFromRecords = useCallback(async (records: ScandatenRecord[], fileName: string, quelle: Datenquelle) => {
     setPhase('analyzing');
+    setDatenquelle(quelle);
     setError(null);
     setDateiName(fileName);
 
     try {
-      // Step 1: CSV parsen
+      // Step 1: Done (records already provided)
       setAnalyseSchritt(0);
       await tick();
-      const { records, erkanntesProfil } = parseCsvMitProfil(csvText);
 
       if (records.length === 0) {
-        throw new Error('Keine gültigen Datensätze gefunden. Bitte prüfen Sie das CSV-Format.');
+        throw new Error('Keine gültigen Datensätze gefunden.');
       }
 
       // Step 2: Format Info
@@ -116,16 +129,13 @@ export default function CheckPage() {
       setAnalyseSchritt(3);
       await tick();
 
-      // Colli & Arbeitstage aus Daten berechnen
       const totalColli = records.reduce((sum, r) => sum + r.colli, 0);
       const uniqueDays = new Set(records.map((r) => r.scandatum).filter(Boolean));
       const arbeitstage = Math.max(uniqueDays.size, 1);
       const colliProTag = Math.round(totalColli / arbeitstage);
 
-      // Parameter mit berechneten Werten
       const parameter: ProzessParameter[] = SE_STANDARD_PARAMETER.map((p) => {
         if (p.id === 'colliProTag') return { ...p, aktuellerWert: colliProTag, quelle: 'scandaten' as const };
-        // Default-Verteilweg (geschätzt aus Hallengröße, da kein echtes Routing)
         if (p.id === 'verteilweg') {
           const geschaetzterWeg = Math.round(layout.hall.width * 0.9 + layout.hall.height * 0.3);
           return { ...p, aktuellerWert: geschaetzterWeg, quelle: 'layout' as const };
@@ -157,7 +167,6 @@ export default function CheckPage() {
       }
       const stundenAgg = Array.from(stundenMap.values());
 
-      // IST-SOLL berechnen (ohne echte IST-Werte → nur SOLL)
       const istSoll = berechneIstSoll(stundenAgg, {}, ergebnis.minProColli, ergebnis.arbeitsminProStunde, arbeitstage);
       const stundenProfil = istSoll.stunden.map((s) => ({
         stunde: s.stunde,
@@ -170,7 +179,6 @@ export default function CheckPage() {
       setAnalyseSchritt(6);
       await tick();
 
-      // BetriebsAnalyse erstellen
       const analyse: BetriebsAnalyse = {
         zeitraum: { von: minDatum, bis: maxDatum },
         arbeitstage,
@@ -194,7 +202,6 @@ export default function CheckPage() {
 
       const ampelBewertung = bewerteKPIs(ergebnis, benchmarkErgebnis, REFERENZHALLEN, stundenProfil);
 
-      // Ergebnis speichern
       setErgebnis({
         layout,
         records,
@@ -211,9 +218,65 @@ export default function CheckPage() {
       setPhase('results');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unbekannter Fehler bei der Analyse');
-      setPhase('upload');
+      setPhase('choose');
     }
   }, []);
+
+  // ============ CSV Upload Pipeline ============
+  const runAnalyse = useCallback(async (csvText: string, fileName: string) => {
+    setPhase('analyzing');
+    setDatenquelle('scandaten');
+    setError(null);
+    setDateiName(fileName);
+
+    try {
+      setAnalyseSchritt(0);
+      await tick();
+      const { records } = parseCsvMitProfil(csvText);
+
+      if (records.length === 0) {
+        throw new Error('Keine gültigen Datensätze gefunden. Bitte prüfen Sie das CSV-Format.');
+      }
+
+      // Weiter mit gemeinsamer Pipeline
+      await runAnalyseFromRecords(records, fileName, 'scandaten');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler bei der Analyse');
+      setPhase('choose');
+    }
+  }, [runAnalyseFromRecords]);
+
+  // ============ Eckdaten Pipeline ============
+  const handleEckdatenSubmit = useCallback(() => {
+    const tore = parseInt(eckTore);
+    const colli = parseInt(eckColli);
+    const flaeche = parseInt(eckFlaeche);
+    const fte = parseInt(eckFte);
+
+    if (!tore || !colli || !flaeche || !fte || tore < 2 || colli < 100) {
+      setError('Bitte alle Pflichtfelder ausfüllen (mind. 2 Tore, 100 Colli/Tag).');
+      return;
+    }
+
+    const eckdaten: Eckdaten = {
+      tore,
+      colliProTag: colli,
+      flaecheQm: flaeche,
+      fte,
+      hallenName: eckName || `Halle (${tore} Tore)`,
+      prozessTyp: 'se',
+    };
+
+    const records = generateRecordsFromEckdaten(eckdaten);
+    const name = eckdaten.hallenName || 'Eckdaten-Eingabe';
+    runAnalyseFromRecords(records, name, 'eckdaten');
+  }, [eckTore, eckColli, eckFlaeche, eckFte, eckName, runAnalyseFromRecords]);
+
+  // ============ Demo Pipeline ============
+  const handleDemo = useCallback(() => {
+    const { records } = generateDemoRecords();
+    runAnalyseFromRecords(records, 'AS Gersthofen (Demo)', 'demo');
+  }, [runAnalyseFromRecords]);
 
   // ============ File Handling ============
   const handleFile = useCallback((file: File) => {
@@ -247,7 +310,6 @@ export default function CheckPage() {
     if (!ergebnis) return;
     const { layout, records, analyse } = ergebnis;
 
-    // Stores befüllen
     resetState();
     updateHall(1, {
       width: layout.hall.width,
@@ -257,13 +319,11 @@ export default function CheckPage() {
     layout.objects.forEach((obj) => addObjectStore(obj));
     setGaengeStore(layout.gaenge);
 
-    // Betriebsdaten
     importScandaten(records);
     setAnalyseStore(analyse);
     setTorZuordnungenStore(layout.torZuordnungen);
     setRelationZuordnungenStore(layout.relationZuordnungen);
 
-    // Prozessmodell
     const verteilweg = Math.round(layout.hall.width * 0.9 + layout.hall.height * 0.3);
     const param = SE_STANDARD_PARAMETER.map((p) => {
       if (p.id === 'colliProTag') return { ...p, aktuellerWert: ergebnis.colliProTag };
@@ -274,6 +334,13 @@ export default function CheckPage() {
 
     router.push('/projekt');
   }, [ergebnis, resetState, updateHall, addObjectStore, setGaengeStore, importScandaten, setAnalyseStore, setTorZuordnungenStore, setRelationZuordnungenStore, ladeModell, router]);
+
+  // ============ Zurück-Funktion ============
+  const handleBackToChoose = useCallback(() => {
+    setPhase('choose');
+    setErgebnis(null);
+    setError(null);
+  }, []);
 
   // ============ Render ============
   return (
@@ -300,8 +367,8 @@ export default function CheckPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* ============ UPLOAD PHASE ============ */}
-        {phase === 'upload' && (
+        {/* ============ CHOOSE PHASE ============ */}
+        {phase === 'choose' && (
           <div className="space-y-8">
             {/* Hero */}
             <div className="text-center space-y-4 py-8">
@@ -309,9 +376,104 @@ export default function CheckPage() {
                 Wie produktiv ist <span className="text-primary">Ihre Halle</span>?
               </h1>
               <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-                Laden Sie Ihre Scandaten hoch und erhalten Sie in Sekunden eine vollständige Produktivitätsanalyse
+                Erhalten Sie in Sekunden eine vollständige Produktivitätsanalyse
                 mit Benchmark-Vergleich gegen {REFERENZHALLEN.length} Referenzhallen.
               </p>
+            </div>
+
+            {/* 3 Entry Cards */}
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Card 1: Scandaten */}
+              <Card
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group"
+                onClick={() => setPhase('upload')}
+              >
+                <CardContent className="py-8 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
+                    <BarChart3 className="h-7 w-7 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Scandaten</h3>
+                    <p className="text-sm text-muted-foreground mt-1">CSV / Excel hochladen</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Höchste Genauigkeit — echte Heatmap, Stundenprofil, gewichteter Verteilweg
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {['WMS-Export', 'Scandaten', 'Betriebsdaten'].map((f) => (
+                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 2: Eckdaten */}
+              <Card
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group"
+                onClick={() => setPhase('eckdaten')}
+              >
+                <CardContent className="py-8 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto group-hover:bg-orange-500/20 transition-colors">
+                    <ClipboardList className="h-7 w-7 text-orange-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Eckdaten</h3>
+                    <p className="text-sm text-muted-foreground mt-1">4 Felder ausfüllen</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Schneller Überblick — Kennzahlen und Benchmark aus wenigen Angaben
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {['Tore', 'Colli/Tag', 'Fläche', 'FTE'].map((f) => (
+                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card 3: Demo */}
+              <Card
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group"
+                onClick={handleDemo}
+              >
+                <CardContent className="py-8 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto group-hover:bg-blue-500/20 transition-colors">
+                    <Eye className="h-7 w-7 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Demo ansehen</h3>
+                    <p className="text-sm text-muted-foreground mt-1">1 Klick — sofort sehen</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Ohne eigene Daten — Beispielanalyse einer Umschlaghalle mit 85 Toren
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {['85 Tore', '15.000 Colli', 'Heatmap', 'Ampeln'].map((f) => (
+                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 text-center">
+                <p className="text-destructive text-sm">{error}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ============ UPLOAD PHASE ============ */}
+        {phase === 'upload' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={handleBackToChoose}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Zurück
+              </Button>
+              <h2 className="text-2xl font-bold">Scandaten hochladen</h2>
             </div>
 
             {/* Upload Zone */}
@@ -375,6 +537,105 @@ export default function CheckPage() {
           </div>
         )}
 
+        {/* ============ ECKDATEN PHASE ============ */}
+        {phase === 'eckdaten' && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={handleBackToChoose}>
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Zurück
+              </Button>
+              <h2 className="text-2xl font-bold">Eckdaten eingeben</h2>
+            </div>
+
+            <Card>
+              <CardContent className="py-8">
+                <div className="max-w-lg mx-auto space-y-6">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Mit 4 Kennzahlen erhalten Sie einen ersten Benchmark-Vergleich Ihrer Halle.
+                  </p>
+
+                  {/* Pflichtfelder */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="eck-tore">Anzahl Tore *</Label>
+                      <Input
+                        id="eck-tore"
+                        type="number"
+                        placeholder="z.B. 42"
+                        value={eckTore}
+                        onChange={(e) => setEckTore(e.target.value)}
+                        min={2}
+                        max={200}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="eck-colli">Colli pro Tag *</Label>
+                      <Input
+                        id="eck-colli"
+                        type="number"
+                        placeholder="z.B. 8.000"
+                        value={eckColli}
+                        onChange={(e) => setEckColli(e.target.value)}
+                        min={100}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="eck-flaeche">Hallenfläche (qm) *</Label>
+                      <Input
+                        id="eck-flaeche"
+                        type="number"
+                        placeholder="z.B. 5.000"
+                        value={eckFlaeche}
+                        onChange={(e) => setEckFlaeche(e.target.value)}
+                        min={100}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="eck-fte">Mitarbeiter (FTE) *</Label>
+                      <Input
+                        id="eck-fte"
+                        type="number"
+                        placeholder="z.B. 40"
+                        value={eckFte}
+                        onChange={(e) => setEckFte(e.target.value)}
+                        min={1}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Optionale Felder */}
+                  <div className="space-y-2">
+                    <Label htmlFor="eck-name">Hallenname (optional)</Label>
+                    <Input
+                      id="eck-name"
+                      type="text"
+                      placeholder="z.B. Halle 3 Süd"
+                      value={eckName}
+                      onChange={(e) => setEckName(e.target.value)}
+                    />
+                  </div>
+
+                  {/* Error */}
+                  {error && (
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-center">
+                      <p className="text-destructive text-sm">{error}</p>
+                    </div>
+                  )}
+
+                  <Button className="w-full" size="lg" onClick={handleEckdatenSubmit}>
+                    Analyse starten
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    Die Analyse basiert auf Branchen-Durchschnittswerten. Für eine präzisere Auswertung laden Sie Ihre Scandaten hoch.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         {/* ============ ANALYZING PHASE ============ */}
         {phase === 'analyzing' && (
           <div className="py-24 text-center space-y-8">
@@ -416,7 +677,7 @@ export default function CheckPage() {
                   {dateiName} · {dateiInfo}
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => { setPhase('upload'); setErgebnis(null); }}>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleBackToChoose}>
                 <ArrowLeft className="h-4 w-4" />
                 Neue Analyse
               </Button>
@@ -437,6 +698,8 @@ export default function CheckPage() {
               stundenProfil={ergebnis.stundenProfil}
               abteilungen={ergebnis.abteilungen}
               onOpenEditor={handleOpenEditor}
+              datenquelle={datenquelle}
+              onNeueAnalyse={handleBackToChoose}
             />
           </div>
         )}

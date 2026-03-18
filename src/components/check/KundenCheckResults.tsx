@@ -14,6 +14,9 @@ import { AmpelCard } from './AmpelCard';
 import { BeratungCTA } from './BeratungCTA';
 import { StundenChart } from '@/components/dashboard/StundenChart';
 import { BenchmarkRadar } from '@/components/dashboard/BenchmarkRadar';
+import { Info, Upload } from 'lucide-react';
+
+type Datenquelle = 'scandaten' | 'eckdaten' | 'demo';
 
 interface KundenCheckResultsProps {
   hall: Hall;
@@ -29,6 +32,8 @@ interface KundenCheckResultsProps {
   stundenProfil: { stunde: number; soll: number; ist: number; colli: number }[];
   abteilungen: AbteilungDefinition[];
   onOpenEditor?: () => void;
+  datenquelle?: Datenquelle;
+  onNeueAnalyse?: () => void;
 }
 
 /**
@@ -46,6 +51,8 @@ export function KundenCheckResults({
   stundenProfil,
   abteilungen,
   onOpenEditor,
+  datenquelle = 'scandaten',
+  onNeueAnalyse,
 }: KundenCheckResultsProps) {
   // Heatmap auf Colli-Verteilung
   const heatmapConfig: HeatmapConfig = {
@@ -76,6 +83,49 @@ export function KundenCheckResults({
 
   return (
     <div className="space-y-8">
+      {/* Datenquelle-Banner */}
+      {datenquelle === 'eckdaten' && (
+        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+          <Info className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+              Analyse basiert auf Eckdaten
+            </p>
+            <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+              Die Ergebnisse sind geschätzt. Für eine präzise Analyse mit echtem Stundenprofil und Heatmap{' '}
+              {onNeueAnalyse ? (
+                <button onClick={onNeueAnalyse} className="underline font-medium hover:text-yellow-900 dark:hover:text-yellow-100">
+                  laden Sie Ihre Scandaten hoch
+                </button>
+              ) : (
+                'laden Sie Ihre Scandaten hoch'
+              )}.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {datenquelle === 'demo' && (
+        <div className="flex items-start gap-3 rounded-lg border border-blue-500/30 bg-blue-500/10 p-4">
+          <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              Demo-Daten (AS Gersthofen — 85 Tore, 15.000 Colli/Tag)
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              Sie sehen eine Beispielanalyse.{' '}
+              {onNeueAnalyse ? (
+                <button onClick={onNeueAnalyse} className="underline font-medium hover:text-blue-900 dark:hover:text-blue-100">
+                  Laden Sie eigene Daten für Ihre Analyse
+                </button>
+              ) : (
+                'Laden Sie eigene Daten für Ihre Analyse'
+              )}.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Section 1: Ampel-Grid */}
       <section>
         <h3 className="text-lg font-semibold mb-4 text-muted-foreground">Kennzahlen-Bewertung</h3>

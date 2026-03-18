@@ -62,6 +62,7 @@ src/
     ist-soll-rechner.ts              # IST-SOLL Produktivitätsanalyse
     verteilweg-rechner.ts            # Gewichteter Verteilweg aus Layout + berechneVerteilwegEffizient
     auto-layout-generator.ts         # Auto-Layout aus CSV (Tore, Bereiche, Gänge)
+    eckdaten-analyse.ts              # Eckdaten→Dummy-Records + Demo-Records (AS Gersthofen)
     ampel-system.ts                  # KPI-Ampelbewertung (4 KPIs: Min/Colli, Produktivität, Rang, Spitze)
     simulation.ts                    # Simulations-Engine
     export.ts                        # Export-Funktionen
@@ -237,10 +238,20 @@ wobei: zeitSek = verteilweg / geschwindigkeit / colliProFahrt  (bei wegAusLayout
 - **Flächenbedarf** = Colli/Tag / colliProQm (Parameter, Standard 1.25)
 
 ### Kunden-Check Self-Service (`/check`)
-- **Zweck:** Kunden laden Scandaten hoch → sehen Ampeln, Hallenplan, Benchmark → rufen ROTH an
-- **Route:** `/check` — Upload → Analyzing → Results (3 Phasen, State Machine)
+- **Zweck:** Kunden sehen sofort, dass etwas schief läuft → rufen ROTH an
+- **Route:** `/check` — Choose → (Upload | Eckdaten | Demo) → Analyzing → Results
 - **Kein Store nötig:** Alles lokal im Component-State (records, ergebnis, layout)
-- **Pipeline:** `parseCsvMitProfil()` → `generateAutoLayout()` → `berechneMinProColli()` → `berechneBenchmark()` → `bewerteKPIs()`
+- **3 Einstiege, 1 Ergebnis:**
+  | Einstieg | Was der Kunde tut | Datenquelle | Banner |
+  |----------|-------------------|-------------|--------|
+  | **Scandaten** | CSV hochladen (Drag & Drop) | Echte WMS-Daten | keins |
+  | **Eckdaten** | 4 Felder ausfüllen (Tore, Colli/Tag, Fläche, FTE) | Generierte Dummy-Records | gelb: "mit Scandaten wird's genauer" |
+  | **Demo** | 1 Klick | AS Gersthofen (85 Tore, 15.000 Colli, 5 Tage) | blau: "Demo-Daten" |
+- **Eckdaten-Lib:** `src/lib/eckdaten-analyse.ts`
+  - `generateRecordsFromEckdaten(eckdaten)` → 1 Tag, Nachtschicht-Profil, Pareto-Verteilung
+  - `generateDemoRecords()` → 5 Tage, 85 Tore, Hotspot Tore 10-30, 18 AS-Sektionen
+  - Beide erzeugen `ScandatenRecord[]` → gleiche Pipeline wie CSV-Upload
+- **Pipeline:** Records → `generateAutoLayout()` → `berechneMinProColli()` → `berechneBenchmark()` → `bewerteKPIs()`
 - **Auto-Layout:** Unique Stellplätze → Tore (Süd+Nord), Unique Relationen → Bereiche (Innenraum), 1 Hauptgang + 2 Quergänge
 - **Ampel-KPIs (4):**
   | KPI | Grün | Gelb | Rot |
