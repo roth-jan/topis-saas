@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import {
   TopisState,
   TopisObject,
@@ -164,7 +165,9 @@ const initialState: TopisState = {
   }
 };
 
-export const useTopisStore = create<TopisStore>((set, get) => ({
+export const useTopisStore = create<TopisStore>()(
+  persist(
+  (set, get) => ({
   ...initialState,
 
   // Undo/Redo state
@@ -465,7 +468,26 @@ export const useTopisStore = create<TopisStore>((set, get) => ({
   // Bulk Actions
   resetState: () => set({ ...initialState, undoStack: [], redoStack: [], originalLayout: null }),
   loadState: (newState) => set((state) => ({ ...state, ...newState }))
-}));
+}),
+  {
+    name: 'topis-layout',
+    partialize: (state) => ({
+      halls: state.halls,
+      activeHallId: state.activeHallId,
+      hall: state.hall,
+      objects: state.objects,
+      objectIdCounter: state.objectIdCounter,
+      paths: state.paths,
+      pathIdCounter: state.pathIdCounter,
+      pathAreas: state.pathAreas,
+      pathAreaIdCounter: state.pathAreaIdCounter,
+      gaenge: state.gaenge,
+      ffz: state.ffz,
+      conveyors: state.conveyors,
+      conveyorIdCounter: state.conveyorIdCounter,
+    }),
+  }
+));
 
 // Selector hooks for performance
 export const useObjects = () => useTopisStore((state) => state.objects);

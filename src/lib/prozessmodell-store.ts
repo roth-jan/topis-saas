@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ProzessmodellConfig, ProzessParameter, GesamtErgebnis, AbteilungDefinition } from '@/types/prozessmodell';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from '@/lib/data/prozessmodell-se';
 import { berechneMinProColli } from '@/lib/prozessrechner';
@@ -21,7 +22,9 @@ interface ProzessmodellState {
   reset: () => void;
 }
 
-export const useProzessmodellStore = create<ProzessmodellState>((set, get) => ({
+export const useProzessmodellStore = create<ProzessmodellState>()(
+  persist(
+  (set, get) => ({
   modell: PROZESSMODELL_SE,
   parameter: SE_STANDARD_PARAMETER.map((p) => ({ ...p })),
   ergebnis: null,
@@ -77,7 +80,16 @@ export const useProzessmodellStore = create<ProzessmodellState>((set, get) => ({
       parameter: SE_STANDARD_PARAMETER.map((p) => ({ ...p })),
       ergebnis: null,
     }),
-}));
+}),
+  {
+    name: 'topis-prozessmodell',
+    partialize: (state) => ({
+      modell: state.modell,
+      parameter: state.parameter,
+      ergebnis: state.ergebnis,
+    }),
+  }
+));
 
 // Selectors
 export const useProzessErgebnis = () => useProzessmodellStore((s) => s.ergebnis);

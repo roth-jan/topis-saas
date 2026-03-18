@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { ScandatenRecord, TorZuordnung, RelationZuordnung, Spaltenzuordnung } from '@/types/scandaten';
 import type { Distanzmatrix, DistanzmatrixErgebnis } from '@/types/distanzmatrix';
 import type { Fahrplan } from '@/types/torbelegung';
@@ -133,7 +134,9 @@ const defaultHeatmapConfig: HeatmapConfig = {
   intensitaet: 0.6,
 };
 
-export const useBetriebsdatenStore = create<BetriebsdatenState>((set) => ({
+export const useBetriebsdatenStore = create<BetriebsdatenState>()(
+  persist(
+  (set) => ({
   scanRecords: [],
   scandatenRecords: [],
   analyse: null,
@@ -226,7 +229,20 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>((set) => ({
       distanzmatrixErgebnis: null,
       fahrplan: null,
     }),
-}));
+}),
+  {
+    name: 'topis-betriebsdaten',
+    partialize: (state) => ({
+      scandatenRecords: state.scandatenRecords,
+      analyse: state.analyse,
+      torZuordnungen: state.torZuordnungen,
+      relationZuordnungen: state.relationZuordnungen,
+      heatmapConfig: state.heatmapConfig,
+      szenarien: state.szenarien,
+      stundenAggregation: state.stundenAggregation,
+    }),
+  }
+));
 
 // Selector hooks
 export const useHeatmapConfig = () => useBetriebsdatenStore((s) => s.heatmapConfig);
