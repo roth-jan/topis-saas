@@ -153,7 +153,7 @@ export function bewerteKPIs(
         status,
         delta: ((spitzenFaktor - 1.5) / 1.5) * 100,
         potenzialText: spitzenFaktor > 1.5
-          ? `Spitze ${((spitzenFaktor - 1) * 100).toFixed(0)}% über Durchschnitt`
+          ? `Spitzenbelastung ${((spitzenFaktor - 1) * 100).toFixed(0)}% über Durchschnitt — Überlastungsgefahr`
           : 'Gleichmäßige Auslastung',
       });
     }
@@ -173,7 +173,7 @@ export function bewerteKPIs(
   let headline = '';
   if (roteAmpeln >= 2) {
     const deltaProzent = ((ergebnis.minProColli - bestMinProColli) / bestMinProColli) * 100;
-    headline = `${Math.round(deltaProzent)}% über Benchmark. Potenzial: ${potenzialMAStunden.toFixed(0)} MA-h/Tag`;
+    headline = `${Math.round(deltaProzent)}% langsamer als Benchmark — ${potenzialMAStunden.toFixed(0)} MA-h/Tag Einsparpotenzial`;
   } else if (roteAmpeln === 1 || gelbeAmpeln >= 2) {
     headline = `Optimierungspotenzial identifiziert: ${potenzialMAStunden.toFixed(1)} MA-h/Tag`;
   } else {
