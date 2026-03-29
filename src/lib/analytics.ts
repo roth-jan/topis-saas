@@ -41,9 +41,11 @@ const DEFAULT_FFZ: FFZ = {
   name: 'Standard-Stapler',
   type: 'gabelstapler',
   mindestBreite: 3.5,
-  geschwindigkeit: 12, // km/h
+  geschwindigkeit: 12, // km/h (hier km/h weil für Wegberechnung, nicht Prozessmodell)
   aufnahmeZeit: 15, // seconds
   abgabeZeit: 12, // seconds
+  colliProBewegung: 1.2,
+  anteil: 1.0,
   maxHubhoehe: 6,
   tragkraft: 2500,
 };

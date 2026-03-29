@@ -130,16 +130,18 @@ export interface Gang {
 }
 
 // ==================== FFZ ====================
-export type FFZType = 'gabelstapler' | 'ameise' | 'schlepper' | 'agv' | 'handhubwagen' | 'kommissionierer';
+export type FFZType = 'gabelstapler' | 'schnelllaeufer' | 'langgabel' | 'ameise' | 'schlepper' | 'agv' | 'handhubwagen' | 'kommissionierer';
 
 export interface FFZ {
   id: number;
   name: string;
   type: FFZType;
   mindestBreite: number;
-  geschwindigkeit: number; // km/h
+  geschwindigkeit: number; // m/s (ACHTUNG: m/s nicht km/h!)
   aufnahmeZeit: number; // seconds
   abgabeZeit: number; // seconds
+  colliProBewegung: number; // Colli pro Fahrt/Bewegung (z.B. 1.4 für Schnelläufer, 1.2 für Stapler)
+  anteil: number; // Anteil am Gesamtprozess (0-1, z.B. 0.8 = 80%)
   maxHubhoehe?: number;
   tragkraft?: number;
 }
@@ -367,10 +369,12 @@ export const OBJECT_LABELS: Record<ObjectType, string> = {
 
 // FFZ defaults
 export const DEFAULT_FFZ: FFZ[] = [
-  { id: 1, name: 'Gabelstapler', type: 'gabelstapler', mindestBreite: 3.5, geschwindigkeit: 12, aufnahmeZeit: 15, abgabeZeit: 12, maxHubhoehe: 6, tragkraft: 2500 },
-  { id: 2, name: 'Ameise', type: 'ameise', mindestBreite: 2.5, geschwindigkeit: 6, aufnahmeZeit: 20, abgabeZeit: 15, maxHubhoehe: 0.2, tragkraft: 2000 },
-  { id: 3, name: 'Schlepper', type: 'schlepper', mindestBreite: 2.0, geschwindigkeit: 15, aufnahmeZeit: 10, abgabeZeit: 10, tragkraft: 5000 },
-  { id: 4, name: 'AGV', type: 'agv', mindestBreite: 2.0, geschwindigkeit: 5, aufnahmeZeit: 25, abgabeZeit: 25, tragkraft: 1500 },
-  { id: 5, name: 'Handhubwagen', type: 'handhubwagen', mindestBreite: 1.8, geschwindigkeit: 4, aufnahmeZeit: 30, abgabeZeit: 25, maxHubhoehe: 0.2, tragkraft: 2500 },
-  { id: 6, name: 'Kommissionierer', type: 'kommissionierer', mindestBreite: 2.2, geschwindigkeit: 8, aufnahmeZeit: 12, abgabeZeit: 10, maxHubhoehe: 3, tragkraft: 1000 },
+  { id: 1, name: 'Gabelstapler', type: 'gabelstapler', mindestBreite: 3.5, geschwindigkeit: 12, aufnahmeZeit: 15, abgabeZeit: 12, colliProBewegung: 1.2, anteil: 0, maxHubhoehe: 6, tragkraft: 2500 },
+  { id: 2, name: 'Schnelläufer', type: 'schnelllaeufer', mindestBreite: 2.0, geschwindigkeit: 8.8, aufnahmeZeit: 8, abgabeZeit: 8, colliProBewegung: 1.4, anteil: 0, maxHubhoehe: 0.3, tragkraft: 500 },
+  { id: 3, name: 'Langgabel', type: 'langgabel', mindestBreite: 2.5, geschwindigkeit: 8, aufnahmeZeit: 12, abgabeZeit: 10, colliProBewegung: 1.0, anteil: 0, tragkraft: 1500 },
+  { id: 4, name: 'Ameise', type: 'ameise', mindestBreite: 2.5, geschwindigkeit: 6, aufnahmeZeit: 20, abgabeZeit: 15, colliProBewegung: 1.0, anteil: 0, maxHubhoehe: 0.2, tragkraft: 2000 },
+  { id: 5, name: 'Schlepper', type: 'schlepper', mindestBreite: 2.0, geschwindigkeit: 15, aufnahmeZeit: 10, abgabeZeit: 10, colliProBewegung: 5.0, anteil: 0, tragkraft: 5000 },
+  { id: 6, name: 'AGV', type: 'agv', mindestBreite: 2.0, geschwindigkeit: 5, aufnahmeZeit: 25, abgabeZeit: 25, colliProBewegung: 1.0, anteil: 0, tragkraft: 1500 },
+  { id: 7, name: 'Handhubwagen', type: 'handhubwagen', mindestBreite: 1.8, geschwindigkeit: 4, aufnahmeZeit: 30, abgabeZeit: 25, colliProBewegung: 1.0, anteil: 0, maxHubhoehe: 0.2, tragkraft: 2500 },
+  { id: 8, name: 'Kommissionierer', type: 'kommissionierer', mindestBreite: 2.2, geschwindigkeit: 8, aufnahmeZeit: 12, abgabeZeit: 10, colliProBewegung: 2.0, anteil: 0, maxHubhoehe: 3, tragkraft: 1000 },
 ];
