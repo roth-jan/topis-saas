@@ -9,6 +9,7 @@ import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
 import { AnalyticsPanel } from '@/components/panels/AnalyticsPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { GuidedTour } from '@/components/editor/GuidedTour';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -26,6 +27,9 @@ export default function EditorPage() {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Command Palette (Cmd+K) */}
       <CommandPalette />
+
+      {/* Guided Tour (auto-start beim ersten Besuch) */}
+      <GuidedTour />
 
       {/* Top Toolbar */}
       <Toolbar />

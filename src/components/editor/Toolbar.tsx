@@ -88,6 +88,7 @@ import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
 import { PROJEKT_VORLAGEN, ladeProjektVorlage } from '@/lib/projekt-vorlagen';
+import { startTour } from '@/components/editor/GuidedTour';
 import {
   MousePointer2,
   Hand,
@@ -868,34 +869,34 @@ export function Toolbar() {
         <Separator orientation="vertical" className="h-6 mx-1" />
 
         {/* ============ ACTION BUTTONS ============ */}
-        <div className="flex items-center gap-1">
+        <div id="tour-aktionen" className="flex items-center gap-1">
           {/* Multi-Insert Dialog */}
           <MultiInsertDialog />
 
           {/* Matrix Dialog */}
-          <MatrixDialog />
+          <span id="tour-matrix"><MatrixDialog /></span>
 
           {/* Wegeberechnung Dialog */}
-          <WegeberechnungDialog />
+          <span id="tour-wegeberechnung"><WegeberechnungDialog /></span>
 
           {/* Hallen-Assistent Dialog */}
           <HallenAssistentDialog />
 
           {/* Tor-Kalkulation Dialog */}
-          <TorKalkulationDialog />
+          <span id="tour-torkalkulation"><TorKalkulationDialog /></span>
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 
         {/* ============ BETRIEBSDATEN & SZENARIEN ============ */}
-        <div className="flex items-center gap-1">
-          <BetriebsdatenImportDialog />
-          <ProzessmodellDialog />
-          <FlaechenbedarfDialog />
-          <BenchmarkDialog />
-          <IstSollDialog />
-          <TorbelegungDialog />
-          <SzenarienDialog />
+        <div id="tour-analyse" className="flex items-center gap-1">
+          <span id="tour-betriebsdaten"><BetriebsdatenImportDialog /></span>
+          <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
+          <span id="tour-flaechenbedarf"><FlaechenbedarfDialog /></span>
+          <span id="tour-benchmark"><BenchmarkDialog /></span>
+          <span id="tour-istsoll"><IstSollDialog /></span>
+          <span id="tour-torbelegung"><TorbelegungDialog /></span>
+          <span id="tour-szenarien"><SzenarienDialog /></span>
           {originalLayout && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -948,6 +949,24 @@ export function Toolbar() {
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
+
+        {/* ============ GUIDED TOUR ============ */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
+                onClick={() => startTour()}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                Tour
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Geführte Tour durch TOPIS starten</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* ============ THEME TOGGLE ============ */}
         <ThemeToggleSimple />
