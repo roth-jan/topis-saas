@@ -1,4 +1,0 @@
-:HL["/topis-saas/_next/static/chunks/d41ba60faff93bff.css","style"]
-:HL["/topis-saas/_next/static/chunks/1c5842915ebf480f.css","style"]
-:HL["/topis-saas/_next/static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
-0:{"buildId":"nM248PI_p7hUVCwWkNliP","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"check","paramType":null,"paramKey":"check","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
