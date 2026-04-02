@@ -100,10 +100,14 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
   },
 
   ladeModell: (modell, parameter) => {
+    // WICHTIG: FFZ-Mix zurücksetzen wenn Template gewechselt wird!
+    // Sonst rechnet z.B. Geis/Nörpel mit dem alten SE-Mix → falsche Werte.
+    // Leerer Mix = Fallback auf die modell-eigenen Parameter (colliProFahrt etc.)
     set({
       modell,
       parameter: parameter.map((p) => ({ ...p })),
       ergebnis: null,
+      ffzMix: DEFAULT_FFZ_MIX.map((e) => ({ ...e })),
     });
     get().berechne();
   },

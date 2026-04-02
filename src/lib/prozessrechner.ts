@@ -99,9 +99,11 @@ export function berechneMinProColli(
   const arbeitsstundenProTag = getParam('arbeitsstundenProTag') || 8.0;
 
   // Fallback-Werte für Rückwärtskompatibilität (wenn kein FFZ-Mix übergeben)
+  // WICHTIG: Ohne expliziten ffzMix die alten Parameter nutzen, nicht DEFAULT_FFZ_MIX!
+  // Sonst bekommen Aufrufer wie /check (die keinen Mix kennen) falsche Ergebnisse.
   const fallbackGeschwindigkeit = getParam('schnellaeuferGeschwindigkeit') || 2.44;
   const fallbackColliProFahrt = getParam('colliProFahrt') || 1;
-  const mix = ffzMix && ffzMix.length > 0 ? ffzMix : DEFAULT_FFZ_MIX;
+  const mix = ffzMix && ffzMix.length > 0 ? ffzMix : [];
 
   // Schritte mit aktualisierten Wegen berechnen
   const aktualisierteScritte: Prozessschritt[] = modell.schritte.map((schritt) => {
