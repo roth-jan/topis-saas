@@ -100,15 +100,15 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
   },
 
   ladeModell: (modell, parameter) => {
-    // SE-Template bekommt den kalibrierten Default-Mix (AS Gersthofen 60/30/10).
-    // Alle anderen Templates (Geis, Nörpel, etc.) bekommen leeren Mix →
-    // Fallback auf ihre eigenen colliProFahrt/schnellaeuferGeschwindigkeit Parameter.
-    const istSE = modell.prozessTyp === 'se';
+    // NUR das Standard-SE-Template (AS Gersthofen) bekommt den kalibrierten Default-Mix.
+    // Geis (se_geis_nuernberg), Nörpel (se_noerpel_ulm) und alle anderen bekommen
+    // leeren Mix → Fallback auf ihre eigenen colliProFahrt/geschwindigkeit Parameter.
+    const istStandardSE = modell.id === 'se_standard';
     set({
       modell,
       parameter: parameter.map((p) => ({ ...p })),
       ergebnis: null,
-      ffzMix: istSE ? DEFAULT_FFZ_MIX.map((e) => ({ ...e })) : [],
+      ffzMix: istStandardSE ? DEFAULT_FFZ_MIX.map((e) => ({ ...e })) : [],
     });
     get().berechne();
   },
