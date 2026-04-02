@@ -100,14 +100,15 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
   },
 
   ladeModell: (modell, parameter) => {
-    // WICHTIG: FFZ-Mix leeren wenn Template gewechselt wird!
-    // Leerer Mix = Fallback auf die modell-eigenen Parameter (colliProFahrt etc.)
-    // So rechnet Geis/Nörpel mit ihren eigenen Werten, nicht mit dem SE-Mix.
+    // SE-Template bekommt den kalibrierten Default-Mix (AS Gersthofen 60/30/10).
+    // Alle anderen Templates (Geis, Nörpel, etc.) bekommen leeren Mix →
+    // Fallback auf ihre eigenen colliProFahrt/schnellaeuferGeschwindigkeit Parameter.
+    const istSE = modell.prozessTyp === 'se';
     set({
       modell,
       parameter: parameter.map((p) => ({ ...p })),
       ergebnis: null,
-      ffzMix: [],
+      ffzMix: istSE ? DEFAULT_FFZ_MIX.map((e) => ({ ...e })) : [],
     });
     get().berechne();
   },
