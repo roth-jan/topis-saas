@@ -80,6 +80,7 @@ import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog'
 import { BetriebsdatenImportDialog } from '@/components/dialogs/BetriebsdatenImportDialog';
 import { SzenarienDialog } from '@/components/dialogs/SzenarienDialog';
 import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
+import { ProzessmodellImportDialog } from '@/components/dialogs/ProzessmodellImportDialog';
 import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
 import { BenchmarkDialog } from '@/components/dialogs/BenchmarkDialog';
 import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
@@ -892,6 +893,7 @@ export function Toolbar() {
         <div id="tour-analyse" className="flex items-center gap-1">
           <span id="tour-betriebsdaten"><BetriebsdatenImportDialog /></span>
           <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
+          <ProzessmodellImportDialog />
           <span id="tour-flaechenbedarf"><FlaechenbedarfDialog /></span>
           <span id="tour-benchmark"><BenchmarkDialog /></span>
           <span id="tour-istsoll"><IstSollDialog /></span>
