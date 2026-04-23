@@ -891,11 +891,13 @@ export function HallCanvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hall?.id]); // Only re-run when hall changes
 
-  // Redraw on state changes
+  // Redraw whenever `draw` reference changes. Since `draw` is a useCallback whose
+  // deps cover all render-relevant state, depending on `[draw]` here is both minimal
+  // and correct — no duplicated dep list to drift.
   useEffect(() => {
     const animationId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animationId);
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse]);
+  }, [draw]);
 
   // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {

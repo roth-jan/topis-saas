@@ -1,7 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { createDebouncedLocalStorage } from '@/lib/debounced-storage';
 import type { ProzessmodellConfig, ProzessParameter, GesamtErgebnis, AbteilungDefinition } from '@/types/prozessmodell';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from '@/lib/data/prozessmodell-se';
 import { berechneMinProColli, type FFZMixEintrag } from '@/lib/prozessrechner';
@@ -129,6 +130,7 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
 }),
   {
     name: 'topis-prozessmodell',
+    storage: createJSONStorage(() => createDebouncedLocalStorage()),
     partialize: (state) => ({
       modell: state.modell,
       parameter: state.parameter,

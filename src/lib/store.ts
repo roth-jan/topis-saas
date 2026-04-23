@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { createDebouncedLocalStorage } from './debounced-storage';
 import {
   TopisState,
   TopisObject,
@@ -23,25 +24,25 @@ const MAX_UNDO_STACK = 50;
 
 function captureLayoutSnapshot(state: TopisState): LayoutSnapshot {
   return {
-    objects: JSON.parse(JSON.stringify(state.objects)),
-    gaenge: JSON.parse(JSON.stringify(state.gaenge)),
-    ffz: JSON.parse(JSON.stringify(state.ffz)),
-    halls: JSON.parse(JSON.stringify(state.halls)),
-    paths: JSON.parse(JSON.stringify(state.paths)),
-    pathAreas: JSON.parse(JSON.stringify(state.pathAreas)),
-    conveyors: JSON.parse(JSON.stringify(state.conveyors)),
+    objects: structuredClone(state.objects),
+    gaenge: structuredClone(state.gaenge),
+    ffz: structuredClone(state.ffz),
+    halls: structuredClone(state.halls),
+    paths: structuredClone(state.paths),
+    pathAreas: structuredClone(state.pathAreas),
+    conveyors: structuredClone(state.conveyors),
   };
 }
 
 function restoreLayoutSnapshot(snapshot: LayoutSnapshot): Partial<TopisState> {
   return {
-    objects: JSON.parse(JSON.stringify(snapshot.objects)) as TopisObject[],
-    gaenge: JSON.parse(JSON.stringify(snapshot.gaenge)) as Gang[],
-    ffz: JSON.parse(JSON.stringify(snapshot.ffz)) as FFZ[],
-    halls: JSON.parse(JSON.stringify(snapshot.halls)) as Hall[],
-    paths: JSON.parse(JSON.stringify(snapshot.paths || [])) as Path[],
-    pathAreas: JSON.parse(JSON.stringify(snapshot.pathAreas || [])) as PathArea[],
-    conveyors: JSON.parse(JSON.stringify(snapshot.conveyors || [])) as Conveyor[],
+    objects: structuredClone(snapshot.objects),
+    gaenge: structuredClone(snapshot.gaenge),
+    ffz: structuredClone(snapshot.ffz),
+    halls: structuredClone(snapshot.halls),
+    paths: structuredClone(snapshot.paths ?? []),
+    pathAreas: structuredClone(snapshot.pathAreas ?? []),
+    conveyors: structuredClone(snapshot.conveyors ?? []),
     selectedObject: null,
     selectedPath: null,
     selectedGang: null,
@@ -455,13 +456,13 @@ export const useTopisStore = create<TopisStore>()(
     if (!snapshot) return;
 
     set({
-      halls: JSON.parse(JSON.stringify(snapshot.halls)),
-      objects: JSON.parse(JSON.stringify(snapshot.objects)),
-      paths: JSON.parse(JSON.stringify(snapshot.paths)),
-      pathAreas: JSON.parse(JSON.stringify(snapshot.pathAreas)),
-      gaenge: JSON.parse(JSON.stringify(snapshot.gaenge)),
-      ffz: JSON.parse(JSON.stringify(snapshot.ffz)),
-      conveyors: JSON.parse(JSON.stringify(snapshot.conveyors))
+      halls: structuredClone(snapshot.halls),
+      objects: structuredClone(snapshot.objects),
+      paths: structuredClone(snapshot.paths),
+      pathAreas: structuredClone(snapshot.pathAreas),
+      gaenge: structuredClone(snapshot.gaenge),
+      ffz: structuredClone(snapshot.ffz),
+      conveyors: structuredClone(snapshot.conveyors),
     });
   },
 
@@ -471,6 +472,7 @@ export const useTopisStore = create<TopisStore>()(
 }),
   {
     name: 'topis-layout',
+    storage: createJSONStorage(() => createDebouncedLocalStorage()),
     partialize: (state) => ({
       halls: state.halls,
       activeHallId: state.activeHallId,

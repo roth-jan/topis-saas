@@ -56,13 +56,13 @@ export function ProjektVergleichDialog() {
   const createSnapshot = (): ProjektSnapshot => {
     const metrics = calculateMetrics();
     return {
-      halls: JSON.parse(JSON.stringify(halls)),
-      objects: JSON.parse(JSON.stringify(objects)),
-      paths: JSON.parse(JSON.stringify(paths)),
-      pathAreas: JSON.parse(JSON.stringify(pathAreas)),
-      gaenge: JSON.parse(JSON.stringify(gaenge)),
-      ffz: JSON.parse(JSON.stringify(ffz)),
-      conveyors: JSON.parse(JSON.stringify(conveyors)),
+      halls: structuredClone(halls),
+      objects: structuredClone(objects),
+      paths: structuredClone(paths),
+      pathAreas: structuredClone(pathAreas),
+      gaenge: structuredClone(gaenge),
+      ffz: structuredClone(ffz),
+      conveyors: structuredClone(conveyors),
       avgDistanz: metrics.avgDistance,
       prozesszeit: metrics.processTime,
       timestamp: new Date().toISOString(),

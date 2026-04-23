@@ -1,7 +1,8 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { createDebouncedLocalStorage } from './debounced-storage';
 import type { ScandatenRecord, TorZuordnung, RelationZuordnung, Spaltenzuordnung } from '@/types/scandaten';
 import type { Distanzmatrix, DistanzmatrixErgebnis } from '@/types/distanzmatrix';
 import type { Fahrplan } from '@/types/torbelegung';
@@ -232,6 +233,7 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>()(
 }),
   {
     name: 'topis-betriebsdaten',
+    storage: createJSONStorage(() => createDebouncedLocalStorage()),
     partialize: (state) => ({
       scandatenRecords: state.scandatenRecords,
       analyse: state.analyse,
