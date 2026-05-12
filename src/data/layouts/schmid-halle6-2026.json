@@ -1843,10 +1843,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 8.0,
+      "width": 6,
+      "height": 3.5,
       "name": "60 Grob",
       "tags": [
         "kopframpe-stellplatz"
@@ -1858,10 +1858,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 14.29,
+      "width": 6,
+      "height": 3.5,
       "name": "59 Kleiner",
       "tags": [
         "kopframpe-stellplatz"
@@ -1873,10 +1873,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 20.57,
+      "width": 6,
+      "height": 3.5,
       "name": "58 Börner",
       "tags": [
         "kopframpe-stellplatz"
@@ -1888,10 +1888,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 33.14,
+      "width": 6,
+      "height": 3.5,
       "name": "56 Chefs Culinar",
       "tags": [
         "kopframpe-stellplatz"
@@ -1903,10 +1903,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 39.43,
+      "width": 6,
+      "height": 3.5,
       "name": "55 Lidl",
       "tags": [
         "kopframpe-stellplatz"
@@ -1918,10 +1918,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 45.71,
+      "width": 6,
+      "height": 3.5,
       "name": "54 Norma",
       "tags": [
         "kopframpe-stellplatz"
@@ -1933,10 +1933,10 @@
     },
     {
       "type": "custom",
-      "x": 198.0,
-      "y": 4,
-      "width": 4,
-      "height": 6,
+      "x": 190.5,
+      "y": 52.0,
+      "width": 6,
+      "height": 3.5,
       "name": "53 Silberhorn",
       "tags": [
         "kopframpe-stellplatz"
