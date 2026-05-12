@@ -1,0 +1,1313 @@
+{
+  "meta": {
+    "name": "Andreas Schmid Halle 6 (mit Anbau, 2026)",
+    "kunde": "Andreas Schmid Int. Spedition GmbH & Co. KG",
+    "standort": "Gersthofen",
+    "stand": "2026-05-12",
+    "quelle": "Hallenplan_2026.xlsx (Tim Winkler / Michael Laufenburg)",
+    "flaeche_qm": 12000,
+    "erweiterung_qm": 3600
+  },
+  "hall": {
+    "width": 173.6,
+    "height": 42,
+    "name": "Halle 6 (2026)",
+    "color": "#16213e"
+  },
+  "objects": [
+    {
+      "type": "tor",
+      "x": 121.74,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 115",
+      "torNummer": 115
+    },
+    {
+      "type": "tor",
+      "x": 121.74,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 114",
+      "torNummer": 114
+    },
+    {
+      "type": "tor",
+      "x": 117.99,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 113",
+      "torNummer": 113
+    },
+    {
+      "type": "tor",
+      "x": 114.24,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 112",
+      "torNummer": 112
+    },
+    {
+      "type": "tor",
+      "x": 110.49,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 111",
+      "torNummer": 111
+    },
+    {
+      "type": "tor",
+      "x": 106.74,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 110",
+      "torNummer": 110
+    },
+    {
+      "type": "tor",
+      "x": 102.99,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 109",
+      "torNummer": 109
+    },
+    {
+      "type": "tor",
+      "x": 99.24,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 108",
+      "torNummer": 108
+    },
+    {
+      "type": "tor",
+      "x": 95.49,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 107",
+      "torNummer": 107
+    },
+    {
+      "type": "tor",
+      "x": 91.74,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 106",
+      "torNummer": 106
+    },
+    {
+      "type": "tor",
+      "x": 87.99,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 105",
+      "torNummer": 105
+    },
+    {
+      "type": "tor",
+      "x": 84.24,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 104",
+      "torNummer": 104
+    },
+    {
+      "type": "tor",
+      "x": 80.49,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 103",
+      "torNummer": 103
+    },
+    {
+      "type": "tor",
+      "x": 76.74,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 102",
+      "torNummer": 102
+    },
+    {
+      "type": "tor",
+      "x": 72.99,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 101",
+      "torNummer": 101
+    },
+    {
+      "type": "tor",
+      "x": 66.5,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 100",
+      "torNummer": 100
+    },
+    {
+      "type": "tor",
+      "x": 56.26,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 99",
+      "torNummer": 99
+    },
+    {
+      "type": "tor",
+      "x": 52.51,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 98",
+      "torNummer": 98
+    },
+    {
+      "type": "tor",
+      "x": 47.39,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 97",
+      "torNummer": 97
+    },
+    {
+      "type": "tor",
+      "x": 43.64,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 96",
+      "torNummer": 96
+    },
+    {
+      "type": "tor",
+      "x": 39.89,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 95",
+      "torNummer": 95
+    },
+    {
+      "type": "tor",
+      "x": 36.14,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 94",
+      "torNummer": 94
+    },
+    {
+      "type": "tor",
+      "x": 32.39,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 93",
+      "torNummer": 93
+    },
+    {
+      "type": "tor",
+      "x": 36.14,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 92",
+      "torNummer": 92
+    },
+    {
+      "type": "tor",
+      "x": 39.89,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 91",
+      "torNummer": 91
+    },
+    {
+      "type": "tor",
+      "x": 43.64,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 90",
+      "torNummer": 90
+    },
+    {
+      "type": "tor",
+      "x": 47.39,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 89",
+      "torNummer": 89
+    },
+    {
+      "type": "tor",
+      "x": 51.14,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 88",
+      "torNummer": 88
+    },
+    {
+      "type": "tor",
+      "x": 54.89,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 87",
+      "torNummer": 87
+    },
+    {
+      "type": "tor",
+      "x": 58.64,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 86",
+      "torNummer": 86
+    },
+    {
+      "type": "tor",
+      "x": 62.39,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 85",
+      "torNummer": 85
+    },
+    {
+      "type": "tor",
+      "x": 66.14,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 84",
+      "torNummer": 84
+    },
+    {
+      "type": "tor",
+      "x": 72.63,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 83",
+      "torNummer": 83
+    },
+    {
+      "type": "tor",
+      "x": 77.75,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 82",
+      "torNummer": 82
+    },
+    {
+      "type": "tor",
+      "x": 81.5,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 81",
+      "torNummer": 81
+    },
+    {
+      "type": "tor",
+      "x": 85.25,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 80",
+      "torNummer": 80
+    },
+    {
+      "type": "tor",
+      "x": 93.11,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 79",
+      "torNummer": 79
+    },
+    {
+      "type": "tor",
+      "x": 103.35,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 78",
+      "torNummer": 78
+    },
+    {
+      "type": "tor",
+      "x": 107.1,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 77",
+      "torNummer": 77
+    },
+    {
+      "type": "tor",
+      "x": 110.85,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 76",
+      "torNummer": 76
+    },
+    {
+      "type": "tor",
+      "x": 114.6,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 75",
+      "torNummer": 75
+    },
+    {
+      "type": "tor",
+      "x": 118.35,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 74",
+      "torNummer": 74
+    },
+    {
+      "type": "tor",
+      "x": 122.1,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 73",
+      "torNummer": 73
+    },
+    {
+      "type": "tor",
+      "x": 125.85,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 72",
+      "torNummer": 72
+    },
+    {
+      "type": "tor",
+      "x": 129.6,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 71",
+      "torNummer": 71
+    },
+    {
+      "type": "tor",
+      "x": 133.35,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 70",
+      "torNummer": 70
+    },
+    {
+      "type": "tor",
+      "x": 137.1,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 69",
+      "torNummer": 69
+    },
+    {
+      "type": "tor",
+      "x": 140.85,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 68",
+      "torNummer": 68
+    },
+    {
+      "type": "tor",
+      "x": 144.6,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 67",
+      "torNummer": 67
+    },
+    {
+      "type": "tor",
+      "x": 148.35,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 66",
+      "torNummer": 66
+    },
+    {
+      "type": "tor",
+      "x": 152.1,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 65",
+      "torNummer": 65
+    },
+    {
+      "type": "tor",
+      "x": 155.85,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 64",
+      "torNummer": 64
+    },
+    {
+      "type": "tor",
+      "x": 159.6,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 63",
+      "torNummer": 63
+    },
+    {
+      "type": "tor",
+      "x": 163.35,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 62",
+      "torNummer": 62
+    },
+    {
+      "type": "tor",
+      "x": 167.1,
+      "y": -1.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 61",
+      "torNummer": 61
+    },
+    {
+      "type": "tor",
+      "x": 87.85,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 1",
+      "torNummer": 1
+    },
+    {
+      "type": "tor",
+      "x": 84.1,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 2",
+      "torNummer": 2
+    },
+    {
+      "type": "tor",
+      "x": 80.35,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 3",
+      "torNummer": 3
+    },
+    {
+      "type": "tor",
+      "x": 76.6,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 4",
+      "torNummer": 4
+    },
+    {
+      "type": "tor",
+      "x": 72.85,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 5",
+      "torNummer": 5
+    },
+    {
+      "type": "tor",
+      "x": 69.1,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 6",
+      "torNummer": 6
+    },
+    {
+      "type": "tor",
+      "x": 65.35,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 7",
+      "torNummer": 7
+    },
+    {
+      "type": "tor",
+      "x": 61.6,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 8",
+      "torNummer": 8
+    },
+    {
+      "type": "tor",
+      "x": 57.85,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 9",
+      "torNummer": 9
+    },
+    {
+      "type": "tor",
+      "x": 54.1,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 10",
+      "torNummer": 10
+    },
+    {
+      "type": "tor",
+      "x": 50.35,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 11",
+      "torNummer": 11
+    },
+    {
+      "type": "tor",
+      "x": 46.6,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 12",
+      "torNummer": 12
+    },
+    {
+      "type": "tor",
+      "x": 41.48,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 13",
+      "torNummer": 13
+    },
+    {
+      "type": "tor",
+      "x": 36.36,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 14",
+      "torNummer": 14
+    },
+    {
+      "type": "tor",
+      "x": 27.49,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 15",
+      "torNummer": 15
+    },
+    {
+      "type": "tor",
+      "x": 22.37,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 16",
+      "torNummer": 16
+    },
+    {
+      "type": "tor",
+      "x": 18.62,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 17",
+      "torNummer": 17
+    },
+    {
+      "type": "tor",
+      "x": 14.87,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 18",
+      "torNummer": 18
+    },
+    {
+      "type": "tor",
+      "x": 11.12,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 19",
+      "torNummer": 19
+    },
+    {
+      "type": "tor",
+      "x": 7.37,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 20",
+      "torNummer": 20
+    },
+    {
+      "type": "tor",
+      "x": 3.62,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 21",
+      "torNummer": 21
+    },
+    {
+      "type": "tor",
+      "x": 7.37,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 22",
+      "torNummer": 22
+    },
+    {
+      "type": "tor",
+      "x": 11.12,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 23",
+      "torNummer": 23
+    },
+    {
+      "type": "tor",
+      "x": 14.87,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 24",
+      "torNummer": 24
+    },
+    {
+      "type": "tor",
+      "x": 18.62,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 25",
+      "torNummer": 25
+    },
+    {
+      "type": "tor",
+      "x": 22.37,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 26",
+      "torNummer": 26
+    },
+    {
+      "type": "tor",
+      "x": 27.49,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 27",
+      "torNummer": 27
+    },
+    {
+      "type": "tor",
+      "x": 31.24,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 28",
+      "torNummer": 28
+    },
+    {
+      "type": "tor",
+      "x": 34.99,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 29",
+      "torNummer": 29
+    },
+    {
+      "type": "tor",
+      "x": 38.74,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 30",
+      "torNummer": 30
+    },
+    {
+      "type": "tor",
+      "x": 42.49,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 31",
+      "torNummer": 31
+    },
+    {
+      "type": "tor",
+      "x": 47.61,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 32",
+      "torNummer": 32
+    },
+    {
+      "type": "tor",
+      "x": 51.36,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 33",
+      "torNummer": 33
+    },
+    {
+      "type": "tor",
+      "x": 55.11,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 34",
+      "torNummer": 34
+    },
+    {
+      "type": "tor",
+      "x": 61.6,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 35",
+      "torNummer": 35
+    },
+    {
+      "type": "tor",
+      "x": 66.72,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 36",
+      "torNummer": 36
+    },
+    {
+      "type": "tor",
+      "x": 79.34,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 37",
+      "torNummer": 37
+    },
+    {
+      "type": "tor",
+      "x": 83.09,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 38",
+      "torNummer": 38
+    },
+    {
+      "type": "tor",
+      "x": 86.84,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 39",
+      "torNummer": 39
+    },
+    {
+      "type": "tor",
+      "x": 90.59,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 40",
+      "torNummer": 40
+    },
+    {
+      "type": "tor",
+      "x": 94.34,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 41",
+      "torNummer": 41
+    },
+    {
+      "type": "tor",
+      "x": 98.09,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 42",
+      "torNummer": 42
+    },
+    {
+      "type": "tor",
+      "x": 101.84,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 43",
+      "torNummer": 43
+    },
+    {
+      "type": "tor",
+      "x": 105.59,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 44",
+      "torNummer": 44
+    },
+    {
+      "type": "tor",
+      "x": 109.34,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 45",
+      "torNummer": 45
+    },
+    {
+      "type": "tor",
+      "x": 113.09,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 46",
+      "torNummer": 46
+    },
+    {
+      "type": "tor",
+      "x": 116.84,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 47",
+      "torNummer": 47
+    },
+    {
+      "type": "tor",
+      "x": 120.59,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 48",
+      "torNummer": 48
+    },
+    {
+      "type": "tor",
+      "x": 124.34,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 49",
+      "torNummer": 49
+    },
+    {
+      "type": "tor",
+      "x": 128.09,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 50",
+      "torNummer": 50
+    },
+    {
+      "type": "tor",
+      "x": 131.84,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 51",
+      "torNummer": 51
+    },
+    {
+      "type": "tor",
+      "x": 135.59,
+      "y": 40.5,
+      "width": 3.0,
+      "height": 1.5,
+      "name": "Tor 52",
+      "torNummer": 52
+    },
+    {
+      "type": "bereich",
+      "x": 66.5,
+      "y": 1.5,
+      "width": 58.24,
+      "height": 6,
+      "name": "TU AS"
+    },
+    {
+      "type": "bereich",
+      "x": 36.14,
+      "y": 1.5,
+      "width": 23.12,
+      "height": 6,
+      "name": "TU Tiroch"
+    },
+    {
+      "type": "bereich",
+      "x": 54.89,
+      "y": 1.5,
+      "width": 29.61,
+      "height": 6,
+      "name": "TU DS"
+    },
+    {
+      "type": "bereich",
+      "x": 85.25,
+      "y": 1.5,
+      "width": 3.0,
+      "height": 6,
+      "name": "TU Alexandru"
+    },
+    {
+      "type": "bereich",
+      "x": 103.35,
+      "y": 1.5,
+      "width": 10.5,
+      "height": 6,
+      "name": "TU Guth"
+    },
+    {
+      "type": "bereich",
+      "x": 114.6,
+      "y": 1.5,
+      "width": 10.5,
+      "height": 6,
+      "name": "TU Tuncay"
+    },
+    {
+      "type": "bereich",
+      "x": 125.85,
+      "y": 1.5,
+      "width": 14.25,
+      "height": 6,
+      "name": "TU Silaghi"
+    },
+    {
+      "type": "bereich",
+      "x": 140.85,
+      "y": 1.5,
+      "width": 10.5,
+      "height": 6,
+      "name": "TU Bogos"
+    },
+    {
+      "type": "bereich",
+      "x": 152.1,
+      "y": 1.5,
+      "width": 18.0,
+      "height": 6,
+      "name": "TU Yeritsan"
+    },
+    {
+      "type": "bereich",
+      "x": 76.6,
+      "y": 33,
+      "width": 14.25,
+      "height": 6,
+      "name": "TU  LT"
+    },
+    {
+      "type": "bereich",
+      "x": 46.6,
+      "y": 33,
+      "width": 29.25,
+      "height": 6,
+      "name": "Tu Ciortan"
+    },
+    {
+      "type": "bereich",
+      "x": 3.62,
+      "y": 33,
+      "width": 26.87,
+      "height": 6,
+      "name": "Entladezone"
+    },
+    {
+      "type": "bereich",
+      "x": 31.24,
+      "y": 33,
+      "width": 23.12,
+      "height": 6,
+      "name": "TU Strauß"
+    },
+    {
+      "type": "bereich",
+      "x": 55.11,
+      "y": 33,
+      "width": 34.73,
+      "height": 6,
+      "name": "TU Fischer"
+    },
+    {
+      "type": "bereich",
+      "x": 90.59,
+      "y": 33,
+      "width": 18.0,
+      "height": 6,
+      "name": "VP"
+    },
+    {
+      "type": "bereich",
+      "x": 113.09,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "Sonepar"
+    },
+    {
+      "type": "bereich",
+      "x": 116.84,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "Dehner"
+    },
+    {
+      "type": "bereich",
+      "x": 120.59,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "MAN /Everlance"
+    },
+    {
+      "type": "bereich",
+      "x": 124.34,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "Federal Mogul"
+    },
+    {
+      "type": "bereich",
+      "x": 128.09,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "Bohner"
+    },
+    {
+      "type": "bereich",
+      "x": 131.84,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "Eisen Fischer"
+    },
+    {
+      "type": "bereich",
+      "x": 135.59,
+      "y": 33,
+      "width": 3.0,
+      "height": 6,
+      "name": "Segmüller"
+    }
+  ],
+  "gaenge": [
+    {
+      "id": 1,
+      "name": "Hauptgang Nord",
+      "points": [
+        {
+          "x": 0,
+          "y": 10.5
+        },
+        {
+          "x": 173.6,
+          "y": 10.5
+        }
+      ],
+      "breite": 3.5,
+      "typ": "hauptgang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 2,
+      "name": "Hauptgang Mitte",
+      "points": [
+        {
+          "x": 0,
+          "y": 21
+        },
+        {
+          "x": 173.6,
+          "y": 21
+        }
+      ],
+      "breite": 3.5,
+      "typ": "hauptgang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 3,
+      "name": "Hauptgang Süd",
+      "points": [
+        {
+          "x": 0,
+          "y": 31.5
+        },
+        {
+          "x": 173.6,
+          "y": 31.5
+        }
+      ],
+      "breite": 3.5,
+      "typ": "hauptgang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 4,
+      "name": "Quergang 1",
+      "points": [
+        {
+          "x": 15,
+          "y": 0
+        },
+        {
+          "x": 15,
+          "y": 42
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 5,
+      "name": "Quergang 2",
+      "points": [
+        {
+          "x": 45,
+          "y": 0
+        },
+        {
+          "x": 45,
+          "y": 42
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 6,
+      "name": "Quergang 3",
+      "points": [
+        {
+          "x": 75,
+          "y": 0
+        },
+        {
+          "x": 75,
+          "y": 42
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 7,
+      "name": "Quergang 4",
+      "points": [
+        {
+          "x": 105,
+          "y": 0
+        },
+        {
+          "x": 105,
+          "y": 42
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 8,
+      "name": "Quergang 5",
+      "points": [
+        {
+          "x": 135,
+          "y": 0
+        },
+        {
+          "x": 135,
+          "y": 42
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 9,
+      "name": "Quergang 6",
+      "points": [
+        {
+          "x": 165,
+          "y": 0
+        },
+        {
+          "x": 165,
+          "y": 42
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    }
+  ]
+}
