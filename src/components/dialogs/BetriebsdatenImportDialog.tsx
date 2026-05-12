@@ -18,6 +18,7 @@ import { Database, Upload, BarChart3, Thermometer, ChevronLeft, ChevronRight, Ch
 import { toast } from 'sonner';
 import { getModusLabel } from '@/lib/heatmap-utils';
 import { SPALTEN_PROFILE, parseCsvMitProfil } from '@/lib/spaltenzuordnungen';
+import { xlsxToCSV, xlsxSheetToCSV, isExcelFile } from '@/lib/xlsx-utils';
 import type { ScandatenRecord, TorZuordnung, RelationZuordnung, Spaltenzuordnung } from '@/types/scandaten';
 
 type WizardStep = 1 | 2 | 3 | 4;
@@ -34,6 +35,11 @@ export function BetriebsdatenImportDialog() {
   const [selectedProfilId, setSelectedProfilId] = useState<string>('');
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
 
+  // Excel multi-sheet
+  const [excelSheetNames, setExcelSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string>('');
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+
   // Zuordnungen
   const [torZuordnungen, setTorZuordnungen] = useState<TorZuordnung[]>([]);
   const [relationZuordnungen, setRelationZuordnungen] = useState<RelationZuordnung[]>([]);
@@ -44,6 +50,7 @@ export function BetriebsdatenImportDialog() {
   const storeTorZuordnungen = useBetriebsdatenStore((s) => s.setTorZuordnungen);
   const storeRelationZuordnungen = useBetriebsdatenStore((s) => s.setRelationZuordnungen);
   const storeSpaltenzuordnung = useBetriebsdatenStore((s) => s.setSpaltenzuordnung);
+  const setVergleichsAnalyse = useBetriebsdatenStore((s) => s.setVergleichsAnalyse);
   const heatmapConfig = useBetriebsdatenStore((s) => s.heatmapConfig);
   const setHeatmapConfig = useBetriebsdatenStore((s) => s.setHeatmapConfig);
   const toggleHeatmap = useBetriebsdatenStore((s) => s.toggleHeatmap);
@@ -58,16 +65,50 @@ export function BetriebsdatenImportDialog() {
   );
 
   // ==================== STEP 1: Datei + Format ====================
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      setCsvText(text);
-      parseAndDetect(text);
-    };
-    reader.readAsText(file);
+
+    if (isExcelFile(file.name)) {
+      // Excel-Datei: via xlsx Library konvertieren
+      try {
+        const { csvText: csv, sheetNames, activeSheet } = await xlsxToCSV(file);
+        setExcelFile(file);
+        setExcelSheetNames(sheetNames);
+        setSelectedSheet(activeSheet);
+        setCsvText(csv);
+        parseAndDetect(csv);
+        if (sheetNames.length > 1) {
+          toast.info(`Excel mit ${sheetNames.length} Sheets geladen. Aktiv: "${activeSheet}"`);
+        }
+      } catch (err) {
+        toast.error('Fehler beim Lesen der Excel-Datei: ' + (err as Error).message);
+      }
+    } else {
+      // CSV/TXT: wie bisher
+      setExcelFile(null);
+      setExcelSheetNames([]);
+      setSelectedSheet('');
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        setCsvText(text);
+        parseAndDetect(text);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleSheetChange = async (sheetName: string) => {
+    if (!excelFile) return;
+    setSelectedSheet(sheetName);
+    try {
+      const csv = await xlsxSheetToCSV(excelFile, sheetName);
+      setCsvText(csv);
+      parseAndDetect(csv);
+    } catch (err) {
+      toast.error('Fehler beim Sheet-Wechsel: ' + (err as Error).message);
+    }
   };
 
   const parseAndDetect = useCallback(
@@ -190,6 +231,7 @@ export function BetriebsdatenImportDialog() {
       // Analyse berechnen (mit Tor-Zuordnung statt Name-Match!)
       const result = analyseWithZuordnung(parsedRecords, torZuordnungen);
       setAnalyse(result);
+      setVergleichsAnalyse(null); // Alten Vergleichsdatensatz invalidieren
       setHeatmapConfig({ aktiv: true });
 
       toast.success(
@@ -314,6 +356,9 @@ export function BetriebsdatenImportDialog() {
     setCsvHeaders([]);
     setTorZuordnungen([]);
     setRelationZuordnungen([]);
+    setExcelSheetNames([]);
+    setSelectedSheet('');
+    setExcelFile(null);
   };
 
   const canProceed = (): boolean => {
@@ -354,7 +399,7 @@ export function BetriebsdatenImportDialog() {
             Betriebsdaten importieren
           </DialogTitle>
           <DialogDescription>
-            Scandaten (CSV) importieren, Tore zuordnen und Heatmaps erstellen.
+            Scandaten (CSV/Excel) importieren, Tore zuordnen und Heatmaps erstellen.
           </DialogDescription>
         </DialogHeader>
 
@@ -385,11 +430,11 @@ export function BetriebsdatenImportDialog() {
         {step === 1 && (
           <div className="space-y-4">
             <div>
-              <Label>CSV-Datei hochladen</Label>
+              <Label>Datei hochladen (CSV, Excel)</Label>
               <div className="mt-1 flex gap-2">
                 <input
                   type="file"
-                  accept=".csv,.txt,.tsv"
+                  accept=".csv,.txt,.tsv,.xlsx,.xls"
                   onChange={handleFileUpload}
                   className="flex-1 text-sm file:mr-2 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1 file:text-sm"
                 />
@@ -399,6 +444,25 @@ export function BetriebsdatenImportDialog() {
                 </Button>
               </div>
             </div>
+
+            {/* Sheet-Auswahl bei Multi-Sheet Excel */}
+            {excelSheetNames.length > 1 && (
+              <div>
+                <Label>Excel-Sheet</Label>
+                <Select value={selectedSheet} onValueChange={handleSheetChange}>
+                  <SelectTrigger className="h-8 text-xs mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {excelSheetNames.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {csvText && (
               <>

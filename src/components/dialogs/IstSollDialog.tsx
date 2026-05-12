@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,7 +15,9 @@ import { Label } from '@/components/ui/label';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { berechneIstSoll, type IstSollAnalyse } from '@/lib/ist-soll-rechner';
-import { Clock, TrendingUp, TrendingDown, Minus, Users } from 'lucide-react';
+import { Clock, TrendingUp, TrendingDown, Minus, Users, Upload } from 'lucide-react';
+import { parseProduktivstundenExcel } from '@/lib/xlsx-utils';
+import { toast } from 'sonner';
 
 export function IstSollDialog() {
   const [open, setOpen] = useState(false);
@@ -40,8 +42,28 @@ export function IstSollDialog() {
     return berechneIstSoll(stundenAggregation, istMA, minProColli, arbeitsminProStunde, arbeitstage);
   }, [stundenAggregation, istMA, minProColli, arbeitsminProStunde, arbeitstage]);
 
+  const maFileRef = useRef<HTMLInputElement>(null);
+
   const handleIstMAChange = (stunde: number, value: number) => {
     setIstMA((prev) => ({ ...prev, [stunde]: value }));
+  };
+
+  const handleMAExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const maData = await parseProduktivstundenExcel(file);
+      const count = Object.keys(maData).length;
+      if (count === 0) {
+        toast.error('Keine MA-Daten in der Excel-Datei gefunden. Erwarte Spalten: Stunde + MA/Mitarbeiter');
+        return;
+      }
+      setIstMA(maData);
+      toast.success(`${count} Stunden mit MA-Daten aus Excel geladen`);
+    } catch (err) {
+      toast.error('Fehler: ' + (err as Error).message);
+    }
+    if (maFileRef.current) maFileRef.current.value = '';
   };
 
   // Aktive Stunden (mit Colli)
@@ -125,11 +147,31 @@ export function IstSollDialog() {
               </div>
             )}
 
-            {/* Parameter */}
-            <div className="flex gap-4 text-xs text-muted-foreground bg-muted/50 rounded p-2">
-              <span>Min/Colli: <strong>{minProColli.toFixed(3)}</strong></span>
-              <span>Arbeitsmin/h: <strong>{arbeitsminProStunde}</strong></span>
-              <span>Arbeitstage: <strong>{arbeitstage}</strong></span>
+            {/* Parameter + Excel Import */}
+            <div className="flex items-center justify-between gap-4 text-xs text-muted-foreground bg-muted/50 rounded p-2">
+              <div className="flex gap-4">
+                <span>Min/Colli: <strong>{minProColli.toFixed(3)}</strong></span>
+                <span>Arbeitsmin/h: <strong>{arbeitsminProStunde}</strong></span>
+                <span>Arbeitstage: <strong>{arbeitstage}</strong></span>
+              </div>
+              <div>
+                <input
+                  ref={maFileRef}
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleMAExcelImport}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => maFileRef.current?.click()}
+                >
+                  <Upload className="h-3 w-3 mr-1" />
+                  MA aus Excel
+                </Button>
+              </div>
             </div>
 
             {/* Stündliche Tabelle + Balken */}

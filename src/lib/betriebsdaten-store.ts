@@ -108,6 +108,9 @@ interface BetriebsdatenState {
   // Fahrplan / Torbelegung
   fahrplan: Fahrplan | null;
 
+  // Vergleichsdaten (zweiter Datensatz)
+  vergleichsAnalyse: BetriebsAnalyse | null;
+
   // Actions
   importScanRecords: (records: ScanRecord[]) => void;
   importScandatenRecords: (records: ScandatenRecord[]) => void;
@@ -125,6 +128,7 @@ interface BetriebsdatenState {
   setDistanzmatrix: (dm: Distanzmatrix | null) => void;
   setDistanzmatrixErgebnis: (erg: DistanzmatrixErgebnis | null) => void;
   setFahrplan: (fp: Fahrplan | null) => void;
+  setVergleichsAnalyse: (analyse: BetriebsAnalyse | null) => void;
   reset: () => void;
 }
 
@@ -151,6 +155,7 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>()(
   distanzmatrix: null,
   distanzmatrixErgebnis: null,
   fahrplan: null,
+  vergleichsAnalyse: null,
 
   importScanRecords: (records) => set({ scanRecords: records }),
 
@@ -213,6 +218,7 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>()(
   setDistanzmatrix: (dm) => set({ distanzmatrix: dm }),
   setDistanzmatrixErgebnis: (erg) => set({ distanzmatrixErgebnis: erg }),
   setFahrplan: (fp) => set({ fahrplan: fp }),
+  setVergleichsAnalyse: (analyse) => set({ vergleichsAnalyse: analyse }),
 
   reset: () =>
     set({
@@ -229,6 +235,7 @@ export const useBetriebsdatenStore = create<BetriebsdatenState>()(
       distanzmatrix: null,
       distanzmatrixErgebnis: null,
       fahrplan: null,
+      vergleichsAnalyse: null,
     }),
 }),
   {
@@ -257,3 +264,4 @@ export const useStundenAggregation = () => useBetriebsdatenStore((s) => s.stunde
 export const useDistanzmatrix = () => useBetriebsdatenStore((s) => s.distanzmatrix);
 export const useDistanzmatrixErgebnis = () => useBetriebsdatenStore((s) => s.distanzmatrixErgebnis);
 export const useFahrplan = () => useBetriebsdatenStore((s) => s.fahrplan);
+export const useVergleichsAnalyse = () => useBetriebsdatenStore((s) => s.vergleichsAnalyse);

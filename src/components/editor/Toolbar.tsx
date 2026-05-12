@@ -85,6 +85,10 @@ import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog'
 import { BenchmarkDialog } from '@/components/dialogs/BenchmarkDialog';
 import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
 import { TorbelegungDialog } from '@/components/dialogs/TorbelegungDialog';
+import { VergleichDialog } from '@/components/dialogs/VergleichDialog';
+import { generateReport } from '@/lib/report-generator';
+import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
+import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
@@ -168,6 +172,7 @@ import {
   RectangleHorizontal,
   Database,
   GitBranch,
+  FileText,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -257,6 +262,10 @@ export function Toolbar() {
   // Get active hall
   const activeHall = halls.find(h => h.id === activeHallId) || halls[0];
 
+  // Betriebsdaten + Prozessmodell für Report
+  const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
+  const prozessErgebnis = useProzessmodellStore((s) => s.ergebnis);
+
   const { theme, setTheme } = useTheme();
   const [showRulers, setShowRulers] = useState(true);
   const [showMeasurements, setShowMeasurements] = useState(true);
@@ -340,6 +349,24 @@ export function Toolbar() {
     const neueGaenge = generateGaenge(activeHall, objects, DEFAULT_GANG_SETTINGS);
     setGaenge(neueGaenge);
     toast.success(`${neueGaenge.length} Gänge automatisch generiert`);
+  };
+
+  // Report Export
+  const handleExportReport = () => {
+    if (!betriebsAnalyse) {
+      toast.error('Bitte zuerst Betriebsdaten importieren');
+      return;
+    }
+    const canvas = document.querySelector('canvas');
+    const canvasDataURL = canvas ? canvas.toDataURL('image/png') : undefined;
+    generateReport({
+      projektName: activeHall?.name || 'TOPIS Projekt',
+      analyse: betriebsAnalyse,
+      ergebnis: prozessErgebnis,
+      canvasDataURL,
+      halleName: activeHall?.name,
+    });
+    toast.success('PDF-Report generiert');
   };
 
   // Szenario laden
@@ -474,9 +501,9 @@ export function Toolbar() {
                   <FileJson className="mr-2 h-4 w-4" />
                   Als JSON (.topis)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.info('PDF-Export kommt bald...')}>
-                  <FileJson className="mr-2 h-4 w-4" />
-                  Als PDF
+                <DropdownMenuItem onClick={handleExportReport}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Als PDF (Report)
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
@@ -898,6 +925,13 @@ export function Toolbar() {
           <span id="tour-benchmark"><BenchmarkDialog /></span>
           <span id="tour-istsoll"><IstSollDialog /></span>
           <span id="tour-torbelegung"><TorbelegungDialog /></span>
+          <VergleichDialog />
+          {betriebsAnalyse && (
+            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleExportReport}>
+              <FileText className="h-3.5 w-3.5" />
+              Report
+            </Button>
+          )}
           <span id="tour-szenarien"><SzenarienDialog /></span>
           {originalLayout && (
             <AlertDialog>

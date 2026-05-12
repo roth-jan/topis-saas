@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { berechneSpitzenauslastung, berechneTorbelegungKPIs, berechneAnkunftsverteilung } from '@/lib/torbelegung-rechner';
@@ -27,9 +27,10 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { CalendarClock, Truck, ArrowRight, Clock } from 'lucide-react';
+import { CalendarClock, Truck, ArrowRight, Clock, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Fahrplan } from '@/types/torbelegung';
+import { parseAnkunftszeitenExcel } from '@/lib/fahrplan-import';
 
 export function TorbelegungDialog() {
   const [isOpen, setIsOpen] = useState(false);
@@ -38,6 +39,7 @@ export function TorbelegungDialog() {
 
   const fahrplan = useBetriebsdatenStore((s) => s.fahrplan);
   const setFahrplan = useBetriebsdatenStore((s) => s.setFahrplan);
+  const fahrplanFileRef = useRef<HTMLInputElement>(null);
 
   const activeFahrplan = fahrplan;
 
@@ -46,6 +48,20 @@ export function TorbelegungDialog() {
       setFahrplan(SCHMID_FAHRPLAN);
       toast.success(`Fahrplan "${SCHMID_FAHRPLAN.name}" geladen (${SCHMID_FAHRPLAN.seAnkuenfte.length} SE, ${SCHMID_FAHRPLAN.saAbfahrten.length} SA)`);
     }
+  };
+
+  const handleFahrplanExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const fp = await parseAnkunftszeitenExcel(file);
+      setFahrplan(fp);
+      toast.success(`Fahrplan aus Excel geladen: ${fp.seAnkuenfte.length} SE-Ankünfte, ${fp.torbelegung.length} Torbelegungen`);
+    } catch (err) {
+      toast.error('Fehler beim Excel-Import: ' + (err as Error).message);
+    }
+    // Reset file input
+    if (fahrplanFileRef.current) fahrplanFileRef.current.value = '';
   };
 
   // KPIs
@@ -134,13 +150,28 @@ export function TorbelegungDialog() {
           {/* Source Selection */}
           <div className="flex items-center gap-2">
             <Select value={selectedSource} onValueChange={(v) => { setSelectedSource(v); handleLoadFahrplan(v); }}>
-              <SelectTrigger className="w-80">
+              <SelectTrigger className="w-64">
                 <SelectValue placeholder="Fahrplan-Daten auswählen..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="schmid_halle6">Schmid Halle 6 ({SCHMID_FAHRPLAN.seAnkuenfte.length} SE + {SCHMID_FAHRPLAN.saAbfahrten.length} SA)</SelectItem>
               </SelectContent>
             </Select>
+            <input
+              ref={fahrplanFileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFahrplanExcelImport}
+              className="hidden"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fahrplanFileRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5 mr-1" />
+              Aus Excel
+            </Button>
             {activeFahrplan && (
               <Badge variant="secondary">{activeFahrplan.name}</Badge>
             )}

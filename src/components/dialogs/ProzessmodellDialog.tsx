@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,7 +16,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { PROZESSMODELL_TEMPLATES, getTemplateParameter } from '@/lib/data/prozessmodell-templates';
 import type { ProzessParameter } from '@/types/prozessmodell';
-import { Calculator, Settings, List, BarChart3, ChevronDown, ChevronRight } from 'lucide-react';
+import { Calculator, Settings, List, BarChart3, ChevronDown, ChevronRight, Upload } from 'lucide-react';
+import { parseProzessmodellExcel } from '@/lib/prozessmodell-import';
+import { toast } from 'sonner';
 
 export function ProzessmodellDialog() {
   const [open, setOpen] = useState(false);
@@ -51,6 +53,30 @@ export function ProzessmodellDialog() {
     return result;
   }, [modell.abteilungen]);
 
+  const excelFileRef = useRef<HTMLInputElement>(null);
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const { modell: importedModell, parameter: importedParameter } = await parseProzessmodellExcel(file);
+      // Wenn keine Parameter aus Excel, Standard-Allgemein-Parameter erzeugen
+      const params = importedParameter.length > 0 ? importedParameter : [
+        { id: 'arbeitsminProStunde', name: 'Arbeitsminuten/Stunde', einheit: 'min', standardwert: 52.9, aktuellerWert: 52.9, quelle: 'eingabe' as const, kategorie: 'allgemein' },
+        { id: 'colliProTag', name: 'Colli/Tag', einheit: 'Colli', standardwert: 15000, aktuellerWert: 15000, quelle: 'eingabe' as const, kategorie: 'allgemein' },
+        { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 138.8, aktuellerWert: 138.8, quelle: 'eingabe' as const, kategorie: 'allgemein' },
+      ];
+      ladeModell(importedModell, params);
+      const init: Record<string, boolean> = {};
+      importedModell.abteilungen.forEach((a, i) => { init[a.id] = i === 0; });
+      setExpandedAbt(init);
+      toast.success(`Prozessmodell aus Excel geladen: ${importedModell.schritte.length} Schritte, ${importedModell.abteilungen.length} Abteilungen`);
+    } catch (err) {
+      toast.error('Fehler beim Import: ' + (err as Error).message);
+    }
+    if (excelFileRef.current) excelFileRef.current.value = '';
+  };
+
   const handleModellWechsel = (templateId: string) => {
     const template = PROZESSMODELL_TEMPLATES.find((t) => t.modell.id === templateId);
     if (template) {
@@ -79,23 +105,42 @@ export function ProzessmodellDialog() {
           <DialogDescription>{modell.beschreibung}</DialogDescription>
         </DialogHeader>
 
-        {/* Modell-Auswahl */}
-        {PROZESSMODELL_TEMPLATES.length > 1 && (
-          <div className="flex items-center gap-2 mb-2">
-            <Label className="text-xs">Modell:</Label>
-            <select
-              value={modell.id}
-              onChange={(e) => handleModellWechsel(e.target.value)}
-              className="h-7 text-xs rounded border bg-background px-2"
-            >
-              {PROZESSMODELL_TEMPLATES.map((t) => (
-                <option key={t.modell.id} value={t.modell.id}>
-                  {t.modell.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        {/* Modell-Auswahl + Excel Import */}
+        <div className="flex items-center gap-2 mb-2">
+          {PROZESSMODELL_TEMPLATES.length > 1 && (
+            <>
+              <Label className="text-xs">Modell:</Label>
+              <select
+                value={modell.id}
+                onChange={(e) => handleModellWechsel(e.target.value)}
+                className="h-7 text-xs rounded border bg-background px-2"
+              >
+                {PROZESSMODELL_TEMPLATES.map((t) => (
+                  <option key={t.modell.id} value={t.modell.id}>
+                    {t.modell.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          <div className="flex-1" />
+          <input
+            ref={excelFileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleExcelImport}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => excelFileRef.current?.click()}
+          >
+            <Upload className="h-3 w-3 mr-1" />
+            Aus Excel laden
+          </Button>
+        </div>
 
         <Tabs defaultValue="ergebnis" className="mt-2">
           <TabsList className="grid w-full grid-cols-3">
