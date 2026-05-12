@@ -264,6 +264,35 @@ wobei: zeitSek = verteilweg / geschwindigkeit / colliProFahrt  (bei wegAusLayout
 - **Reuse:** `parseCsvMitProfil`, `berechneMinProColli`, `berechneBenchmark`, `StundenChart`, `BenchmarkRadar`, `getHeatmapColor`
 - **CTA:** `mailto:info@roth-logistik.de` mit vorgefülltem Betreff
 
+## ROTH-Excel-Import (Ground Truth, seit 23.04.2026)
+
+Das hart-kodierte SE-Modell in `prozessmodell-se.ts` liefert **2.040 Min/Colli** für AS Gersthofen, nicht die dokumentierten **1.917** (Commit-Message `b77d6861` vom 16.03.2026 hat nie gestimmt). Geis Nürnberg (1.95) und Nörpel Ulm (2.19) sind exakt — Drift nur bei AS, komplett im Entlader (0.956 statt 0.829).
+
+**Lösung:** `src/lib/prozessmodell-excel-import.ts` liest die offizielle ROTH-Excel (Daniel-Kaiser-Pflichtenheft V1.1) direkt und übernimmt die Excel-berechneten `Zeit gewichtet [Min/Colli]`-Werte unverändert. Kein Rückweg über den vereinfachten TOPIS-Rechner → Δ 0.0% garantiert.
+
+- **Parser:** 17 Prozessblöcke (SE/SA/AMAZON-Header in Col A), pro Block: Mengen + Parameter + Schritte mit Abteilung, Hilfsmittel, Anteil, Häufigkeit, Min/Colli
+- **Dialog:** Toolbar-Button "ROTH-Excel" (`ProzessmodellImportDialog.tsx`) — Upload → Blockliste → Detail-View mit Abteilungs-Summen + Schritt-Tabelle
+- **Validierung:** `src/lib/prozessmodell-excel-import.test.ts` — 7 synthetisch + 2 Integration-Tests gegen lokale AS-Excel (Kundendaten nicht ins Repo committet, `describe.skipIf(!asAvailable)`)
+- **Read-only** (Stufe 2 von 4): Parameter-Änderungen erfordern neues Excel + Re-Import. Stufe 3 (Parameter-Editierbarkeit) bedingt Excel-Formel-Replikation in TS — ~1 Tag Arbeit, noch nicht gebaut.
+
+**SharePoint-Quelle:** `Logistik-Beratung/20260306_Prozessmodell_AS_Aktualisiert.xlsx`. Credentials in `~/.openclaw/workspace/sharepoint_credentials.json`.
+
+## Tests
+
+- Vitest 4.1.4 (`npm test`, `npm run test:watch`). Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`.
+- 4 Test-Dateien mit insgesamt 34 Tests (32 synthetisch + 2 lokale Integration):
+  - `prozessrechner.test.ts` — SE-Baseline (2.040 als Regression-Lock + Kommentar zur 1.917-Doku-Drift), FFZ-Mix, MA-Bedarf
+  - `prozessrechner-kunden.test.ts` — Geis Nürnberg + Nörpel Ulm (beide Δ 0.0%)
+  - `pathfinding.test.ts` — buildGangGraph + A* + FFZ-Filter + L-förmiger Pfad
+  - `distanzmatrix-rechner.test.ts` — AS-Matching (122.7m), Exact/Prefix/Fallback, synthetische Minimal-Matrix
+  - `prozessmodell-excel-import.test.ts` — Block-Erkennung, Multi-Block, Folgezeilen, synthetisches Workbook-Roundtrip, AS-Integration
+
+## Performance-Fixes (seit 17.04.2026)
+
+- **`structuredClone()` statt `JSON.parse(JSON.stringify())`** in `store.ts` + `ProjektVergleichDialog.tsx` (28 Vorkommen). Bei großen Layouts 50-200ms Freeze pro Snapshot eliminiert.
+- **`HallCanvas.tsx:898` useEffect-Deps** von 26 Einträgen auf `[draw]` reduziert. `draw` ist useCallback mit korrekten Deps → `[draw]` ist minimal und drift-sicher.
+- **`src/lib/debounced-storage.ts`** — StateStorage-Adapter für Zustand-persist. 300ms Default-Delay, flush auf `pagehide`. In allen 3 Stores aktiv (`topis-layout`, `topis-betriebsdaten`, `topis-prozessmodell`). Batch-Wegeberechnung (3315 Pfade) schreibt nicht mehr 3315× auf localStorage.
+
 ## Entwicklung
 
 ### Setup
