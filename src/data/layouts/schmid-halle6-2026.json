@@ -3,17 +3,17 @@
     "name": "Andreas Schmid Halle 6 (mit Anbau, 2026)",
     "kunde": "Andreas Schmid Int. Spedition GmbH & Co. KG",
     "standort": "Gersthofen",
-    "stand": "2026-05-12",
-    "quelle": "Hallenplan_2026.xlsx Tab SE (Tim Winkler / Michael Laufenburg), v3: Rechteck-Annahme",
+    "stand": "2026-05-12 v4",
+    "quelle": "Hallenplan_2026.xlsx Tab SE (Tim Winkler / Michael Laufenburg), v4: kollisionsfrei",
     "flaeche_qm": 12000,
     "erweiterung_qm": 3600,
-    "methode": "Rechteck 200×60m (Annahme, 12.000m² laut Angebot). Tore gleichmäßig verteilt. Kopframpe mit Toren 53-60 in der Nord-Ost-Ecke (im Norden, laut Jan).",
-    "todo": "Echte Maße LxB von AS/Michael/Tim einholen, dann skalieren."
+    "methode": "Rechteck 200×60m (Annahme, 12.000m²). 48 Nord-Tore (61-115 ohne 79,88-93), 52 Süd-Tore (1-52), 8 Kopframpe (53-60 an Ost-Wand). Tore 2.8m breit, Spacing >3.7m (kollisionsfrei). Bereiche y<28 oder y>32 (Hauptgang Mitte y=30 frei). MPs auf Hauptgang positioniert.",
+    "todo": "Echte Maße LxB von AS/Michael/Tim einholen."
   },
   "hall": {
     "width": 200.0,
     "height": 60.0,
-    "name": "Halle 6 (2026) – 200×60m (Annahme)",
+    "name": "Halle 6 (2026) – 200×60m",
     "color": "#1a1a2e"
   },
   "objects": [
@@ -21,7 +21,7 @@
       "type": "tor",
       "x": 4.0,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 1",
       "torNummer": 1,
@@ -35,9 +35,9 @@
     },
     {
       "type": "tor",
-      "x": 7.7,
+      "x": 7.71,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 2",
       "torNummer": 2,
@@ -51,9 +51,9 @@
     },
     {
       "type": "tor",
-      "x": 11.39,
+      "x": 11.42,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 3",
       "torNummer": 3,
@@ -67,9 +67,9 @@
     },
     {
       "type": "tor",
-      "x": 15.09,
+      "x": 15.13,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 4",
       "torNummer": 4,
@@ -83,9 +83,9 @@
     },
     {
       "type": "tor",
-      "x": 18.78,
+      "x": 18.84,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 5",
       "torNummer": 5,
@@ -99,9 +99,9 @@
     },
     {
       "type": "tor",
-      "x": 22.48,
+      "x": 22.55,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 6",
       "torNummer": 6,
@@ -115,9 +115,9 @@
     },
     {
       "type": "tor",
-      "x": 26.18,
+      "x": 26.26,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 7",
       "torNummer": 7,
@@ -131,9 +131,9 @@
     },
     {
       "type": "tor",
-      "x": 29.87,
+      "x": 29.97,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 8",
       "torNummer": 8,
@@ -147,9 +147,9 @@
     },
     {
       "type": "tor",
-      "x": 33.57,
+      "x": 33.68,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 9",
       "torNummer": 9,
@@ -163,9 +163,9 @@
     },
     {
       "type": "tor",
-      "x": 37.26,
+      "x": 37.39,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 10",
       "torNummer": 10,
@@ -179,9 +179,9 @@
     },
     {
       "type": "tor",
-      "x": 40.96,
+      "x": 41.1,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 11",
       "torNummer": 11,
@@ -195,9 +195,9 @@
     },
     {
       "type": "tor",
-      "x": 44.66,
+      "x": 44.81,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 12",
       "torNummer": 12,
@@ -211,27 +211,27 @@
     },
     {
       "type": "tor",
-      "x": 48.35,
+      "x": 48.52,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 13",
       "torNummer": 13
     },
     {
       "type": "tor",
-      "x": 52.05,
+      "x": 52.23,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 14",
       "torNummer": 14
     },
     {
       "type": "tor",
-      "x": 55.75,
+      "x": 55.94,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 15",
       "torNummer": 15,
@@ -245,9 +245,9 @@
     },
     {
       "type": "tor",
-      "x": 59.44,
+      "x": 59.65,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 16",
       "torNummer": 16,
@@ -261,9 +261,9 @@
     },
     {
       "type": "tor",
-      "x": 63.14,
+      "x": 63.36,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 17",
       "torNummer": 17,
@@ -277,9 +277,9 @@
     },
     {
       "type": "tor",
-      "x": 66.83,
+      "x": 67.07,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 18",
       "torNummer": 18,
@@ -293,9 +293,9 @@
     },
     {
       "type": "tor",
-      "x": 70.53,
+      "x": 70.78,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 19",
       "torNummer": 19,
@@ -309,9 +309,9 @@
     },
     {
       "type": "tor",
-      "x": 74.23,
+      "x": 74.49,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 20",
       "torNummer": 20,
@@ -325,9 +325,9 @@
     },
     {
       "type": "tor",
-      "x": 77.92,
+      "x": 78.2,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 21",
       "torNummer": 21,
@@ -341,9 +341,9 @@
     },
     {
       "type": "tor",
-      "x": 81.62,
+      "x": 81.91,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 22",
       "torNummer": 22,
@@ -357,9 +357,9 @@
     },
     {
       "type": "tor",
-      "x": 85.31,
+      "x": 85.62,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 23",
       "torNummer": 23,
@@ -373,9 +373,9 @@
     },
     {
       "type": "tor",
-      "x": 89.01,
+      "x": 89.33,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 24",
       "torNummer": 24,
@@ -389,9 +389,9 @@
     },
     {
       "type": "tor",
-      "x": 92.71,
+      "x": 93.04,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 25",
       "torNummer": 25,
@@ -405,9 +405,9 @@
     },
     {
       "type": "tor",
-      "x": 96.4,
+      "x": 96.75,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 26",
       "torNummer": 26,
@@ -421,9 +421,9 @@
     },
     {
       "type": "tor",
-      "x": 100.1,
+      "x": 100.45,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 27",
       "torNummer": 27,
@@ -437,9 +437,9 @@
     },
     {
       "type": "tor",
-      "x": 103.79,
+      "x": 104.16,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 28",
       "torNummer": 28,
@@ -453,9 +453,9 @@
     },
     {
       "type": "tor",
-      "x": 107.49,
+      "x": 107.87,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 29",
       "torNummer": 29,
@@ -469,9 +469,9 @@
     },
     {
       "type": "tor",
-      "x": 111.19,
+      "x": 111.58,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 30",
       "torNummer": 30,
@@ -485,9 +485,9 @@
     },
     {
       "type": "tor",
-      "x": 114.88,
+      "x": 115.29,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 31",
       "torNummer": 31,
@@ -501,9 +501,9 @@
     },
     {
       "type": "tor",
-      "x": 118.58,
+      "x": 119.0,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 32",
       "torNummer": 32,
@@ -517,9 +517,9 @@
     },
     {
       "type": "tor",
-      "x": 122.27,
+      "x": 122.71,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 33",
       "torNummer": 33,
@@ -533,9 +533,9 @@
     },
     {
       "type": "tor",
-      "x": 125.97,
+      "x": 126.42,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 34",
       "torNummer": 34,
@@ -549,9 +549,9 @@
     },
     {
       "type": "tor",
-      "x": 129.67,
+      "x": 130.13,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 35",
       "torNummer": 35,
@@ -565,9 +565,9 @@
     },
     {
       "type": "tor",
-      "x": 133.36,
+      "x": 133.84,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 36",
       "torNummer": 36,
@@ -581,9 +581,9 @@
     },
     {
       "type": "tor",
-      "x": 137.06,
+      "x": 137.55,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 37",
       "torNummer": 37,
@@ -597,9 +597,9 @@
     },
     {
       "type": "tor",
-      "x": 140.75,
+      "x": 141.26,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 38",
       "torNummer": 38,
@@ -613,9 +613,9 @@
     },
     {
       "type": "tor",
-      "x": 144.45,
+      "x": 144.97,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 39",
       "torNummer": 39,
@@ -629,9 +629,9 @@
     },
     {
       "type": "tor",
-      "x": 148.15,
+      "x": 148.68,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 40",
       "torNummer": 40,
@@ -645,9 +645,9 @@
     },
     {
       "type": "tor",
-      "x": 151.84,
+      "x": 152.39,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 41",
       "torNummer": 41,
@@ -661,9 +661,9 @@
     },
     {
       "type": "tor",
-      "x": 155.54,
+      "x": 156.1,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 42",
       "torNummer": 42,
@@ -677,9 +677,9 @@
     },
     {
       "type": "tor",
-      "x": 159.24,
+      "x": 159.81,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 43",
       "torNummer": 43,
@@ -693,9 +693,9 @@
     },
     {
       "type": "tor",
-      "x": 162.93,
+      "x": 163.52,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 44",
       "torNummer": 44,
@@ -709,18 +709,18 @@
     },
     {
       "type": "tor",
-      "x": 166.63,
+      "x": 167.23,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 45",
       "torNummer": 45
     },
     {
       "type": "tor",
-      "x": 170.32,
+      "x": 170.94,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 46",
       "torNummer": 46,
@@ -734,9 +734,9 @@
     },
     {
       "type": "tor",
-      "x": 174.02,
+      "x": 174.65,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 47",
       "torNummer": 47,
@@ -750,9 +750,9 @@
     },
     {
       "type": "tor",
-      "x": 177.72,
+      "x": 178.36,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 48",
       "torNummer": 48,
@@ -766,9 +766,9 @@
     },
     {
       "type": "tor",
-      "x": 181.41,
+      "x": 182.07,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 49",
       "torNummer": 49,
@@ -782,9 +782,9 @@
     },
     {
       "type": "tor",
-      "x": 185.11,
+      "x": 185.78,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 50",
       "torNummer": 50,
@@ -798,9 +798,9 @@
     },
     {
       "type": "tor",
-      "x": 188.8,
+      "x": 189.49,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 51",
       "torNummer": 51,
@@ -814,9 +814,9 @@
     },
     {
       "type": "tor",
-      "x": 192.5,
+      "x": 193.2,
       "y": 58.5,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 52",
       "torNummer": 52,
@@ -832,7 +832,7 @@
       "type": "tor",
       "x": 4.0,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 115",
       "torNummer": 115,
@@ -846,9 +846,9 @@
     },
     {
       "type": "tor",
-      "x": 6.92,
+      "x": 7.5,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 114",
       "torNummer": 114,
@@ -862,9 +862,9 @@
     },
     {
       "type": "tor",
-      "x": 9.83,
+      "x": 11.01,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 113",
       "torNummer": 113,
@@ -878,9 +878,9 @@
     },
     {
       "type": "tor",
-      "x": 12.75,
+      "x": 14.51,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 112",
       "torNummer": 112,
@@ -894,9 +894,9 @@
     },
     {
       "type": "tor",
-      "x": 15.67,
+      "x": 18.01,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 111",
       "torNummer": 111,
@@ -910,9 +910,9 @@
     },
     {
       "type": "tor",
-      "x": 18.58,
+      "x": 21.52,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 110",
       "torNummer": 110,
@@ -926,9 +926,9 @@
     },
     {
       "type": "tor",
-      "x": 21.5,
+      "x": 25.02,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 109",
       "torNummer": 109,
@@ -942,9 +942,9 @@
     },
     {
       "type": "tor",
-      "x": 24.42,
+      "x": 28.53,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 108",
       "torNummer": 108,
@@ -958,9 +958,9 @@
     },
     {
       "type": "tor",
-      "x": 27.33,
+      "x": 32.03,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 107",
       "torNummer": 107,
@@ -974,9 +974,9 @@
     },
     {
       "type": "tor",
-      "x": 30.25,
+      "x": 35.53,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 106",
       "torNummer": 106,
@@ -990,9 +990,9 @@
     },
     {
       "type": "tor",
-      "x": 33.17,
+      "x": 39.04,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 105",
       "torNummer": 105,
@@ -1006,9 +1006,9 @@
     },
     {
       "type": "tor",
-      "x": 36.08,
+      "x": 42.54,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 104",
       "torNummer": 104,
@@ -1022,9 +1022,9 @@
     },
     {
       "type": "tor",
-      "x": 39.0,
+      "x": 46.04,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 103",
       "torNummer": 103,
@@ -1038,9 +1038,9 @@
     },
     {
       "type": "tor",
-      "x": 41.92,
+      "x": 49.55,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 102",
       "torNummer": 102,
@@ -1054,9 +1054,9 @@
     },
     {
       "type": "tor",
-      "x": 44.83,
+      "x": 53.05,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 101",
       "torNummer": 101,
@@ -1070,9 +1070,9 @@
     },
     {
       "type": "tor",
-      "x": 47.75,
+      "x": 56.56,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 100",
       "torNummer": 100,
@@ -1086,9 +1086,9 @@
     },
     {
       "type": "tor",
-      "x": 50.67,
+      "x": 60.06,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 99",
       "torNummer": 99,
@@ -1102,9 +1102,9 @@
     },
     {
       "type": "tor",
-      "x": 53.58,
+      "x": 63.56,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 98",
       "torNummer": 98,
@@ -1118,9 +1118,9 @@
     },
     {
       "type": "tor",
-      "x": 56.5,
+      "x": 67.07,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 97",
       "torNummer": 97,
@@ -1134,9 +1134,9 @@
     },
     {
       "type": "tor",
-      "x": 59.42,
+      "x": 70.57,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 96",
       "torNummer": 96,
@@ -1150,9 +1150,9 @@
     },
     {
       "type": "tor",
-      "x": 62.33,
+      "x": 74.07,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 95",
       "torNummer": 95,
@@ -1166,9 +1166,9 @@
     },
     {
       "type": "tor",
-      "x": 65.25,
+      "x": 77.58,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 94",
       "torNummer": 94,
@@ -1182,63 +1182,63 @@
     },
     {
       "type": "tor",
-      "x": 68.17,
+      "x": 81.08,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 93",
       "torNummer": 93
     },
     {
       "type": "tor",
-      "x": 71.08,
+      "x": 84.59,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 92",
       "torNummer": 92
     },
     {
       "type": "tor",
-      "x": 74.0,
+      "x": 88.09,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 91",
       "torNummer": 91
     },
     {
       "type": "tor",
-      "x": 76.92,
+      "x": 91.59,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 90",
       "torNummer": 90
     },
     {
       "type": "tor",
-      "x": 79.83,
+      "x": 95.1,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 89",
       "torNummer": 89
     },
     {
       "type": "tor",
-      "x": 82.75,
+      "x": 98.6,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 88",
       "torNummer": 88
     },
     {
       "type": "tor",
-      "x": 85.67,
+      "x": 102.1,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 87",
       "torNummer": 87,
@@ -1252,9 +1252,9 @@
     },
     {
       "type": "tor",
-      "x": 88.58,
+      "x": 105.61,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 86",
       "torNummer": 86,
@@ -1268,9 +1268,9 @@
     },
     {
       "type": "tor",
-      "x": 91.5,
+      "x": 109.11,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 85",
       "torNummer": 85,
@@ -1284,9 +1284,9 @@
     },
     {
       "type": "tor",
-      "x": 94.42,
+      "x": 112.61,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 84",
       "torNummer": 84,
@@ -1300,9 +1300,9 @@
     },
     {
       "type": "tor",
-      "x": 97.33,
+      "x": 116.12,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 83",
       "torNummer": 83,
@@ -1316,9 +1316,9 @@
     },
     {
       "type": "tor",
-      "x": 100.25,
+      "x": 119.62,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 82",
       "torNummer": 82,
@@ -1332,9 +1332,9 @@
     },
     {
       "type": "tor",
-      "x": 103.17,
+      "x": 123.13,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 81",
       "torNummer": 81,
@@ -1348,9 +1348,9 @@
     },
     {
       "type": "tor",
-      "x": 106.08,
+      "x": 126.63,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 80",
       "torNummer": 80,
@@ -1364,18 +1364,18 @@
     },
     {
       "type": "tor",
-      "x": 109.0,
+      "x": 130.13,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 79",
       "torNummer": 79
     },
     {
       "type": "tor",
-      "x": 111.92,
+      "x": 133.64,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 78",
       "torNummer": 78,
@@ -1389,9 +1389,9 @@
     },
     {
       "type": "tor",
-      "x": 114.83,
+      "x": 137.14,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 77",
       "torNummer": 77,
@@ -1405,9 +1405,9 @@
     },
     {
       "type": "tor",
-      "x": 117.75,
+      "x": 140.64,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 76",
       "torNummer": 76,
@@ -1421,9 +1421,9 @@
     },
     {
       "type": "tor",
-      "x": 120.67,
+      "x": 144.15,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 75",
       "torNummer": 75,
@@ -1437,9 +1437,9 @@
     },
     {
       "type": "tor",
-      "x": 123.58,
+      "x": 147.65,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 74",
       "torNummer": 74,
@@ -1453,9 +1453,9 @@
     },
     {
       "type": "tor",
-      "x": 126.5,
+      "x": 151.16,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 73",
       "torNummer": 73,
@@ -1469,9 +1469,9 @@
     },
     {
       "type": "tor",
-      "x": 129.42,
+      "x": 154.66,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 72",
       "torNummer": 72,
@@ -1485,9 +1485,9 @@
     },
     {
       "type": "tor",
-      "x": 132.33,
+      "x": 158.16,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 71",
       "torNummer": 71,
@@ -1501,9 +1501,9 @@
     },
     {
       "type": "tor",
-      "x": 135.25,
+      "x": 161.67,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 70",
       "torNummer": 70,
@@ -1517,9 +1517,9 @@
     },
     {
       "type": "tor",
-      "x": 138.17,
+      "x": 165.17,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 69",
       "torNummer": 69,
@@ -1533,9 +1533,9 @@
     },
     {
       "type": "tor",
-      "x": 141.08,
+      "x": 168.67,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 68",
       "torNummer": 68,
@@ -1549,9 +1549,9 @@
     },
     {
       "type": "tor",
-      "x": 144.0,
+      "x": 172.18,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 67",
       "torNummer": 67,
@@ -1565,9 +1565,9 @@
     },
     {
       "type": "tor",
-      "x": 146.92,
+      "x": 175.68,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 66",
       "torNummer": 66,
@@ -1581,9 +1581,9 @@
     },
     {
       "type": "tor",
-      "x": 149.83,
+      "x": 179.19,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 65",
       "torNummer": 65,
@@ -1597,9 +1597,9 @@
     },
     {
       "type": "tor",
-      "x": 152.75,
+      "x": 182.69,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 64",
       "torNummer": 64,
@@ -1613,9 +1613,9 @@
     },
     {
       "type": "tor",
-      "x": 155.67,
+      "x": 186.19,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 63",
       "torNummer": 63,
@@ -1629,9 +1629,9 @@
     },
     {
       "type": "tor",
-      "x": 158.58,
+      "x": 189.7,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 62",
       "torNummer": 62,
@@ -1645,9 +1645,9 @@
     },
     {
       "type": "tor",
-      "x": 161.5,
+      "x": 193.2,
       "y": 0,
-      "width": 3.5,
+      "width": 2.8,
       "height": 1.5,
       "name": "Tor 61",
       "torNummer": 61,
@@ -1662,191 +1662,156 @@
     {
       "type": "tor",
       "x": 198.5,
-      "y": 8.0,
+      "y": 10.0,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 60",
       "torNummer": 60,
-      "tags": [
-        "Kunde: Grob"
-      ],
       "meta": {
-        "sektion": "Kunde: Grob",
-        "seite": "Kopframpe Nord",
         "kunde": "Grob"
       }
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 14.29,
+      "y": 15.43,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 59",
       "torNummer": 59,
-      "tags": [
-        "Kunde: Kleiner"
-      ],
       "meta": {
-        "sektion": "Kunde: Kleiner",
-        "seite": "Kopframpe Nord",
         "kunde": "Kleiner"
       }
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 20.57,
+      "y": 20.86,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 58",
       "torNummer": 58,
-      "tags": [
-        "Kunde: Börner"
-      ],
       "meta": {
-        "sektion": "Kunde: Börner",
-        "seite": "Kopframpe Nord",
         "kunde": "Börner"
       }
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 26.86,
+      "y": 26.29,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 57",
       "torNummer": 57
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 33.14,
+      "y": 31.71,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 56",
       "torNummer": 56,
-      "tags": [
-        "Kunde: Chefs Culinar"
-      ],
       "meta": {
-        "sektion": "Kunde: Chefs Culinar",
-        "seite": "Kopframpe Nord",
         "kunde": "Chefs Culinar"
       }
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 39.43,
+      "y": 37.14,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 55",
       "torNummer": 55,
-      "tags": [
-        "Kunde: Lidl"
-      ],
       "meta": {
-        "sektion": "Kunde: Lidl",
-        "seite": "Kopframpe Nord",
         "kunde": "Lidl"
       }
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 45.71,
+      "y": 42.57,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 54",
       "torNummer": 54,
-      "tags": [
-        "Kunde: Norma"
-      ],
       "meta": {
-        "sektion": "Kunde: Norma",
-        "seite": "Kopframpe Nord",
         "kunde": "Norma"
       }
     },
     {
       "type": "tor",
       "x": 198.5,
-      "y": 52.0,
+      "y": 48.0,
       "width": 1.5,
-      "height": 3.5,
+      "height": 2.8,
       "name": "Tor 53",
       "torNummer": 53,
-      "tags": [
-        "Kunde: Silberhorn"
-      ],
       "meta": {
-        "sektion": "Kunde: Silberhorn",
-        "seite": "Kopframpe Nord",
         "kunde": "Silberhorn"
       }
     },
     {
       "type": "bereich",
-      "x": 30,
-      "y": 12,
-      "width": 6,
-      "height": 22,
+      "x": 12,
+      "y": 8,
+      "width": 5,
+      "height": 20,
       "name": "Langgut 6.1",
       "color": "#bfdbfe"
     },
     {
       "type": "bereich",
-      "x": 55,
-      "y": 12,
-      "width": 18,
-      "height": 18,
+      "x": 22,
+      "y": 10,
+      "width": 16,
+      "height": 16,
       "name": "Pufferplatz SE",
       "color": "#fecaca"
     },
     {
       "type": "bereich",
-      "x": 78,
-      "y": 18,
-      "width": 8,
-      "height": 8,
+      "x": 42,
+      "y": 14,
+      "width": 7,
+      "height": 10,
       "name": "AV / AD",
       "color": "#fde68a"
     },
     {
       "type": "bereich",
-      "x": 90,
-      "y": 12,
-      "width": 6,
-      "height": 22,
+      "x": 54,
+      "y": 8,
+      "width": 4,
+      "height": 20,
       "name": "Langgut 6.2",
       "color": "#bfdbfe"
     },
     {
       "type": "bereich",
-      "x": 105,
-      "y": 28,
+      "x": 63,
+      "y": 21,
       "width": 22,
-      "height": 5,
+      "height": 4,
       "name": "Langgut 6.3",
       "color": "#bfdbfe"
     },
     {
       "type": "bereich",
-      "x": 135,
-      "y": 12,
+      "x": 90,
+      "y": 8,
       "width": 18,
-      "height": 22,
+      "height": 20,
       "name": "AS 99",
       "color": "#d8b4fe"
     },
     {
       "type": "custom",
       "x": 190.5,
-      "y": 8.0,
+      "y": 10.0,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "60 Grob",
       "tags": [
         "kopframpe-stellplatz"
@@ -1859,9 +1824,9 @@
     {
       "type": "custom",
       "x": 190.5,
-      "y": 14.29,
+      "y": 15.43,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "59 Kleiner",
       "tags": [
         "kopframpe-stellplatz"
@@ -1874,9 +1839,9 @@
     {
       "type": "custom",
       "x": 190.5,
-      "y": 20.57,
+      "y": 20.86,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "58 Börner",
       "tags": [
         "kopframpe-stellplatz"
@@ -1889,9 +1854,9 @@
     {
       "type": "custom",
       "x": 190.5,
-      "y": 33.14,
+      "y": 31.71,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "56 Chefs Culinar",
       "tags": [
         "kopframpe-stellplatz"
@@ -1904,9 +1869,9 @@
     {
       "type": "custom",
       "x": 190.5,
-      "y": 39.43,
+      "y": 37.14,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "55 Lidl",
       "tags": [
         "kopframpe-stellplatz"
@@ -1919,9 +1884,9 @@
     {
       "type": "custom",
       "x": 190.5,
-      "y": 45.71,
+      "y": 42.57,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "54 Norma",
       "tags": [
         "kopframpe-stellplatz"
@@ -1934,9 +1899,9 @@
     {
       "type": "custom",
       "x": 190.5,
-      "y": 52.0,
+      "y": 48.0,
       "width": 6,
-      "height": 3.5,
+      "height": 2.8,
       "name": "53 Silberhorn",
       "tags": [
         "kopframpe-stellplatz"
@@ -1948,7 +1913,7 @@
     },
     {
       "type": "custom",
-      "x": 18.75,
+      "x": 4.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -1965,7 +1930,7 @@
     },
     {
       "type": "custom",
-      "x": 48.75,
+      "x": 38.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -1982,7 +1947,7 @@
     },
     {
       "type": "custom",
-      "x": 78.75,
+      "x": 58.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -1999,7 +1964,7 @@
     },
     {
       "type": "custom",
-      "x": 108.75,
+      "x": 84.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -2016,7 +1981,7 @@
     },
     {
       "type": "custom",
-      "x": 134.75,
+      "x": 113.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -2033,7 +1998,7 @@
     },
     {
       "type": "custom",
-      "x": 154.75,
+      "x": 143.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -2050,7 +2015,7 @@
     },
     {
       "type": "custom",
-      "x": 174.75,
+      "x": 173.75,
       "y": 28.75,
       "width": 2.5,
       "height": 2.5,
@@ -2064,6 +2029,118 @@
         "code": "MP7",
         "rolle": "SA Verladung FV"
       }
+    },
+    {
+      "type": "custom",
+      "x": 130.13,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 79",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "79",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
+    },
+    {
+      "type": "custom",
+      "x": 98.6,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 88",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "88",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
+    },
+    {
+      "type": "custom",
+      "x": 95.1,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 89",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "89",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
+    },
+    {
+      "type": "custom",
+      "x": 91.59,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 90",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "90",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
+    },
+    {
+      "type": "custom",
+      "x": 88.09,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 91",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "91",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
+    },
+    {
+      "type": "custom",
+      "x": 84.59,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 92",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "92",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
+    },
+    {
+      "type": "custom",
+      "x": 81.08,
+      "y": 0,
+      "width": 2.8,
+      "height": 1.5,
+      "name": "Durchgang 93",
+      "tags": [
+        "tordurchgang"
+      ],
+      "meta": {
+        "nr": "93",
+        "hinweis": "Im Excel keine ■, vermutlich Tür/Ausgang"
+      },
+      "color": "#475569"
     }
   ],
   "gaenge": [
@@ -2073,14 +2150,14 @@
       "points": [
         {
           "x": 0,
-          "y": 8
+          "y": 6
         },
         {
-          "x": 200.0,
-          "y": 8
+          "x": 195.0,
+          "y": 6
         }
       ],
-      "breite": 3.5,
+      "breite": 3.0,
       "typ": "hauptgang",
       "farbe": "#22c55e"
     },
@@ -2093,11 +2170,11 @@
           "y": 30
         },
         {
-          "x": 200.0,
+          "x": 195.0,
           "y": 30
         }
       ],
-      "breite": 4.0,
+      "breite": 3.0,
       "typ": "hauptgang",
       "farbe": "#22c55e"
     },
@@ -2107,116 +2184,65 @@
       "points": [
         {
           "x": 0,
-          "y": 52
+          "y": 54
         },
         {
-          "x": 200.0,
-          "y": 52
+          "x": 195.0,
+          "y": 54
         }
       ],
-      "breite": 3.5,
+      "breite": 3.0,
       "typ": "hauptgang",
       "farbe": "#22c55e"
     },
     {
       "id": 4,
-      "name": "Quergang 1",
+      "name": "Quergang West",
       "points": [
         {
-          "x": 20,
+          "x": 8,
           "y": 1.5
         },
         {
-          "x": 20,
-          "y": 58.5
+          "x": 8,
+          "y": 57.2
         }
       ],
-      "breite": 3,
+      "breite": 3.0,
       "typ": "quergang",
       "farbe": "#22c55e"
     },
     {
       "id": 5,
-      "name": "Quergang 2",
+      "name": "Quergang Mitte",
       "points": [
         {
-          "x": 50,
+          "x": 88,
           "y": 1.5
         },
         {
-          "x": 50,
-          "y": 58.5
+          "x": 88,
+          "y": 57.2
         }
       ],
-      "breite": 3,
+      "breite": 3.0,
       "typ": "quergang",
       "farbe": "#22c55e"
     },
     {
       "id": 6,
-      "name": "Quergang 3",
+      "name": "Quergang Ost",
       "points": [
         {
-          "x": 80,
+          "x": 190,
           "y": 1.5
         },
         {
-          "x": 80,
-          "y": 58.5
+          "x": 190,
+          "y": 57.2
         }
       ],
-      "breite": 3,
-      "typ": "quergang",
-      "farbe": "#22c55e"
-    },
-    {
-      "id": 7,
-      "name": "Quergang 4",
-      "points": [
-        {
-          "x": 110,
-          "y": 1.5
-        },
-        {
-          "x": 110,
-          "y": 58.5
-        }
-      ],
-      "breite": 3,
-      "typ": "quergang",
-      "farbe": "#22c55e"
-    },
-    {
-      "id": 8,
-      "name": "Quergang 5",
-      "points": [
-        {
-          "x": 140,
-          "y": 1.5
-        },
-        {
-          "x": 140,
-          "y": 58.5
-        }
-      ],
-      "breite": 3,
-      "typ": "quergang",
-      "farbe": "#22c55e"
-    },
-    {
-      "id": 9,
-      "name": "Quergang 6",
-      "points": [
-        {
-          "x": 170,
-          "y": 1.5
-        },
-        {
-          "x": 170,
-          "y": 58.5
-        }
-      ],
-      "breite": 3,
+      "breite": 3.0,
       "typ": "quergang",
       "farbe": "#22c55e"
     }
