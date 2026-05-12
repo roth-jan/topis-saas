@@ -4,854 +4,24 @@
     "kunde": "Andreas Schmid Int. Spedition GmbH & Co. KG",
     "standort": "Gersthofen",
     "stand": "2026-05-12",
-    "quelle": "Hallenplan_2026.xlsx Tab \"SE\" (Tim Winkler / Michael Laufenburg), Raster-Extraktion",
-    "flaeche_qm": 12490,
+    "quelle": "Hallenplan_2026.xlsx Tab SE (Tim Winkler / Michael Laufenburg), v3: Rechteck-Annahme",
+    "flaeche_qm": 12000,
     "erweiterung_qm": 3600,
-    "methode": "Spaltenbreiten und Reihenhöhen aus Zellwerten (3.75m Tor-Spalten, 1.37m Innen-Reihen)"
+    "methode": "Rechteck 200×60m (Annahme, 12.000m² laut Angebot). Tore gleichmäßig verteilt. Kopframpe mit Toren 53-60 in der Nord-Ost-Ecke (im Norden, laut Jan).",
+    "todo": "Echte Maße LxB von AS/Michael/Tim einholen, dann skalieren."
   },
   "hall": {
-    "width": 221.61,
-    "height": 56.36,
-    "name": "Halle 6 (2026) – 222×56m",
+    "width": 200.0,
+    "height": 60.0,
+    "name": "Halle 6 (2026) – 200×60m (Annahme)",
     "color": "#1a1a2e"
   },
   "objects": [
     {
       "type": "tor",
-      "x": 0,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 115",
-      "torNummer": 115,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 3.75,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 114",
-      "torNummer": 114,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 7.5,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 113",
-      "torNummer": 113,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 11.25,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 112",
-      "torNummer": 112,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 15.0,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 111",
-      "torNummer": 111,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 18.75,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 110",
-      "torNummer": 110,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 22.5,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 109",
-      "torNummer": 109,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 26.25,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 108",
-      "torNummer": 108,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 30.0,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 107",
-      "torNummer": 107,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 33.75,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 106",
-      "torNummer": 106,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 37.5,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 105",
-      "torNummer": 105,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 41.25,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 104",
-      "torNummer": 104,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 45.0,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 103",
-      "torNummer": 103,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 48.75,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 102",
-      "torNummer": 102,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 52.5,
-      "y": 0,
-      "width": 1.37,
-      "height": 1.5,
-      "name": "Tor 101",
-      "torNummer": 101,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 53.87,
-      "y": 0,
-      "width": 1.37,
-      "height": 1.5,
-      "name": "Tor 100",
-      "torNummer": 100,
-      "tags": [
-        "TU AS"
-      ],
-      "meta": {
-        "sektion": "TU AS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 58.99,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 99",
-      "torNummer": 99,
-      "tags": [
-        "TU Tiroch"
-      ],
-      "meta": {
-        "sektion": "TU Tiroch",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 62.74,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 98",
-      "torNummer": 98,
-      "tags": [
-        "TU Tiroch"
-      ],
-      "meta": {
-        "sektion": "TU Tiroch",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 66.49,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 97",
-      "torNummer": 97,
-      "tags": [
-        "TU Tiroch"
-      ],
-      "meta": {
-        "sektion": "TU Tiroch",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 70.24,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 96",
-      "torNummer": 96,
-      "tags": [
-        "TU Tiroch"
-      ],
-      "meta": {
-        "sektion": "TU Tiroch",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 73.99,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 95",
-      "torNummer": 95,
-      "tags": [
-        "TU Tiroch"
-      ],
-      "meta": {
-        "sektion": "TU Tiroch",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 77.74,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 94",
-      "torNummer": 94,
-      "tags": [
-        "TU Tiroch"
-      ],
-      "meta": {
-        "sektion": "TU Tiroch",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 81.49,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 93",
-      "torNummer": 93
-    },
-    {
-      "type": "tor",
-      "x": 85.24,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 92",
-      "torNummer": 92
-    },
-    {
-      "type": "tor",
-      "x": 88.99,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 91",
-      "torNummer": 91
-    },
-    {
-      "type": "tor",
-      "x": 92.74,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 90",
-      "torNummer": 90
-    },
-    {
-      "type": "tor",
-      "x": 96.49,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 89",
-      "torNummer": 89
-    },
-    {
-      "type": "tor",
-      "x": 100.24,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 88",
-      "torNummer": 88
-    },
-    {
-      "type": "tor",
-      "x": 103.99,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 87",
-      "torNummer": 87,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 107.74,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 86",
-      "torNummer": 86,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 111.49,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 85",
-      "torNummer": 85,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 115.24,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 84",
-      "torNummer": 84,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 118.99,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 83",
-      "torNummer": 83,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 122.74,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 82",
-      "torNummer": 82,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 126.49,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 81",
-      "torNummer": 81,
-      "tags": [
-        "TU DS"
-      ],
-      "meta": {
-        "sektion": "TU DS",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 130.24,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 80",
-      "torNummer": 80,
-      "tags": [
-        "TU Alexandru"
-      ],
-      "meta": {
-        "sektion": "TU Alexandru",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 133.99,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 79",
-      "torNummer": 79
-    },
-    {
-      "type": "tor",
-      "x": 141.49,
-      "y": 0,
-      "width": 1.37,
-      "height": 1.5,
-      "name": "Tor 78",
-      "torNummer": 78,
-      "tags": [
-        "TU Guth"
-      ],
-      "meta": {
-        "sektion": "TU Guth",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 142.86,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 77",
-      "torNummer": 77,
-      "tags": [
-        "TU Guth"
-      ],
-      "meta": {
-        "sektion": "TU Guth",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 146.61,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 76",
-      "torNummer": 76,
-      "tags": [
-        "TU Guth"
-      ],
-      "meta": {
-        "sektion": "TU Guth",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 150.36,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 75",
-      "torNummer": 75,
-      "tags": [
-        "TU Tuncay"
-      ],
-      "meta": {
-        "sektion": "TU Tuncay",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 154.11,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 74",
-      "torNummer": 74,
-      "tags": [
-        "TU Tuncay"
-      ],
-      "meta": {
-        "sektion": "TU Tuncay",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 157.86,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 73",
-      "torNummer": 73,
-      "tags": [
-        "TU Tuncay"
-      ],
-      "meta": {
-        "sektion": "TU Tuncay",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 161.61,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 72",
-      "torNummer": 72,
-      "tags": [
-        "TU Silaghi"
-      ],
-      "meta": {
-        "sektion": "TU Silaghi",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 165.36,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 71",
-      "torNummer": 71,
-      "tags": [
-        "TU Silaghi"
-      ],
-      "meta": {
-        "sektion": "TU Silaghi",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 169.11,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 70",
-      "torNummer": 70,
-      "tags": [
-        "TU Silaghi"
-      ],
-      "meta": {
-        "sektion": "TU Silaghi",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 172.86,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 69",
-      "torNummer": 69,
-      "tags": [
-        "TU Silaghi"
-      ],
-      "meta": {
-        "sektion": "TU Silaghi",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 176.61,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 68",
-      "torNummer": 68,
-      "tags": [
-        "TU Bogos"
-      ],
-      "meta": {
-        "sektion": "TU Bogos",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 180.36,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 67",
-      "torNummer": 67,
-      "tags": [
-        "TU Bogos"
-      ],
-      "meta": {
-        "sektion": "TU Bogos",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 184.11,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 66",
-      "torNummer": 66,
-      "tags": [
-        "TU Bogos"
-      ],
-      "meta": {
-        "sektion": "TU Bogos",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 187.86,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 65",
-      "torNummer": 65,
-      "tags": [
-        "TU Yeritsan"
-      ],
-      "meta": {
-        "sektion": "TU Yeritsan",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 191.61,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 64",
-      "torNummer": 64,
-      "tags": [
-        "TU Yeritsan"
-      ],
-      "meta": {
-        "sektion": "TU Yeritsan",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 195.36,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 63",
-      "torNummer": 63,
-      "tags": [
-        "TU Yeritsan"
-      ],
-      "meta": {
-        "sektion": "TU Yeritsan",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 199.11,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 62",
-      "torNummer": 62,
-      "tags": [
-        "TU Yeritsan"
-      ],
-      "meta": {
-        "sektion": "TU Yeritsan",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 202.86,
-      "y": 0,
-      "width": 3.75,
-      "height": 1.5,
-      "name": "Tor 61",
-      "torNummer": 61,
-      "tags": [
-        "TU Yeritsan"
-      ],
-      "meta": {
-        "sektion": "TU Yeritsan",
-        "seite": "Nord"
-      }
-    },
-    {
-      "type": "tor",
-      "x": 7.5,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 4.0,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 1",
       "torNummer": 1,
@@ -865,9 +35,9 @@
     },
     {
       "type": "tor",
-      "x": 11.25,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 7.7,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 2",
       "torNummer": 2,
@@ -881,9 +51,9 @@
     },
     {
       "type": "tor",
-      "x": 15.0,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 11.39,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 3",
       "torNummer": 3,
@@ -897,9 +67,9 @@
     },
     {
       "type": "tor",
-      "x": 18.75,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 15.09,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 4",
       "torNummer": 4,
@@ -913,9 +83,9 @@
     },
     {
       "type": "tor",
-      "x": 22.5,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 18.78,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 5",
       "torNummer": 5,
@@ -929,9 +99,9 @@
     },
     {
       "type": "tor",
-      "x": 26.25,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 22.48,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 6",
       "torNummer": 6,
@@ -945,9 +115,9 @@
     },
     {
       "type": "tor",
-      "x": 30.0,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 26.18,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 7",
       "torNummer": 7,
@@ -961,9 +131,9 @@
     },
     {
       "type": "tor",
-      "x": 33.75,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 29.87,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 8",
       "torNummer": 8,
@@ -977,9 +147,9 @@
     },
     {
       "type": "tor",
-      "x": 37.5,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 33.57,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 9",
       "torNummer": 9,
@@ -993,9 +163,9 @@
     },
     {
       "type": "tor",
-      "x": 41.25,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 37.26,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 10",
       "torNummer": 10,
@@ -1009,9 +179,9 @@
     },
     {
       "type": "tor",
-      "x": 45.0,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 40.96,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 11",
       "torNummer": 11,
@@ -1025,9 +195,9 @@
     },
     {
       "type": "tor",
-      "x": 48.75,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 44.66,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 12",
       "torNummer": 12,
@@ -1041,27 +211,27 @@
     },
     {
       "type": "tor",
-      "x": 52.5,
-      "y": 54.86,
-      "width": 1.37,
+      "x": 48.35,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 13",
       "torNummer": 13
     },
     {
       "type": "tor",
-      "x": 53.87,
-      "y": 54.86,
-      "width": 1.37,
+      "x": 52.05,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 14",
       "torNummer": 14
     },
     {
       "type": "tor",
-      "x": 58.99,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 55.75,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 15",
       "torNummer": 15,
@@ -1075,9 +245,9 @@
     },
     {
       "type": "tor",
-      "x": 62.74,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 59.44,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 16",
       "torNummer": 16,
@@ -1091,9 +261,9 @@
     },
     {
       "type": "tor",
-      "x": 66.49,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 63.14,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 17",
       "torNummer": 17,
@@ -1107,9 +277,9 @@
     },
     {
       "type": "tor",
-      "x": 70.24,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 66.83,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 18",
       "torNummer": 18,
@@ -1123,9 +293,9 @@
     },
     {
       "type": "tor",
-      "x": 73.99,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 70.53,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 19",
       "torNummer": 19,
@@ -1139,9 +309,9 @@
     },
     {
       "type": "tor",
-      "x": 77.74,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 74.23,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 20",
       "torNummer": 20,
@@ -1155,9 +325,9 @@
     },
     {
       "type": "tor",
-      "x": 81.49,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 77.92,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 21",
       "torNummer": 21,
@@ -1171,9 +341,9 @@
     },
     {
       "type": "tor",
-      "x": 85.24,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 81.62,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 22",
       "torNummer": 22,
@@ -1187,9 +357,9 @@
     },
     {
       "type": "tor",
-      "x": 88.99,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 85.31,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 23",
       "torNummer": 23,
@@ -1203,9 +373,9 @@
     },
     {
       "type": "tor",
-      "x": 92.74,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 89.01,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 24",
       "torNummer": 24,
@@ -1219,9 +389,9 @@
     },
     {
       "type": "tor",
-      "x": 96.49,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 92.71,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 25",
       "torNummer": 25,
@@ -1235,9 +405,9 @@
     },
     {
       "type": "tor",
-      "x": 100.24,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 96.4,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 26",
       "torNummer": 26,
@@ -1251,9 +421,9 @@
     },
     {
       "type": "tor",
-      "x": 103.99,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 100.1,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 27",
       "torNummer": 27,
@@ -1267,9 +437,9 @@
     },
     {
       "type": "tor",
-      "x": 107.74,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 103.79,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 28",
       "torNummer": 28,
@@ -1283,9 +453,9 @@
     },
     {
       "type": "tor",
-      "x": 111.49,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 107.49,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 29",
       "torNummer": 29,
@@ -1299,9 +469,9 @@
     },
     {
       "type": "tor",
-      "x": 115.24,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 111.19,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 30",
       "torNummer": 30,
@@ -1315,9 +485,9 @@
     },
     {
       "type": "tor",
-      "x": 118.99,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 114.88,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 31",
       "torNummer": 31,
@@ -1331,9 +501,9 @@
     },
     {
       "type": "tor",
-      "x": 122.74,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 118.58,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 32",
       "torNummer": 32,
@@ -1347,9 +517,9 @@
     },
     {
       "type": "tor",
-      "x": 126.49,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 122.27,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 33",
       "torNummer": 33,
@@ -1363,9 +533,9 @@
     },
     {
       "type": "tor",
-      "x": 130.24,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 125.97,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 34",
       "torNummer": 34,
@@ -1379,9 +549,9 @@
     },
     {
       "type": "tor",
-      "x": 133.99,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 129.67,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 35",
       "torNummer": 35,
@@ -1395,9 +565,9 @@
     },
     {
       "type": "tor",
-      "x": 137.74,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 133.36,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 36",
       "torNummer": 36,
@@ -1411,9 +581,9 @@
     },
     {
       "type": "tor",
-      "x": 146.61,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 137.06,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 37",
       "torNummer": 37,
@@ -1427,9 +597,9 @@
     },
     {
       "type": "tor",
-      "x": 150.36,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 140.75,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 38",
       "torNummer": 38,
@@ -1443,9 +613,9 @@
     },
     {
       "type": "tor",
-      "x": 154.11,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 144.45,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 39",
       "torNummer": 39,
@@ -1459,9 +629,9 @@
     },
     {
       "type": "tor",
-      "x": 157.86,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 148.15,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 40",
       "torNummer": 40,
@@ -1475,9 +645,9 @@
     },
     {
       "type": "tor",
-      "x": 161.61,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 151.84,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 41",
       "torNummer": 41,
@@ -1491,9 +661,9 @@
     },
     {
       "type": "tor",
-      "x": 165.36,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 155.54,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 42",
       "torNummer": 42,
@@ -1507,9 +677,9 @@
     },
     {
       "type": "tor",
-      "x": 169.11,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 159.24,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 43",
       "torNummer": 43,
@@ -1523,9 +693,9 @@
     },
     {
       "type": "tor",
-      "x": 172.86,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 162.93,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 44",
       "torNummer": 44,
@@ -1539,18 +709,18 @@
     },
     {
       "type": "tor",
-      "x": 176.61,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 166.63,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 45",
       "torNummer": 45
     },
     {
       "type": "tor",
-      "x": 180.36,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 170.32,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 46",
       "torNummer": 46,
@@ -1564,9 +734,9 @@
     },
     {
       "type": "tor",
-      "x": 184.11,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 174.02,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 47",
       "torNummer": 47,
@@ -1580,9 +750,9 @@
     },
     {
       "type": "tor",
-      "x": 187.86,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 177.72,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 48",
       "torNummer": 48,
@@ -1596,9 +766,9 @@
     },
     {
       "type": "tor",
-      "x": 191.61,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 181.41,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 49",
       "torNummer": 49,
@@ -1612,9 +782,9 @@
     },
     {
       "type": "tor",
-      "x": 195.36,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 185.11,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 50",
       "torNummer": 50,
@@ -1628,9 +798,9 @@
     },
     {
       "type": "tor",
-      "x": 199.11,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 188.8,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 51",
       "torNummer": 51,
@@ -1644,9 +814,9 @@
     },
     {
       "type": "tor",
-      "x": 202.86,
-      "y": 54.86,
-      "width": 3.75,
+      "x": 192.5,
+      "y": 58.5,
+      "width": 3.5,
       "height": 1.5,
       "name": "Tor 52",
       "torNummer": 52,
@@ -1659,152 +829,1127 @@
       }
     },
     {
-      "type": "custom",
-      "x": 88.99,
-      "y": 15.85,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Langgut 6.2",
+      "type": "tor",
+      "x": 4.0,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 115",
+      "torNummer": 115,
       "tags": [
-        "stellplatz-label"
-      ]
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
     },
     {
-      "type": "custom",
-      "x": 55.24,
-      "y": 21.33,
-      "width": 3.75,
-      "height": 1.37,
+      "type": "tor",
+      "x": 6.92,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 114",
+      "torNummer": 114,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 9.83,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 113",
+      "torNummer": 113,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 12.75,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 112",
+      "torNummer": 112,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 15.67,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 111",
+      "torNummer": 111,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 18.58,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 110",
+      "torNummer": 110,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 21.5,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 109",
+      "torNummer": 109,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 24.42,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 108",
+      "torNummer": 108,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 27.33,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 107",
+      "torNummer": 107,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 30.25,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 106",
+      "torNummer": 106,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 33.17,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 105",
+      "torNummer": 105,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 36.08,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 104",
+      "torNummer": 104,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 39.0,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 103",
+      "torNummer": 103,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 41.92,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 102",
+      "torNummer": 102,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 44.83,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 101",
+      "torNummer": 101,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 47.75,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 100",
+      "torNummer": 100,
+      "tags": [
+        "TU AS"
+      ],
+      "meta": {
+        "sektion": "TU AS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 50.67,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 99",
+      "torNummer": 99,
+      "tags": [
+        "TU Tiroch"
+      ],
+      "meta": {
+        "sektion": "TU Tiroch",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 53.58,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 98",
+      "torNummer": 98,
+      "tags": [
+        "TU Tiroch"
+      ],
+      "meta": {
+        "sektion": "TU Tiroch",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 56.5,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 97",
+      "torNummer": 97,
+      "tags": [
+        "TU Tiroch"
+      ],
+      "meta": {
+        "sektion": "TU Tiroch",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 59.42,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 96",
+      "torNummer": 96,
+      "tags": [
+        "TU Tiroch"
+      ],
+      "meta": {
+        "sektion": "TU Tiroch",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 62.33,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 95",
+      "torNummer": 95,
+      "tags": [
+        "TU Tiroch"
+      ],
+      "meta": {
+        "sektion": "TU Tiroch",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 65.25,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 94",
+      "torNummer": 94,
+      "tags": [
+        "TU Tiroch"
+      ],
+      "meta": {
+        "sektion": "TU Tiroch",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 68.17,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 93",
+      "torNummer": 93
+    },
+    {
+      "type": "tor",
+      "x": 71.08,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 92",
+      "torNummer": 92
+    },
+    {
+      "type": "tor",
+      "x": 74.0,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 91",
+      "torNummer": 91
+    },
+    {
+      "type": "tor",
+      "x": 76.92,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 90",
+      "torNummer": 90
+    },
+    {
+      "type": "tor",
+      "x": 79.83,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 89",
+      "torNummer": 89
+    },
+    {
+      "type": "tor",
+      "x": 82.75,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 88",
+      "torNummer": 88
+    },
+    {
+      "type": "tor",
+      "x": 85.67,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 87",
+      "torNummer": 87,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 88.58,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 86",
+      "torNummer": 86,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 91.5,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 85",
+      "torNummer": 85,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 94.42,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 84",
+      "torNummer": 84,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 97.33,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 83",
+      "torNummer": 83,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 100.25,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 82",
+      "torNummer": 82,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 103.17,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 81",
+      "torNummer": 81,
+      "tags": [
+        "TU DS"
+      ],
+      "meta": {
+        "sektion": "TU DS",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 106.08,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 80",
+      "torNummer": 80,
+      "tags": [
+        "TU Alexandru"
+      ],
+      "meta": {
+        "sektion": "TU Alexandru",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 109.0,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 79",
+      "torNummer": 79
+    },
+    {
+      "type": "tor",
+      "x": 111.92,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 78",
+      "torNummer": 78,
+      "tags": [
+        "TU Guth"
+      ],
+      "meta": {
+        "sektion": "TU Guth",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 114.83,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 77",
+      "torNummer": 77,
+      "tags": [
+        "TU Guth"
+      ],
+      "meta": {
+        "sektion": "TU Guth",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 117.75,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 76",
+      "torNummer": 76,
+      "tags": [
+        "TU Guth"
+      ],
+      "meta": {
+        "sektion": "TU Guth",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 120.67,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 75",
+      "torNummer": 75,
+      "tags": [
+        "TU Tuncay"
+      ],
+      "meta": {
+        "sektion": "TU Tuncay",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 123.58,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 74",
+      "torNummer": 74,
+      "tags": [
+        "TU Tuncay"
+      ],
+      "meta": {
+        "sektion": "TU Tuncay",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 126.5,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 73",
+      "torNummer": 73,
+      "tags": [
+        "TU Tuncay"
+      ],
+      "meta": {
+        "sektion": "TU Tuncay",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 129.42,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 72",
+      "torNummer": 72,
+      "tags": [
+        "TU Silaghi"
+      ],
+      "meta": {
+        "sektion": "TU Silaghi",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 132.33,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 71",
+      "torNummer": 71,
+      "tags": [
+        "TU Silaghi"
+      ],
+      "meta": {
+        "sektion": "TU Silaghi",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 135.25,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 70",
+      "torNummer": 70,
+      "tags": [
+        "TU Silaghi"
+      ],
+      "meta": {
+        "sektion": "TU Silaghi",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 138.17,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 69",
+      "torNummer": 69,
+      "tags": [
+        "TU Silaghi"
+      ],
+      "meta": {
+        "sektion": "TU Silaghi",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 141.08,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 68",
+      "torNummer": 68,
+      "tags": [
+        "TU Bogos"
+      ],
+      "meta": {
+        "sektion": "TU Bogos",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 144.0,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 67",
+      "torNummer": 67,
+      "tags": [
+        "TU Bogos"
+      ],
+      "meta": {
+        "sektion": "TU Bogos",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 146.92,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 66",
+      "torNummer": 66,
+      "tags": [
+        "TU Bogos"
+      ],
+      "meta": {
+        "sektion": "TU Bogos",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 149.83,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 65",
+      "torNummer": 65,
+      "tags": [
+        "TU Yeritsan"
+      ],
+      "meta": {
+        "sektion": "TU Yeritsan",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 152.75,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 64",
+      "torNummer": 64,
+      "tags": [
+        "TU Yeritsan"
+      ],
+      "meta": {
+        "sektion": "TU Yeritsan",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 155.67,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 63",
+      "torNummer": 63,
+      "tags": [
+        "TU Yeritsan"
+      ],
+      "meta": {
+        "sektion": "TU Yeritsan",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 158.58,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 62",
+      "torNummer": 62,
+      "tags": [
+        "TU Yeritsan"
+      ],
+      "meta": {
+        "sektion": "TU Yeritsan",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 161.5,
+      "y": 0,
+      "width": 3.5,
+      "height": 1.5,
+      "name": "Tor 61",
+      "torNummer": 61,
+      "tags": [
+        "TU Yeritsan"
+      ],
+      "meta": {
+        "sektion": "TU Yeritsan",
+        "seite": "Nord"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 8.0,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 60",
+      "torNummer": 60,
+      "tags": [
+        "Kunde: Grob"
+      ],
+      "meta": {
+        "sektion": "Kunde: Grob",
+        "seite": "Kopframpe Nord",
+        "kunde": "Grob"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 14.29,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 59",
+      "torNummer": 59,
+      "tags": [
+        "Kunde: Kleiner"
+      ],
+      "meta": {
+        "sektion": "Kunde: Kleiner",
+        "seite": "Kopframpe Nord",
+        "kunde": "Kleiner"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 20.57,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 58",
+      "torNummer": 58,
+      "tags": [
+        "Kunde: Börner"
+      ],
+      "meta": {
+        "sektion": "Kunde: Börner",
+        "seite": "Kopframpe Nord",
+        "kunde": "Börner"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 26.86,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 57",
+      "torNummer": 57
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 33.14,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 56",
+      "torNummer": 56,
+      "tags": [
+        "Kunde: Chefs Culinar"
+      ],
+      "meta": {
+        "sektion": "Kunde: Chefs Culinar",
+        "seite": "Kopframpe Nord",
+        "kunde": "Chefs Culinar"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 39.43,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 55",
+      "torNummer": 55,
+      "tags": [
+        "Kunde: Lidl"
+      ],
+      "meta": {
+        "sektion": "Kunde: Lidl",
+        "seite": "Kopframpe Nord",
+        "kunde": "Lidl"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 45.71,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 54",
+      "torNummer": 54,
+      "tags": [
+        "Kunde: Norma"
+      ],
+      "meta": {
+        "sektion": "Kunde: Norma",
+        "seite": "Kopframpe Nord",
+        "kunde": "Norma"
+      }
+    },
+    {
+      "type": "tor",
+      "x": 198.5,
+      "y": 52.0,
+      "width": 1.5,
+      "height": 3.5,
+      "name": "Tor 53",
+      "torNummer": 53,
+      "tags": [
+        "Kunde: Silberhorn"
+      ],
+      "meta": {
+        "sektion": "Kunde: Silberhorn",
+        "seite": "Kopframpe Nord",
+        "kunde": "Silberhorn"
+      }
+    },
+    {
+      "type": "bereich",
+      "x": 30,
+      "y": 12,
+      "width": 6,
+      "height": 22,
       "name": "Langgut 6.1",
-      "tags": [
-        "stellplatz-label"
-      ]
+      "color": "#bfdbfe"
     },
     {
-      "type": "custom",
-      "x": 66.49,
-      "y": 25.44,
-      "width": 3.75,
-      "height": 1.37,
+      "type": "bereich",
+      "x": 55,
+      "y": 12,
+      "width": 18,
+      "height": 18,
       "name": "Pufferplatz SE",
-      "tags": [
-        "stellplatz-label"
-      ]
+      "color": "#fecaca"
     },
     {
-      "type": "custom",
-      "x": 85.24,
-      "y": 25.44,
-      "width": 3.75,
-      "height": 1.37,
+      "type": "bereich",
+      "x": 78,
+      "y": 18,
+      "width": 8,
+      "height": 8,
       "name": "AV / AD",
-      "tags": [
-        "stellplatz-label"
-      ]
+      "color": "#fde68a"
     },
     {
-      "type": "custom",
-      "x": 137.74,
-      "y": 25.44,
-      "width": 3.75,
-      "height": 1.37,
+      "type": "bereich",
+      "x": 90,
+      "y": 12,
+      "width": 6,
+      "height": 22,
+      "name": "Langgut 6.2",
+      "color": "#bfdbfe"
+    },
+    {
+      "type": "bereich",
+      "x": 105,
+      "y": 28,
+      "width": 22,
+      "height": 5,
       "name": "Langgut 6.3",
-      "tags": [
-        "stellplatz-label"
-      ]
+      "color": "#bfdbfe"
     },
     {
-      "type": "custom",
-      "x": 180.36,
-      "y": 25.44,
-      "width": 3.75,
-      "height": 1.37,
+      "type": "bereich",
+      "x": 135,
+      "y": 12,
+      "width": 18,
+      "height": 22,
       "name": "AS 99",
-      "tags": [
-        "stellplatz-label"
-      ]
+      "color": "#d8b4fe"
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 25.44,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Grob",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "60 Grob",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Grob",
+        "torNr": "60"
+      }
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 28.18,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Kleiner",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "59 Kleiner",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Kleiner",
+        "torNr": "59"
+      }
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 30.92,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Börner",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "58 Börner",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Börner",
+        "torNr": "58"
+      }
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 36.4,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Chefs Culinar",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "56 Chefs Culinar",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Chefs Culinar",
+        "torNr": "56"
+      }
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 39.14,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Lidl",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "55 Lidl",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Lidl",
+        "torNr": "55"
+      }
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 44.26,
-      "width": 3.75,
-      "height": 1.37,
-      "name": "Norma",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "54 Norma",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Norma",
+        "torNr": "54"
+      }
     },
     {
       "type": "custom",
-      "x": 214.11,
-      "y": 47.0,
-      "width": 3.75,
-      "height": 3.75,
-      "name": "Silberhorn",
+      "x": 198.0,
+      "y": 4,
+      "width": 4,
+      "height": 6,
+      "name": "53 Silberhorn",
       "tags": [
-        "stellplatz-label"
-      ]
+        "kopframpe-stellplatz"
+      ],
+      "meta": {
+        "kunde": "Silberhorn",
+        "torNr": "53"
+      }
     },
     {
       "type": "custom",
-      "x": 31.99,
-      "y": 26.93,
+      "x": 18.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP5 – SE Entladung FV",
@@ -1820,8 +1965,8 @@
     },
     {
       "type": "custom",
-      "x": 65.23,
-      "y": 26.93,
+      "x": 48.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP2 – Nat. Eingang",
@@ -1837,8 +1982,8 @@
     },
     {
       "type": "custom",
-      "x": 98.47,
-      "y": 26.93,
+      "x": 78.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP9b – NV Eingang",
@@ -1854,8 +1999,8 @@
     },
     {
       "type": "custom",
-      "x": 131.72,
-      "y": 26.93,
+      "x": 108.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP4 – Nat. Ausgang",
@@ -1871,8 +2016,8 @@
     },
     {
       "type": "custom",
-      "x": 158.31,
-      "y": 26.93,
+      "x": 134.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP4a – Sonderausgang",
@@ -1888,8 +2033,8 @@
     },
     {
       "type": "custom",
-      "x": 184.9,
-      "y": 26.93,
+      "x": 154.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP9a – Sonderscan",
@@ -1905,8 +2050,8 @@
     },
     {
       "type": "custom",
-      "x": 209.28,
-      "y": 26.93,
+      "x": 174.75,
+      "y": 28.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP7 – SA Verladung FV",
@@ -1924,19 +2069,155 @@
   "gaenge": [
     {
       "id": 1,
-      "name": "Hauptgang Mitte",
+      "name": "Hauptgang Nord",
       "points": [
         {
           "x": 0,
-          "y": 28.18
+          "y": 8
         },
         {
-          "x": 221.61,
-          "y": 28.18
+          "x": 200.0,
+          "y": 8
         }
       ],
       "breite": 3.5,
       "typ": "hauptgang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 2,
+      "name": "Hauptgang Mitte",
+      "points": [
+        {
+          "x": 0,
+          "y": 30
+        },
+        {
+          "x": 200.0,
+          "y": 30
+        }
+      ],
+      "breite": 4.0,
+      "typ": "hauptgang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 3,
+      "name": "Hauptgang Süd",
+      "points": [
+        {
+          "x": 0,
+          "y": 52
+        },
+        {
+          "x": 200.0,
+          "y": 52
+        }
+      ],
+      "breite": 3.5,
+      "typ": "hauptgang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 4,
+      "name": "Quergang 1",
+      "points": [
+        {
+          "x": 20,
+          "y": 1.5
+        },
+        {
+          "x": 20,
+          "y": 58.5
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 5,
+      "name": "Quergang 2",
+      "points": [
+        {
+          "x": 50,
+          "y": 1.5
+        },
+        {
+          "x": 50,
+          "y": 58.5
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 6,
+      "name": "Quergang 3",
+      "points": [
+        {
+          "x": 80,
+          "y": 1.5
+        },
+        {
+          "x": 80,
+          "y": 58.5
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 7,
+      "name": "Quergang 4",
+      "points": [
+        {
+          "x": 110,
+          "y": 1.5
+        },
+        {
+          "x": 110,
+          "y": 58.5
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 8,
+      "name": "Quergang 5",
+      "points": [
+        {
+          "x": 140,
+          "y": 1.5
+        },
+        {
+          "x": 140,
+          "y": 58.5
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
+      "farbe": "#22c55e"
+    },
+    {
+      "id": 9,
+      "name": "Quergang 6",
+      "points": [
+        {
+          "x": 170,
+          "y": 1.5
+        },
+        {
+          "x": 170,
+          "y": 58.5
+        }
+      ],
+      "breite": 3,
+      "typ": "quergang",
       "farbe": "#22c55e"
     }
   ]
