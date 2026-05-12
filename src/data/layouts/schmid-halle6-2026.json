@@ -1153,6 +1153,76 @@
       "width": 3.0,
       "height": 6,
       "name": "Segmüller"
+    },
+    {
+      "type": "messpunkt",
+      "x": 28.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP5 – SE Entladung FV",
+      "messpunktNummer": "MP5",
+      "messpunktTyp": "eingang"
+    },
+    {
+      "type": "messpunkt",
+      "x": 58.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP2 – Nat. Eingang",
+      "messpunktNummer": "MP2",
+      "messpunktTyp": "sortierung"
+    },
+    {
+      "type": "messpunkt",
+      "x": 83.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP9b – NV Eingang",
+      "messpunktNummer": "MP9b",
+      "messpunktTyp": "eingang"
+    },
+    {
+      "type": "messpunkt",
+      "x": 108.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP4 – Nat. Ausgang",
+      "messpunktNummer": "MP4",
+      "messpunktTyp": "ausgang"
+    },
+    {
+      "type": "messpunkt",
+      "x": 128.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP4a – Sonderausgang",
+      "messpunktNummer": "MP4a",
+      "messpunktTyp": "sonderscan"
+    },
+    {
+      "type": "messpunkt",
+      "x": 148.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP9a – Sonderscan",
+      "messpunktNummer": "MP9a",
+      "messpunktTyp": "sonderscan"
+    },
+    {
+      "type": "messpunkt",
+      "x": 163.75,
+      "y": 18.75,
+      "width": 2.5,
+      "height": 2.5,
+      "name": "MP7 – SA Verladung FV",
+      "messpunktNummer": "MP7",
+      "messpunktTyp": "ausgang"
     }
   ],
   "gaenge": [

@@ -734,14 +734,52 @@ export function HallCanvas() {
 
       ctx.save();
 
-      // Object fill
       const baseColor = obj.color || OBJECT_COLORS[obj.type] || '#666';
+      const isSelected = selectedObject?.id === obj.id;
+
+      // Messpunkte als Kreis mit Nummer rendern (kein physisches Objekt)
+      if (obj.type === 'messpunkt') {
+        const cx = pos.x + w / 2;
+        const cy = pos.y + h / 2;
+        const r = Math.min(w, h) / 2;
+        // Außen-Glow für Sichtbarkeit
+        ctx.shadowColor = baseColor;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = baseColor;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Innen-Crosshair als Scan-Symbol
+        ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = isSelected ? 2 : 1.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.5, cy);
+        ctx.lineTo(cx + r * 0.5, cy);
+        ctx.moveTo(cx, cy - r * 0.5);
+        ctx.lineTo(cx, cy + r * 0.5);
+        ctx.stroke();
+        // MP-Nummer-Label rechts daneben
+        if (zoom > 0.4) {
+          const label = obj.messpunktNummer || obj.name;
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.max(10, 12 * zoom)}px Inter, sans-serif`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, cx + r + 4, cy);
+        }
+        ctx.restore();
+        return;
+      }
+
+      // Object fill (rechteckige Objekte)
       ctx.fillStyle = baseColor;
       ctx.fillRect(pos.x, pos.y, w, h);
 
       // Object border
-      ctx.strokeStyle = selectedObject?.id === obj.id ? '#fff' : 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = selectedObject?.id === obj.id ? 2 : 1;
+      ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = isSelected ? 2 : 1;
       ctx.strokeRect(pos.x, pos.y, w, h);
 
       // Object label

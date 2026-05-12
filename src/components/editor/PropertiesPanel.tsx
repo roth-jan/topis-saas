@@ -566,6 +566,46 @@ export function PropertiesPanel() {
           </Card>
         )}
 
+        {selectedObject.type === 'messpunkt' && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Messpunkt (Scan-Station)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="mpNummer" className="text-xs">
+                  MP-Nummer (z.B. MP2, MP5, MP9b)
+                </Label>
+                <Input
+                  id="mpNummer"
+                  value={selectedObject.messpunktNummer || ''}
+                  onChange={(e) => handleChange('messpunktNummer', e.target.value)}
+                  placeholder="MP5"
+                  className="h-8"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Entspricht der Spalte „messpunkt" in importierten Scan-Daten (CSV).
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="mpTyp" className="text-xs">Typ</Label>
+                <select
+                  id="mpTyp"
+                  value={selectedObject.messpunktTyp || ''}
+                  onChange={(e) => handleChange('messpunktTyp', e.target.value)}
+                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                >
+                  <option value="">— wählen —</option>
+                  <option value="eingang">Eingang (Entladung)</option>
+                  <option value="ausgang">Ausgang (Verladung)</option>
+                  <option value="sortierung">Sortierung</option>
+                  <option value="sonderscan">Sonderscan</option>
+                </select>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Color for all types */}
         <Card>
           <CardHeader className="py-3">

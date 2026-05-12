@@ -45,6 +45,7 @@ export type ObjectType =
   | 'outdoor_road'
   | 'trailer_spot'
   | 'parking'
+  | 'messpunkt'
   | 'custom';
 
 export interface TopisObject {
@@ -81,6 +82,9 @@ export interface TopisObject {
   istEingang?: boolean;           // Wareneingang
   istAusgang?: boolean;           // Warenausgang
   zielObjektId?: number;          // Ziel-Stellplatz/Regal für Berechnung
+  // Messpunkt-spezifisch (für Scan-Daten-Verknüpfung, WMS-Integration)
+  messpunktNummer?: string;       // z.B. "MP2", "MP5", "MP9b" — entspricht "messpunkt"-Spalte im CSV
+  messpunktTyp?: 'eingang' | 'ausgang' | 'sortierung' | 'sonderscan';
 }
 
 // ==================== PATHS ====================
@@ -203,6 +207,7 @@ export type Tool =
   | 'outdoor_road'
   | 'trailer_spot'
   | 'parking'
+  | 'messpunkt'
   | 'custom'
   | 'path'
   | 'pathArea'
@@ -308,6 +313,7 @@ export const OBJECT_COLORS: Record<ObjectType, string> = {
   outdoor_road: '#4a4a4a',  // Dark Gray
   trailer_spot: '#664422',  // Brown
   parking: '#336699',       // Blue-Gray
+  messpunkt: '#e11d48',     // Rose — Scan-Station, klar abhebend
   custom: '#7799aa',        // Custom Gray-Blue
 };
 
@@ -336,6 +342,7 @@ export const OBJECT_DEFAULTS: Record<ObjectType, { width: number; height: number
   outdoor_road: { width: 20, height: 4, name: 'Straße' },
   trailer_spot: { width: 15, height: 3, name: 'Wechselbrücke' },
   parking: { width: 5, height: 5, name: 'Parkplatz' },
+  messpunkt: { width: 2.5, height: 2.5, name: 'Messpunkt' },
   custom: { width: 4, height: 4, name: 'Objekt' },
 };
 
@@ -364,6 +371,7 @@ export const OBJECT_LABELS: Record<ObjectType, string> = {
   outdoor_road: 'Straße',
   trailer_spot: 'Wechselbrücke',
   parking: 'Parkplatz',
+  messpunkt: 'Messpunkt',
   custom: 'Benutzerdefiniert',
 };
 
