@@ -1445,23 +1445,29 @@ export function HallCanvas() {
         return;
       }
 
-      // Trackpad two-finger scroll (has deltaX) → Pan
-      // Mouse wheel (only deltaY) or Ctrl/pinch → Zoom
-      const isTrackpadPan = !e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > 0;
+      // Figma-/Maps-Konvention:
+      // - ctrlKey/metaKey gesetzt → Zoom (Pinch-Trackpad sendet automatisch ctrlKey,
+      //   Cmd+Scroll mit Maus auch). Das ist der EINZIGE Zoom-Trigger.
+      // - alles andere (2-Finger-Scroll vertikal/horizontal/diagonal, Maus-Wheel) → Pan.
+      // Maus-Nutzer ohne Trackpad: Cmd+Scroll zum Zoomen, oder Toolbar-Buttons.
+      const isZoomGesture = e.ctrlKey || e.metaKey;
 
-      if (isTrackpadPan) {
-        setPan({ x: pan.x - e.deltaX, y: pan.y - e.deltaY });
-      } else {
+      if (isZoomGesture) {
         // Zoom towards mouse position
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        // Bei pinch ist deltaY meist klein (-10..+10), bei wheel groß — abstufen
+        const factor = Math.min(0.15, Math.abs(e.deltaY) * 0.01);
+        const delta = e.deltaY > 0 ? (1 - factor) : (1 + factor);
         const newZoom = Math.max(0.1, Math.min(5, zoom * delta));
         const zoomRatio = newZoom / zoom;
         const newPanX = mouseX - (mouseX - pan.x) * zoomRatio;
         const newPanY = mouseY - (mouseY - pan.y) * zoomRatio;
         setZoom(newZoom);
         setPan({ x: newPanX, y: newPanY });
+      } else {
+        // Pan in beide Achsen — deltaX und deltaY beliebig
+        setPan({ x: pan.x - e.deltaX, y: pan.y - e.deltaY });
       }
     };
 
