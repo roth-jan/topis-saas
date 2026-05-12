@@ -71,7 +71,6 @@ import { ProjektVergleichDialog } from '@/components/dialogs/ProjektVergleichDia
 import { ThemeToggleSimple } from '@/components/theme-toggle';
 import { useTheme } from 'next-themes';
 import { SimulationDialog } from '@/components/dialogs/SimulationDialog';
-import { ShowcaseDialog } from '@/components/dialogs/ShowcaseDialog';
 import { MultiInsertDialog } from '@/components/dialogs/MultiInsertDialog';
 import { MatrixDialog } from '@/components/dialogs/MatrixDialog';
 import { WegeberechnungDialog } from '@/components/dialogs/WegeberechnungDialog';
@@ -91,7 +90,6 @@ import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
-import { loadSchmidLayout } from '@/lib/layouts/schmid-halle6';
 import { PROJEKT_VORLAGEN, ladeProjektVorlage } from '@/lib/projekt-vorlagen';
 import { startTour } from '@/components/editor/GuidedTour';
 import {
@@ -976,9 +974,6 @@ export function Toolbar() {
         <div className="flex items-center gap-1">
           {/* Project Comparison Dialog */}
           <ProjektVergleichDialog />
-
-          {/* Showcase Dialog */}
-          <ShowcaseDialog />
 
           {/* Simulation Dialog */}
           <SimulationDialog />

@@ -1,19 +1,16 @@
 import type { ProjektVorlage } from '@/types/projekt';
-import { PROJEKT_GERSTHOFEN } from './layouts/schmid-halle6';
 import { PROJEKT_GERSTHOFEN_2026 } from './layouts/schmid-halle6-2026';
-import { PROJEKT_NAILA } from './layouts/geis-naila';
 import { useTopisStore } from '@/lib/store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { getTemplate, getTemplateParameter } from '@/lib/data/prozessmodell-templates';
 
 /**
  * Registry aller verfügbaren ProjektVorlagen.
- * Neues Projekt: Datei in layouts/ anlegen, ProjektVorlage exportieren, hier eintragen.
+ * Neue Halle: leeres Layout via "Neues Projekt" im Datei-Menü.
+ * Neue Vorlage: JSON in src/data/layouts/ + Loader in src/lib/layouts/ + hier eintragen.
  */
 export const PROJEKT_VORLAGEN: ProjektVorlage[] = [
   PROJEKT_GERSTHOFEN_2026,
-  PROJEKT_GERSTHOFEN,
-  PROJEKT_NAILA,
 ];
 
 /**
