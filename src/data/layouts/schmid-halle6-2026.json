@@ -1155,74 +1155,123 @@
       "name": "Segmüller"
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 28.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP5 – SE Entladung FV",
-      "messpunktNummer": "MP5",
-      "messpunktTyp": "eingang"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP5",
+        "rolle": "SE Entladung FV"
+      }
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 58.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP2 – Nat. Eingang",
-      "messpunktNummer": "MP2",
-      "messpunktTyp": "sortierung"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP2",
+        "rolle": "Nat. Eingang (Sortierung)"
+      }
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 83.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP9b – NV Eingang",
-      "messpunktNummer": "MP9b",
-      "messpunktTyp": "eingang"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP9b",
+        "rolle": "NV Eingang"
+      }
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 108.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP4 – Nat. Ausgang",
-      "messpunktNummer": "MP4",
-      "messpunktTyp": "ausgang"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP4",
+        "rolle": "Nat. Ausgang"
+      }
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 128.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP4a – Sonderausgang",
-      "messpunktNummer": "MP4a",
-      "messpunktTyp": "sonderscan"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP4a",
+        "rolle": "Sonderausgang"
+      }
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 148.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP9a – Sonderscan",
-      "messpunktNummer": "MP9a",
-      "messpunktTyp": "sonderscan"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP9a",
+        "rolle": "Sonderscan"
+      }
     },
     {
-      "type": "messpunkt",
+      "type": "custom",
       "x": 163.75,
       "y": 18.75,
       "width": 2.5,
       "height": 2.5,
       "name": "MP7 – SA Verladung FV",
-      "messpunktNummer": "MP7",
-      "messpunktTyp": "ausgang"
+      "shape": "circle",
+      "icon": "crosshair",
+      "tags": [
+        "messpunkt"
+      ],
+      "meta": {
+        "code": "MP7",
+        "rolle": "SA Verladung FV"
+      }
     }
   ],
   "gaenge": [

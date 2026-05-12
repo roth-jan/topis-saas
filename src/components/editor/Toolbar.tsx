@@ -98,7 +98,6 @@ import {
   DoorOpen,
   LayoutGrid,
   Layers,
-  Crosshair,
   CircleOff,
   Save,
   Download,
@@ -183,7 +182,6 @@ const tools: { id: Tool; label: string; shortcut: string; icon: React.ReactNode;
   { id: 'stellplatz', label: 'Stellplatz', shortcut: 'S', icon: <LayoutGrid className="h-4 w-4" />, group: 2 },
   { id: 'regal', label: 'Regal', shortcut: 'R', icon: <RectangleHorizontal className="h-4 w-4" />, group: 2 },
   { id: 'bereich', label: 'Bereich', shortcut: 'B', icon: <Layers className="h-4 w-4" />, group: 2 },
-  { id: 'messpunkt', label: 'Messpunkt', shortcut: 'X', icon: <Crosshair className="h-4 w-4" />, group: 2 },
   { id: 'path', label: 'Weg', shortcut: 'P', icon: <Route className="h-4 w-4" />, group: 3 },
   { id: 'gang', label: 'Fahrgang', shortcut: 'G', icon: <Truck className="h-4 w-4" />, group: 3 },
   { id: 'conveyor', label: 'Förderband', shortcut: 'C', icon: <ArrowRight className="h-4 w-4" />, group: 3 },
@@ -197,7 +195,6 @@ const objectTypes: { id: string; label: string; icon: React.ReactNode; shortcut?
   { id: 'stellplatz', label: 'Stellplatz', icon: <LayoutGrid className="h-4 w-4" />, shortcut: 'S', category: 'haupt' },
   { id: 'regal', label: 'Regal', icon: <RectangleHorizontal className="h-4 w-4" />, shortcut: 'R', category: 'haupt' },
   { id: 'bereich', label: 'Bereich', icon: <Layers className="h-4 w-4" />, shortcut: 'B', category: 'haupt' },
-  { id: 'messpunkt', label: 'Messpunkt', icon: <Crosshair className="h-4 w-4" />, shortcut: 'X', category: 'haupt' },
   { id: 'entladebereich', label: 'Entladebereich', icon: <Package className="h-4 w-4" />, category: 'haupt' },
   // Infrastruktur
   { id: 'rampe', label: 'Rampe', icon: <Square className="h-4 w-4" />, category: 'infra' },

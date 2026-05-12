@@ -305,7 +305,7 @@ export function PropertiesPanel() {
     );
   }
 
-  const handleChange = (field: string, value: string | number) => {
+  const handleChange = (field: string, value: string | number | string[] | Record<string, string> | undefined) => {
     updateObject(selectedObject.id, { [field]: value });
   };
 
@@ -566,45 +566,101 @@ export function PropertiesPanel() {
           </Card>
         )}
 
-        {selectedObject.type === 'messpunkt' && (
-          <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm">Messpunkt (Scan-Station)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        {/* Generischer Tags/Meta-Editor — Daniel-Lastenheft "Individualobjekt".
+            Verfügbar für ALLE Objekte. Eine KI / ein Berater kann beliebige Felder
+            hinzufügen, ohne dass ein neuer ObjectType ins Schema muss. */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Tags & Metadaten</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="tags" className="text-xs">
+                Tags (kommagetrennt, z.B. „messpunkt, scanner, eingang")
+              </Label>
+              <Input
+                id="tags"
+                value={(selectedObject.tags || []).join(', ')}
+                onChange={(e) => handleChange('tags', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                placeholder="messpunkt, scanner"
+                className="h-8"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Form (Visualisierung)
+              </Label>
+              <select
+                value={selectedObject.shape || 'rect'}
+                onChange={(e) => handleChange('shape', e.target.value === 'rect' ? undefined : e.target.value)}
+                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              >
+                <option value="rect">Rechteck (Standard)</option>
+                <option value="circle">Kreis (z.B. Scan-Station)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">
+                Metadaten (Key/Value)
+              </Label>
               <div className="space-y-1">
-                <Label htmlFor="mpNummer" className="text-xs">
-                  MP-Nummer (z.B. MP2, MP5, MP9b)
-                </Label>
-                <Input
-                  id="mpNummer"
-                  value={selectedObject.messpunktNummer || ''}
-                  onChange={(e) => handleChange('messpunktNummer', e.target.value)}
-                  placeholder="MP5"
-                  className="h-8"
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Entspricht der Spalte „messpunkt" in importierten Scan-Daten (CSV).
-                </p>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="mpTyp" className="text-xs">Typ</Label>
-                <select
-                  id="mpTyp"
-                  value={selectedObject.messpunktTyp || ''}
-                  onChange={(e) => handleChange('messpunktTyp', e.target.value)}
-                  className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                {Object.entries(selectedObject.meta || {}).map(([key, value]) => (
+                  <div key={key} className="flex gap-1">
+                    <Input
+                      value={key}
+                      onChange={(e) => {
+                        const next = { ...(selectedObject.meta || {}) };
+                        delete next[key];
+                        next[e.target.value] = value;
+                        handleChange('meta', next);
+                      }}
+                      placeholder="key"
+                      className="h-7 flex-1 text-xs"
+                    />
+                    <Input
+                      value={value}
+                      onChange={(e) => {
+                        handleChange('meta', { ...(selectedObject.meta || {}), [key]: e.target.value });
+                      }}
+                      placeholder="value"
+                      className="h-7 flex-1 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = { ...(selectedObject.meta || {}) };
+                        delete next[key];
+                        handleChange('meta', next);
+                      }}
+                      className="text-xs text-muted-foreground hover:text-destructive px-1"
+                      aria-label="Feld entfernen"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const meta = { ...(selectedObject.meta || {}) };
+                    let newKey = 'feld';
+                    let i = 1;
+                    while (meta[newKey]) { newKey = `feld${i++}`; }
+                    meta[newKey] = '';
+                    handleChange('meta', meta);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <option value="">— wählen —</option>
-                  <option value="eingang">Eingang (Entladung)</option>
-                  <option value="ausgang">Ausgang (Verladung)</option>
-                  <option value="sortierung">Sortierung</option>
-                  <option value="sonderscan">Sonderscan</option>
-                </select>
+                  + Feld hinzufügen
+                </button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+              <p className="text-[10px] text-muted-foreground">
+                Konventionen für Scan-Stationen: <code>code</code> = MP-Nr (z.B. „MP5"),
+                <code> rolle</code> = z.B. „Entladung FV". Frei erweiterbar.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Color for all types */}
         <Card>
