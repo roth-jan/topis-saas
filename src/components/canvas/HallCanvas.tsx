@@ -903,22 +903,43 @@ export function HallCanvas() {
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
 
-  // Resize handler
+  // Resize handler: reagiert auf Container-Größe (nicht nur window!),
+  // damit das Canvas korrekt mit-skaliert wenn Side-Panels collapsed/expanded
+  // werden — sonst stretcht CSS den Pixel-Inhalt (Halle wirkt verzerrt+größer).
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
+    let prevW = canvas.width;
+    let prevH = canvas.height;
+
     const handleResize = () => {
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
+      const newW = container.clientWidth;
+      const newH = container.clientHeight;
+      if (newW === canvas.width && newH === canvas.height) return;
+
+      // Halle in der Mitte behalten: Pan um halbe Delta-Breite/Höhe verschieben
+      const dx = (newW - prevW) / 2;
+      const dy = (newH - prevH) / 2;
+
+      canvas.width = newW;
+      canvas.height = newH;
+      prevW = newW;
+      prevH = newH;
+
+      if (initializedRef.current) {
+        setPan({ x: pan.x + dx, y: pan.y + dy });
+      }
       draw();
     };
 
-    // Initial setup and centering
+    // Initial setup + centering
     if (!initializedRef.current && hall) {
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
+      prevW = canvas.width;
+      prevH = canvas.height;
 
       const hallW = hall.width * SCALE * zoom;
       const hallH = hall.height * SCALE * zoom;
@@ -929,9 +950,11 @@ export function HallCanvas() {
       initializedRef.current = true;
     }
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // ResizeObserver fängt Container-Resize (z.B. Side-Panel-Toggle).
+    // window-resize ist subset davon, ResizeObserver allein reicht.
+    const ro = new ResizeObserver(handleResize);
+    ro.observe(container);
+    return () => ro.disconnect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hall?.id]); // Only re-run when hall changes
 
