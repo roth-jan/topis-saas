@@ -68,9 +68,10 @@ export default function EditorPage() {
       <Toolbar />
 
       {/* Main Content */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="topis-editor-layout">
+      <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="topis-editor-layout-v2">
         {/* Left Sidebar - Object List & Gänge */}
         <ResizablePanel
+          id="left-panel"
           ref={leftPanelRef}
           defaultSize={18}
           minSize={12}
@@ -128,7 +129,7 @@ export default function EditorPage() {
         <ResizableHandle withHandle />
 
         {/* Canvas Area */}
-        <ResizablePanel defaultSize={62}>
+        <ResizablePanel id="canvas-panel" order={2} defaultSize={62}>
           <div className="relative h-full">
             {/* Open-Tab links wenn Panel collapsed */}
             {leftCollapsed && (
@@ -162,6 +163,8 @@ export default function EditorPage() {
 
         {/* Right Sidebar - Properties & Analytics */}
         <ResizablePanel
+          id="right-panel"
+          order={3}
           ref={rightPanelRef}
           defaultSize={20}
           minSize={15}
