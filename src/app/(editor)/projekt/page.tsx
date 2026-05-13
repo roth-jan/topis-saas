@@ -1,5 +1,7 @@
 'use client';
 
+import { useRef, useState, useEffect } from 'react';
+import type { ImperativePanelHandle } from 'react-resizable-panels';
 import { HallCanvas } from '@/components/canvas/HallCanvas';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { ObjectList } from '@/components/editor/ObjectList';
@@ -17,11 +19,42 @@ import {
 } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LayoutGrid, Truck, BarChart3, Settings, Route } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { LayoutGrid, Truck, BarChart3, Settings, Route, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 export default function EditorPage() {
   // Enable keyboard shortcuts
   useKeyboardShortcuts();
+
+  // Panel-Refs für collapse/expand
+  const leftPanelRef = useRef<ImperativePanelHandle>(null);
+  const rightPanelRef = useRef<ImperativePanelHandle>(null);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+
+  const toggleLeft = () => {
+    const p = leftPanelRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) p.expand(); else p.collapse();
+  };
+  const toggleRight = () => {
+    const p = rightPanelRef.current;
+    if (!p) return;
+    if (p.isCollapsed()) p.expand(); else p.collapse();
+  };
+
+  // Keyboard shortcuts: [ für links, ] für rechts
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key === '[') { toggleLeft(); e.preventDefault(); }
+      else if (e.key === ']') { toggleRight(); e.preventDefault(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -37,10 +70,20 @@ export default function EditorPage() {
       {/* Main Content */}
       <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="topis-editor-layout">
         {/* Left Sidebar - Object List & Gänge */}
-        <ResizablePanel defaultSize={18} minSize={12} maxSize={30} order={1}>
+        <ResizablePanel
+          ref={leftPanelRef}
+          defaultSize={18}
+          minSize={12}
+          maxSize={30}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setLeftCollapsed(true)}
+          onExpand={() => setLeftCollapsed(false)}
+          order={1}
+        >
           <div className="h-full border-r bg-card flex flex-col">
             <Tabs defaultValue="objects" className="flex-1 flex flex-col">
-              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2">
+              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1">
                 <TabsTrigger value="objects" className="text-xs gap-1.5">
                   <LayoutGrid className="h-3.5 w-3.5" />
                   Objekte
@@ -53,6 +96,15 @@ export default function EditorPage() {
                   <Truck className="h-3.5 w-3.5" />
                   Gänge
                 </TabsTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto h-7 w-7"
+                  onClick={toggleLeft}
+                  title="Linkes Panel einklappen ([)"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
               </TabsList>
               <TabsContent value="objects" className="flex-1 mt-0">
                 <ScrollArea className="h-full">
@@ -77,16 +129,60 @@ export default function EditorPage() {
 
         {/* Canvas Area */}
         <ResizablePanel defaultSize={62}>
-          <HallCanvas />
+          <div className="relative h-full">
+            {/* Open-Tab links wenn Panel collapsed */}
+            {leftCollapsed && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute left-2 top-2 z-20 h-8 w-8 shadow-md"
+                onClick={toggleLeft}
+                title="Linkes Panel öffnen ([)"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            )}
+            {/* Open-Tab rechts wenn Panel collapsed */}
+            {rightCollapsed && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute right-2 top-2 z-20 h-8 w-8 shadow-md"
+                onClick={toggleRight}
+                title="Rechtes Panel öffnen (])"
+              >
+                <PanelRightOpen className="h-4 w-4" />
+              </Button>
+            )}
+            <HallCanvas />
+          </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
         {/* Right Sidebar - Properties & Analytics */}
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+        <ResizablePanel
+          ref={rightPanelRef}
+          defaultSize={20}
+          minSize={15}
+          maxSize={30}
+          collapsible
+          collapsedSize={0}
+          onCollapse={() => setRightCollapsed(true)}
+          onExpand={() => setRightCollapsed(false)}
+        >
           <div className="h-full border-l bg-card flex flex-col">
             <Tabs defaultValue="properties" className="flex-1 flex flex-col">
-              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2">
+              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-1 h-7 w-7"
+                  onClick={toggleRight}
+                  title="Rechtes Panel einklappen (])"
+                >
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
                 <TabsTrigger value="properties" className="text-xs gap-1.5">
                   <Settings className="h-3.5 w-3.5" />
                   Eigenschaften
