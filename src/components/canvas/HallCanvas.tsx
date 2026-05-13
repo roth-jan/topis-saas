@@ -3,7 +3,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } from '@/lib/store';
 import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
-import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, Gang, PathArea, Conveyor } from '@/types/topis';
+import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor } from '@/types/topis';
 import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
 import { toast } from 'sonner';
 
@@ -348,24 +348,39 @@ export function HallCanvas() {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid
+    // Draw grid — Major (alle 5m, deutlich) + Minor (alle 1m, blass).
+    // Bei kleinem Zoom werden Minor ausgeblendet damit's nicht zumatscht.
     if (showGrid) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.lineWidth = 1;
-      const gridPx = 1 * SCALE * zoom;
+      const minorStepM = 1;
+      const majorStepM = 5;
+      const minorPx = minorStepM * SCALE * zoom;
+      const majorPx = majorStepM * SCALE * zoom;
 
-      for (let x = pan.x % gridPx; x < canvas.width; x += gridPx) {
+      // Minor grid (1m): nur wenn lesbare Schrittweite (>=6px)
+      if (minorPx >= 6) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        for (let x = pan.x % minorPx; x < canvas.width; x += minorPx) {
+          ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+        }
+        for (let y = pan.y % minorPx; y < canvas.height; y += minorPx) {
+          ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+        }
         ctx.stroke();
       }
-      for (let y = pan.y % gridPx; y < canvas.height; y += gridPx) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
+
+      // Major grid (5m): immer sichtbar, deutlicher
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = pan.x % majorPx; x < canvas.width; x += majorPx) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
       }
+      for (let y = pan.y % majorPx; y < canvas.height; y += majorPx) {
+        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+      }
+      ctx.stroke();
     }
 
     // Draw hall
@@ -1826,6 +1841,23 @@ export function HallCanvas() {
       {tool === 'select' && selectedPath && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 border rounded-lg px-4 py-2 text-sm shadow-lg">
           <span>Wegpunkte anklicken & ziehen zum Verschieben | <kbd className="px-1 bg-muted rounded">Rechtsklick</kbd> Menü | <kbd className="px-1 bg-muted rounded">Entf</kbd> Löschen</span>
+        </div>
+      )}
+
+      {/* Hilfetext für alle Objekt-Tools (tor, stellplatz, regal, bereich, wand,
+          tuer, hindernis, rampe, leveller, pfosten, treppe, ladestation,
+          gefahrgut, sperrplatz, klaerplatz, buero, sozialraum, wc, entladebereich,
+          outdoor_area, outdoor_road, trailer_spot, parking, custom). Einheitliches
+          Pattern: Klick = setzen, Klick+Drag = Größe aufziehen. */}
+      {OBJECT_LABELS[tool as ObjectType] && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 border rounded-lg px-4 py-2 text-sm shadow-lg">
+          <span>
+            <kbd className="px-1 bg-muted rounded">Klick</kbd> {OBJECT_LABELS[tool as ObjectType]} mit Standardgröße platzieren
+            {' | '}
+            <kbd className="px-1 bg-muted rounded">Klick+Ziehen</kbd> Größe selbst aufziehen
+            {' | '}
+            <kbd className="px-1 bg-muted rounded">V</kbd> zurück zur Auswahl
+          </span>
         </div>
       )}
 
