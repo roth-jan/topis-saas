@@ -348,17 +348,27 @@ export function HallCanvas() {
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid — Major (alle 5m, deutlich) + Minor (alle 1m, blass).
-    // Bei kleinem Zoom werden Minor ausgeblendet damit's nicht zumatscht.
+    // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid)
+    if (hall) {
+      const pos = worldToScreen(0, 0);
+      const w = hall.width * SCALE * zoom;
+      const h = hall.height * SCALE * zoom;
+      ctx.fillStyle = hall.color || '#16213e';
+      ctx.fillRect(pos.x, pos.y, w, h);
+    }
+
+    // 2) Grid ÜBER der Halle zeichnen — Major (5m) + Minor (1m, ab Zoom).
+    // Grid wird überall (auch außerhalb) gezeichnet → Orientierung beim Pannen.
+    // Höhere Opacity innerhalb der Halle weil das Grid auf dem hellen Halle-
+    // Hintergrund sichtbar bleiben muss; Außerhalb (schwarz) bleibt es subtil.
     if (showGrid) {
       const minorStepM = 1;
       const majorStepM = 5;
       const minorPx = minorStepM * SCALE * zoom;
       const majorPx = majorStepM * SCALE * zoom;
 
-      // Minor grid (1m): nur wenn lesbare Schrittweite (>=6px)
       if (minorPx >= 6) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         for (let x = pan.x % minorPx; x < canvas.width; x += minorPx) {
@@ -370,8 +380,7 @@ export function HallCanvas() {
         ctx.stroke();
       }
 
-      // Major grid (5m): immer sichtbar, deutlicher
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x = pan.x % majorPx; x < canvas.width; x += majorPx) {
@@ -383,22 +392,16 @@ export function HallCanvas() {
       ctx.stroke();
     }
 
-    // Draw hall
+    // 3) Halle-Border + Name nach dem Grid (sonst werden sie überzeichnet)
     if (hall) {
       const pos = worldToScreen(0, 0);
       const w = hall.width * SCALE * zoom;
       const h = hall.height * SCALE * zoom;
 
-      // Hall background
-      ctx.fillStyle = hall.color || '#16213e';
-      ctx.fillRect(pos.x, pos.y, w, h);
-
-      // Hall border
       ctx.strokeStyle = '#4a5568';
       ctx.lineWidth = 2;
       ctx.strokeRect(pos.x, pos.y, w, h);
 
-      // Hall name
       ctx.fillStyle = '#718096';
       ctx.font = `${12 * zoom}px Inter, sans-serif`;
       ctx.textAlign = 'center';
