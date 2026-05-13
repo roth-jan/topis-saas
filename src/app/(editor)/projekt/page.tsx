@@ -131,29 +131,31 @@ export default function EditorPage() {
         {/* Canvas Area */}
         <ResizablePanel id="canvas-panel" order={2} defaultSize={62}>
           <div className="relative h-full">
-            {/* Open-Tab links wenn Panel collapsed */}
+            {/* Seitenleiste links: vertikaler Reiter wenn Panel collapsed */}
             {leftCollapsed && (
-              <Button
-                variant="secondary"
-                size="icon"
-                className="absolute left-2 top-2 z-20 h-8 w-8 shadow-md"
+              <button
+                type="button"
                 onClick={toggleLeft}
                 title="Linkes Panel öffnen ([)"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1 h-32 w-7 bg-primary text-primary-foreground rounded-r-md shadow-lg hover:w-9 transition-all border-y border-r border-primary/30"
+                aria-label="Linkes Panel öffnen"
               >
-                <PanelLeftOpen className="h-4 w-4" />
-              </Button>
+                <PanelLeftOpen className="h-4 w-4 mx-auto" />
+                <span className="sr-only">Objekte / Wege / Gänge öffnen</span>
+              </button>
             )}
-            {/* Open-Tab rechts wenn Panel collapsed */}
+            {/* Seitenleiste rechts: vertikaler Reiter wenn Panel collapsed */}
             {rightCollapsed && (
-              <Button
-                variant="secondary"
-                size="icon"
-                className="absolute right-2 top-2 z-20 h-8 w-8 shadow-md"
+              <button
+                type="button"
                 onClick={toggleRight}
                 title="Rechtes Panel öffnen (])"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1 h-32 w-7 bg-primary text-primary-foreground rounded-l-md shadow-lg hover:w-9 transition-all border-y border-l border-primary/30"
+                aria-label="Rechtes Panel öffnen"
               >
-                <PanelRightOpen className="h-4 w-4" />
-              </Button>
+                <PanelRightOpen className="h-4 w-4 mx-auto" />
+                <span className="sr-only">Eigenschaften / Analyse öffnen</span>
+              </button>
             )}
             <HallCanvas />
           </div>
