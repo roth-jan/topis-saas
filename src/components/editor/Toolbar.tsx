@@ -86,7 +86,8 @@ import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
 import { TorbelegungDialog } from '@/components/dialogs/TorbelegungDialog';
 import { VergleichDialog } from '@/components/dialogs/VergleichDialog';
 import { generateReport } from '@/lib/report-generator';
-import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
+import { useBetriebsdatenStore, type ObjektMetrik } from '@/lib/betriebsdaten-store';
+import { parseCsvMitProfil } from '@/lib/spaltenzuordnungen';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
@@ -262,6 +263,91 @@ export function Toolbar() {
 
   // Betriebsdaten + Prozessmodell für Report
   const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
+  const importScandatenRecords = useBetriebsdatenStore((s) => s.importScandatenRecords);
+  const setAnalyseStore = useBetriebsdatenStore((s) => s.setAnalyse);
+  const setHeatmapConfigStore = useBetriebsdatenStore((s) => s.setHeatmapConfig);
+  const objectsForDemo = useTopisStore((s) => s.objects);
+
+  // Demo-Daten-Loader: lädt die AS Januar-2026-CSV direkt (ohne Datei-Dialog)
+  // und mappt MP-Codes auf die MP-Custom-Objekte im aktuellen Layout.
+  const handleLoadDemoJan2026 = async () => {
+    try {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/topis-saas';
+      const url = `${basePath}/demo-data/as-jan2026-scans.csv`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const result = parseCsvMitProfil(text);
+      if (result.records.length === 0) {
+        toast.error('Keine gültigen Datensätze in der Demo-CSV gefunden');
+        return;
+      }
+
+      // MP-Custom-Objekte finden (haben tag 'messpunkt' + meta.code wie "MP5")
+      const mpObjects = objectsForDemo.filter(
+        (o) => o.tags?.includes('messpunkt') && o.meta?.code
+      );
+      if (mpObjects.length === 0) {
+        toast.error('Keine Messpunkte im Layout gefunden — bitte zuerst AS-Vorlage laden');
+        return;
+      }
+
+      // Aggregation pro Messpunkt
+      const records = result.records;
+      const daten = [...new Set(records.map((r) => r.scandatum).filter(Boolean))];
+      const arbeitstage = Math.max(daten.length, 1);
+
+      const grouped = new Map<string, typeof records>();
+      for (const r of records) {
+        // Unsere CSV hat in der Spalte 'messpunkt' Werte wie "MP5", die als
+        // Number geparsed werden zu NaN. messpunktName enthält den Rolle-Text.
+        // Schau im Original-Stellplatz oder Name nach "MP\d+[a-z]*".
+        const candidate = r.stellplatz || r.messpunktName || '';
+        const key = candidate.match(/MP[0-9]+[a-z]*/i)?.[0] || `MP${r.messpunkt}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key)!.push(r);
+      }
+
+      const metriken: ObjektMetrik[] = [];
+      grouped.forEach((recs, mpKey) => {
+        const mpObj = mpObjects.find((o) => o.meta?.code === mpKey);
+        if (!mpObj) return;
+        const totalSendungen = recs.reduce((s, r) => s + r.sendungen, 0);
+        const totalColli = recs.reduce((s, r) => s + r.colli, 0);
+        const totalGewicht = recs.reduce((s, r) => s + r.gewicht, 0);
+        metriken.push({
+          objectId: mpObj.id,
+          objectName: mpObj.name || mpKey,
+          sendungen: totalSendungen / arbeitstage,
+          colli: totalColli / arbeitstage,
+          gewicht: totalGewicht / arbeitstage,
+          durchschnittLadezeit: 0,
+          auslastung: Math.min(1, totalSendungen / arbeitstage / 200),
+          fahrtenProTag: recs.length / arbeitstage,
+        });
+      });
+
+      importScandatenRecords(records);
+      setAnalyseStore({
+        zeitraum: {
+          von: daten.sort()[0] || '',
+          bis: daten.sort()[daten.length - 1] || '',
+        },
+        arbeitstage,
+        gesamtSendungen: records.reduce((s, r) => s + r.sendungen, 0),
+        gesamtColli: records.reduce((s, r) => s + r.colli, 0),
+        gesamtGewicht: records.reduce((s, r) => s + r.gewicht, 0),
+        objektMetriken: metriken,
+      });
+      setHeatmapConfigStore({ aktiv: true, modus: 'colli' });
+      toast.success(
+        `Januar 2026: ${records.length.toLocaleString('de-DE')} Scans über ${arbeitstage} Tage geladen, ${metriken.length} Messpunkte`,
+        { duration: 5000 }
+      );
+    } catch (err) {
+      toast.error('Demo-Daten konnten nicht geladen werden: ' + (err as Error).message);
+    }
+  };
   const prozessErgebnis = useProzessmodellStore((s) => s.ergebnis);
 
   const { theme, setTheme } = useTheme();
@@ -469,6 +555,10 @@ export function Toolbar() {
                 {vorlage.name} — {vorlage.standort}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuItem onClick={handleLoadDemoJan2026}>
+              <Database className="mr-2 h-4 w-4" />
+              AS Januar 2026 — echte Scan-Daten laden
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSave}>
               <Save className="mr-2 h-4 w-4" />
