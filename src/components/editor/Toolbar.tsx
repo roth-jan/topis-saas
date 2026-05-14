@@ -268,14 +268,11 @@ export function Toolbar() {
   const setHeatmapConfigStore = useBetriebsdatenStore((s) => s.setHeatmapConfig);
   const objectsForDemo = useTopisStore((s) => s.objects);
 
-  // Demo-Daten-Loader: lädt die AS Januar-2026-CSV direkt (ohne Datei-Dialog)
-  // und mappt MP-Codes auf die MP-Custom-Objekte im aktuellen Layout.
-  // Plain CSV-Parsing (kein parseCsvMitProfil), weil das die "messpunkt"-
-  // Spalte als Number parsed und "MP5" zu NaN wird.
-  const handleLoadDemoJan2026 = async () => {
+  // Generischer Demo-Daten-Loader für Monats-CSVs aus public/demo-data/
+  const handleLoadMonth = async (slug: string, label: string) => {
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/topis-saas';
-      const url = `${basePath}/demo-data/as-jan2026-scans.csv`;
+      const url = `${basePath}/demo-data/${slug}.csv`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
@@ -356,7 +353,7 @@ export function Toolbar() {
         toast.error(`Keine MP-Matches: gefunden ${[...grouped.keys()].join(',')}, im Layout ${mpObjects.map(m => m.meta?.code).join(',')}`);
       } else {
         toast.success(
-          `Januar 2026: ${(lines.length - 1).toLocaleString('de-DE')} Zeilen, ${arbeitstage} Tage, ${metriken.length} Messpunkte gemappt`,
+          `${label}: ${(lines.length - 1).toLocaleString('de-DE')} Zeilen, ${arbeitstage} Tage, ${metriken.length} Messpunkte gemappt`,
           { duration: 5000 }
         );
       }
@@ -571,9 +568,13 @@ export function Toolbar() {
                 {vorlage.name} — {vorlage.standort}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuItem onClick={handleLoadDemoJan2026}>
+            <DropdownMenuItem onClick={() => handleLoadMonth('as-jan2026-scans', 'Januar 2026')}>
               <Database className="mr-2 h-4 w-4" />
               AS Januar 2026 — echte Scan-Daten laden
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleLoadMonth('as-feb2026-scans', 'Februar 2026')}>
+              <Database className="mr-2 h-4 w-4" />
+              AS Februar 2026 — echte Scan-Daten laden
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSave}>
