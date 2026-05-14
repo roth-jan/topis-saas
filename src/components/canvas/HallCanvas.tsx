@@ -886,18 +886,45 @@ export function HallCanvas() {
         const intensity = wert / maxWert;
 
         ctx.save();
-        // Colored overlay
-        ctx.fillStyle = getHeatmapColor(intensity, heatmapConfig.farbskala, heatmapConfig.intensitaet);
-        ctx.fillRect(pos.x, pos.y, w, h);
+        const fillColor = getHeatmapColor(intensity, heatmapConfig.farbskala, heatmapConfig.intensitaet);
+        ctx.fillStyle = fillColor;
 
-        // Value label
-        if (zoom > 0.4) {
-          const label = formatMetrikWert(wert, heatmapConfig.modus);
-          ctx.fillStyle = 'rgba(255,255,255,0.95)';
-          ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(label, pos.x + w / 2, pos.y + h / 2 + (zoom > 0.5 ? 12 * zoom : 0));
+        // MP-Objekte (shape='circle') brauchen größere Kreis-Heatmap, weil sie
+        // sonst zu klein sind. Wir skalieren proportional zur Intensität.
+        if (obj.shape === 'circle') {
+          const cx = pos.x + w / 2;
+          const cy = pos.y + h / 2;
+          // Basis-Radius aus Objekt-Größe, plus Intensitäts-Boost (1× bis 3×)
+          const baseR = Math.min(w, h) / 2;
+          const r = baseR * (1 + intensity * 2);
+          // Weicher Glow nach außen
+          const grad = ctx.createRadialGradient(cx, cy, baseR * 0.3, cx, cy, r);
+          grad.addColorStop(0, fillColor);
+          grad.addColorStop(1, fillColor.replace(/[\d.]+\)$/, '0.05)'));
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fill();
+          // Value label oberhalb
+          if (zoom > 0.3) {
+            const label = formatMetrikWert(wert, heatmapConfig.modus);
+            ctx.fillStyle = '#fff';
+            ctx.font = `bold ${Math.max(11, 13 * zoom)}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, cx, cy - baseR - 8);
+          }
+        } else {
+          // Rechteckiges Heatmap-Overlay (Tore etc.)
+          ctx.fillRect(pos.x, pos.y, w, h);
+          if (zoom > 0.4) {
+            const label = formatMetrikWert(wert, heatmapConfig.modus);
+            ctx.fillStyle = 'rgba(255,255,255,0.95)';
+            ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, pos.x + w / 2, pos.y + h / 2 + (zoom > 0.5 ? 12 * zoom : 0));
+          }
         }
         ctx.restore();
       });

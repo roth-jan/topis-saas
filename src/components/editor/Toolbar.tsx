@@ -270,6 +270,8 @@ export function Toolbar() {
 
   // Demo-Daten-Loader: lädt die AS Januar-2026-CSV direkt (ohne Datei-Dialog)
   // und mappt MP-Codes auf die MP-Custom-Objekte im aktuellen Layout.
+  // Plain CSV-Parsing (kein parseCsvMitProfil), weil das die "messpunkt"-
+  // Spalte als Number parsed und "MP5" zu NaN wird.
   const handleLoadDemoJan2026 = async () => {
     try {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/topis-saas';
@@ -277,73 +279,87 @@ export function Toolbar() {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      const result = parseCsvMitProfil(text);
-      if (result.records.length === 0) {
-        toast.error('Keine gültigen Datensätze in der Demo-CSV gefunden');
+
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) {
+        toast.error('CSV ist leer');
         return;
       }
+      const headers = lines[0].split(';').map((h) => h.trim().toLowerCase());
+      const colMp = headers.indexOf('messpunkt');
+      const colMpName = headers.indexOf('messpunktname');
+      const colDate = headers.indexOf('scandatum');
+      const colSendungen = headers.indexOf('sendungen');
+      const colColli = headers.indexOf('colli');
+      const colGewicht = headers.indexOf('gewicht');
 
-      // MP-Custom-Objekte finden (haben tag 'messpunkt' + meta.code wie "MP5")
+      // MP-Custom-Objekte finden
       const mpObjects = objectsForDemo.filter(
         (o) => o.tags?.includes('messpunkt') && o.meta?.code
       );
       if (mpObjects.length === 0) {
-        toast.error('Keine Messpunkte im Layout gefunden — bitte zuerst AS-Vorlage laden');
+        toast.error('Keine Messpunkte im Layout — bitte zuerst AS-Vorlage laden');
         return;
       }
 
-      // Aggregation pro Messpunkt
-      const records = result.records;
-      const daten = [...new Set(records.map((r) => r.scandatum).filter(Boolean))];
-      const arbeitstage = Math.max(daten.length, 1);
+      // Aggregation pro MP-Code direkt aus CSV-Spalte
+      type Bucket = { sendungen: number; colli: number; gewicht: number; count: number };
+      const grouped = new Map<string, Bucket>();
+      const tage = new Set<string>();
+      let totalSendungen = 0, totalColli = 0, totalGewicht = 0;
 
-      const grouped = new Map<string, typeof records>();
-      for (const r of records) {
-        // Unsere CSV hat in der Spalte 'messpunkt' Werte wie "MP5", die als
-        // Number geparsed werden zu NaN. messpunktName enthält den Rolle-Text.
-        // Schau im Original-Stellplatz oder Name nach "MP\d+[a-z]*".
-        const candidate = r.stellplatz || r.messpunktName || '';
-        const key = candidate.match(/MP[0-9]+[a-z]*/i)?.[0] || `MP${r.messpunkt}`;
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key)!.push(r);
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(';');
+        const mpRaw = parts[colMp]?.trim() || '';
+        const mpCode = mpRaw.match(/MP[0-9]+[a-z]*/i)?.[0];
+        if (!mpCode) continue;
+        const s = parseInt(parts[colSendungen]) || 0;
+        const c = parseInt(parts[colColli]) || 0;
+        const g = parseFloat(parts[colGewicht]) || 0;
+        const d = parts[colDate]?.trim() || '';
+        if (d) tage.add(d.substring(0, 10));
+        totalSendungen += s; totalColli += c; totalGewicht += g;
+        const b = grouped.get(mpCode) || { sendungen: 0, colli: 0, gewicht: 0, count: 0 };
+        b.sendungen += s; b.colli += c; b.gewicht += g; b.count += 1;
+        grouped.set(mpCode, b);
       }
 
+      const arbeitstage = Math.max(tage.size, 1);
       const metriken: ObjektMetrik[] = [];
-      grouped.forEach((recs, mpKey) => {
+      grouped.forEach((b, mpKey) => {
         const mpObj = mpObjects.find((o) => o.meta?.code === mpKey);
         if (!mpObj) return;
-        const totalSendungen = recs.reduce((s, r) => s + r.sendungen, 0);
-        const totalColli = recs.reduce((s, r) => s + r.colli, 0);
-        const totalGewicht = recs.reduce((s, r) => s + r.gewicht, 0);
         metriken.push({
           objectId: mpObj.id,
           objectName: mpObj.name || mpKey,
-          sendungen: totalSendungen / arbeitstage,
-          colli: totalColli / arbeitstage,
-          gewicht: totalGewicht / arbeitstage,
+          sendungen: b.sendungen / arbeitstage,
+          colli: b.colli / arbeitstage,
+          gewicht: b.gewicht / arbeitstage,
           durchschnittLadezeit: 0,
-          auslastung: Math.min(1, totalSendungen / arbeitstage / 200),
-          fahrtenProTag: recs.length / arbeitstage,
+          auslastung: Math.min(1, b.sendungen / arbeitstage / 200),
+          fahrtenProTag: b.count / arbeitstage,
         });
       });
 
-      importScandatenRecords(records);
+      const sortedTage = [...tage].sort();
       setAnalyseStore({
-        zeitraum: {
-          von: daten.sort()[0] || '',
-          bis: daten.sort()[daten.length - 1] || '',
-        },
+        zeitraum: { von: sortedTage[0] || '', bis: sortedTage[sortedTage.length - 1] || '' },
         arbeitstage,
-        gesamtSendungen: records.reduce((s, r) => s + r.sendungen, 0),
-        gesamtColli: records.reduce((s, r) => s + r.colli, 0),
-        gesamtGewicht: records.reduce((s, r) => s + r.gewicht, 0),
+        gesamtSendungen: totalSendungen,
+        gesamtColli: totalColli,
+        gesamtGewicht: totalGewicht,
         objektMetriken: metriken,
       });
       setHeatmapConfigStore({ aktiv: true, modus: 'colli' });
-      toast.success(
-        `Januar 2026: ${records.length.toLocaleString('de-DE')} Scans über ${arbeitstage} Tage geladen, ${metriken.length} Messpunkte`,
-        { duration: 5000 }
-      );
+
+      if (metriken.length === 0) {
+        toast.error(`Keine MP-Matches: gefunden ${[...grouped.keys()].join(',')}, im Layout ${mpObjects.map(m => m.meta?.code).join(',')}`);
+      } else {
+        toast.success(
+          `Januar 2026: ${(lines.length - 1).toLocaleString('de-DE')} Zeilen, ${arbeitstage} Tage, ${metriken.length} Messpunkte gemappt`,
+          { duration: 5000 }
+        );
+      }
     } catch (err) {
       toast.error('Demo-Daten konnten nicht geladen werden: ' + (err as Error).message);
     }
