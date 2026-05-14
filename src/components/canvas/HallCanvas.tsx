@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 export function HallCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const minimapRef = useRef<HTMLCanvasElement>(null);
+  const rulerTopRef = useRef<HTMLCanvasElement>(null);
+  const rulerLeftRef = useRef<HTMLCanvasElement>(null);
 
   const hall = useActiveHall();
   const objects = useObjects();
@@ -1019,6 +1022,171 @@ export function HallCanvas() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hall?.id]); // Only re-run when hall changes
 
+  // === Mini-Map Rendering ===
+  // Kleines Canvas unten rechts: Halle als skalierte Übersicht +
+  // Viewport-Rechteck (zeigt aktuellen Ausschnitt). Klick darauf → Pan.
+  useEffect(() => {
+    const mini = minimapRef.current;
+    const main = canvasRef.current;
+    if (!mini || !main || !hall) return;
+    const ctx = mini.getContext('2d');
+    if (!ctx) return;
+
+    const MM_W = mini.width;
+    const MM_H = mini.height;
+    ctx.clearRect(0, 0, MM_W, MM_H);
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, MM_W, MM_H);
+
+    // Skalierung: Halle (Welt-Meter) → Mini-Canvas
+    const PAD = 4;
+    const scaleMM = Math.min(
+      (MM_W - PAD * 2) / hall.width,
+      (MM_H - PAD * 2) / hall.height
+    );
+    const offX = (MM_W - hall.width * scaleMM) / 2;
+    const offY = (MM_H - hall.height * scaleMM) / 2;
+
+    // Halle
+    ctx.fillStyle = hall.color || '#16213e';
+    ctx.fillRect(offX, offY, hall.width * scaleMM, hall.height * scaleMM);
+    ctx.strokeStyle = '#4a5568';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(offX, offY, hall.width * scaleMM, hall.height * scaleMM);
+
+    // Tore als kleine Punkte
+    for (const obj of objects) {
+      if (obj.type !== 'tor') continue;
+      ctx.fillStyle = OBJECT_COLORS[obj.type] || '#3b82f6';
+      ctx.fillRect(
+        offX + obj.x * scaleMM,
+        offY + obj.y * scaleMM,
+        Math.max(1, obj.width * scaleMM),
+        Math.max(1, obj.height * scaleMM)
+      );
+    }
+
+    // Viewport-Rechteck (welcher Bereich des Welt-Koordinatensystems
+    // ist gerade im Haupt-Canvas sichtbar?)
+    const viewWorldX = -pan.x / (SCALE * zoom);
+    const viewWorldY = -pan.y / (SCALE * zoom);
+    const viewWorldW = main.width / (SCALE * zoom);
+    const viewWorldH = main.height / (SCALE * zoom);
+    ctx.strokeStyle = '#00bcd4';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(
+      offX + viewWorldX * scaleMM,
+      offY + viewWorldY * scaleMM,
+      viewWorldW * scaleMM,
+      viewWorldH * scaleMM
+    );
+    ctx.fillStyle = 'rgba(0,188,212,0.10)';
+    ctx.fillRect(
+      offX + viewWorldX * scaleMM,
+      offY + viewWorldY * scaleMM,
+      viewWorldW * scaleMM,
+      viewWorldH * scaleMM
+    );
+  }, [hall, objects, zoom, pan]);
+
+  // === Lineale Rendering ===
+  // Top + Left Lineale mit Skala in Metern, sync mit Pan/Zoom.
+  useEffect(() => {
+    const top = rulerTopRef.current;
+    const left = rulerLeftRef.current;
+    const main = canvasRef.current;
+    if (!top || !left || !main) return;
+    const topCtx = top.getContext('2d');
+    const leftCtx = left.getContext('2d');
+    if (!topCtx || !leftCtx) return;
+
+    const drawRuler = (ctx: CanvasRenderingContext2D, w: number, h: number, isHorizontal: boolean) => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(20,20,20,0.85)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#444';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, 0, w, h);
+
+      // Skalierung: 1m = SCALE × zoom Pixel
+      const pxPerM = SCALE * zoom;
+      const stepM = pxPerM >= 30 ? 1 : pxPerM >= 10 ? 5 : pxPerM >= 4 ? 10 : 25;
+      const majorEveryN = 5;
+
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillStyle = '#aaa';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = isHorizontal ? 'center' : 'right';
+
+      if (isHorizontal) {
+        // Start-Meter im linken sichtbaren Bereich
+        const startM = Math.floor((-pan.x / pxPerM) / stepM) * stepM;
+        const endM = startM + Math.ceil(w / pxPerM) + stepM;
+        for (let m = startM; m <= endM; m += stepM) {
+          const x = m * pxPerM + pan.x;
+          if (x < 0 || x > w) continue;
+          const isMajor = m % (stepM * majorEveryN) === 0;
+          ctx.strokeStyle = isMajor ? '#999' : '#555';
+          ctx.beginPath();
+          ctx.moveTo(x, h);
+          ctx.lineTo(x, h - (isMajor ? h * 0.6 : h * 0.3));
+          ctx.stroke();
+          if (isMajor) {
+            ctx.fillText(`${m}`, x, h * 0.3);
+          }
+        }
+      } else {
+        const startM = Math.floor((-pan.y / pxPerM) / stepM) * stepM;
+        const endM = startM + Math.ceil(h / pxPerM) + stepM;
+        for (let m = startM; m <= endM; m += stepM) {
+          const y = m * pxPerM + pan.y;
+          if (y < 0 || y > h) continue;
+          const isMajor = m % (stepM * majorEveryN) === 0;
+          ctx.strokeStyle = isMajor ? '#999' : '#555';
+          ctx.beginPath();
+          ctx.moveTo(w, y);
+          ctx.lineTo(w - (isMajor ? w * 0.6 : w * 0.3), y);
+          ctx.stroke();
+          if (isMajor) {
+            ctx.fillText(`${m}`, w * 0.55, y);
+          }
+        }
+      }
+    };
+
+    top.width = main.width;
+    top.height = 22;
+    drawRuler(topCtx, top.width, top.height, true);
+
+    left.width = 28;
+    left.height = main.height;
+    drawRuler(leftCtx, left.width, left.height, false);
+  }, [zoom, pan, hall?.id]);
+
+  // Mini-Map Click → Pan zur angeklickten Position
+  const handleMinimapClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const mini = minimapRef.current;
+    const main = canvasRef.current;
+    if (!mini || !main || !hall) return;
+    const rect = mini.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const PAD = 4;
+    const scaleMM = Math.min(
+      (mini.width - PAD * 2) / hall.width,
+      (mini.height - PAD * 2) / hall.height
+    );
+    const offX = (mini.width - hall.width * scaleMM) / 2;
+    const offY = (mini.height - hall.height * scaleMM) / 2;
+    const worldX = (mx - offX) / scaleMM;
+    const worldY = (my - offY) / scaleMM;
+    // Pan so setzen, dass (worldX, worldY) im Haupt-Canvas zentriert ist
+    setPan({
+      x: main.width / 2 - worldX * SCALE * zoom,
+      y: main.height / 2 - worldY * SCALE * zoom,
+    });
+  };
+
   // Redraw whenever `draw` reference changes. Since `draw` is a useCallback whose
   // deps cover all render-relevant state, depending on `[draw]` here is both minimal
   // and correct — no duplicated dep list to drift.
@@ -1841,6 +2009,27 @@ export function HallCanvas() {
         onMouseLeave={handleMouseUp}
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
+      />
+      {/* Top Ruler */}
+      <canvas
+        ref={rulerTopRef}
+        className="absolute top-0 left-7 pointer-events-none"
+        style={{ height: 22 }}
+      />
+      {/* Left Ruler */}
+      <canvas
+        ref={rulerLeftRef}
+        className="absolute top-0 left-0 pointer-events-none"
+        style={{ width: 28 }}
+      />
+      {/* Mini-Map unten rechts */}
+      <canvas
+        ref={minimapRef}
+        width={200}
+        height={80}
+        onClick={handleMinimapClick}
+        className="absolute bottom-3 right-3 border-2 border-cyan-700/60 rounded shadow-lg cursor-pointer hover:border-cyan-500 transition-colors"
+        title="Übersicht — klicken zum Springen"
       />
       {/* Tool instructions */}
       {tool === 'path' && (
