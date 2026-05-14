@@ -798,23 +798,66 @@ export function HallCanvas() {
       }
 
       // Object fill (rechteckige Objekte)
-      ctx.fillStyle = baseColor;
-      ctx.fillRect(pos.x, pos.y, w, h);
+      // Bereiche: semi-transparent (0.4) — Heatmap-tauglich, weniger visuelles Rauschen
+      if (obj.type === 'bereich') {
+        ctx.fillStyle = baseColor;
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(pos.x, pos.y, w, h);
+        ctx.globalAlpha = 1.0;
+      } else {
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(pos.x, pos.y, w, h);
+      }
 
       // Object border
       ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.3)';
       ctx.lineWidth = isSelected ? 2 : 1;
       ctx.strokeRect(pos.x, pos.y, w, h);
 
-      // Object label
-      if (zoom > 0.5 && obj.name) {
+      // Object label — Tore und Bereiche unterschiedlich behandeln
+      if (zoom > 0.3 && obj.name) {
         ctx.fillStyle = '#fff';
-        ctx.font = `${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        const label = obj.name.length > 8 ? obj.name.substring(0, 8) + '…' : obj.name;
-        ctx.fillText(label, pos.x + w / 2, pos.y + h / 2);
+        if (obj.type === 'tor') {
+          // Tor-Label: nur Nummer, kompakt. Sektion erst ab hohem Zoom dazu.
+          const nr = obj.torNummer ?? obj.name.replace(/^Tor\s+/i, '');
+          const sektion = obj.meta?.sektion;
+          if (zoom >= 0.7 && sektion) {
+            ctx.font = `bold ${Math.max(8, 9 * zoom)}px Inter, sans-serif`;
+            ctx.fillText(`${nr}`, pos.x + w / 2, pos.y + h / 2 - 3);
+            ctx.font = `${Math.max(6, 7 * zoom)}px Inter, sans-serif`;
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.fillText(sektion.substring(0, 10), pos.x + w / 2, pos.y + h / 2 + 6);
+          } else {
+            ctx.font = `bold ${Math.max(8, 10 * zoom)}px Inter, sans-serif`;
+            ctx.fillText(`${nr}`, pos.x + w / 2, pos.y + h / 2);
+          }
+        } else if (obj.type === 'bereich') {
+          // Bereich-Label: Text-to-Fit (Schriftgröße aus min(w,h)) + Auto-Rotation
+          // bei deutlich vertikalen Boxen (h > 2×w).
+          const isVertical = h > 2 * w;
+          const labelDim = isVertical ? w : Math.min(w, h);
+          const fontSize = Math.max(8, Math.min(16, labelDim / 6));
+          ctx.font = `${fontSize}px Inter, sans-serif`;
+          const cx = pos.x + w / 2;
+          const cy = pos.y + h / 2;
+          if (isVertical) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(obj.name, 0, 0);
+            ctx.restore();
+          } else {
+            ctx.fillText(obj.name, cx, cy);
+          }
+        } else if (zoom > 0.5) {
+          // Andere Objekt-Typen: wie bisher
+          ctx.font = `${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
+          const label = obj.name.length > 8 ? obj.name.substring(0, 8) + '…' : obj.name;
+          ctx.fillText(label, pos.x + w / 2, pos.y + h / 2);
+        }
       }
 
       ctx.restore();
