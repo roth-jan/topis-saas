@@ -53,6 +53,9 @@ export function HallCanvas() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragObject, setDragObject] = useState<TopisObject | null>(null);
+  // Resize-State: an welcher Ecke des selektierten Objekts wird gezogen
+  const [resizeHandle, setResizeHandle] = useState<'nw' | 'ne' | 'sw' | 'se' | null>(null);
+  const [resizeStart, setResizeStart] = useState<{ x: number; y: number; w: number; h: number; mx: number; my: number } | null>(null);
 
   // Gang drawing state
   const [gangDrawStart, setGangDrawStart] = useState<{ x: number; y: number } | null>(null);
@@ -1314,7 +1317,36 @@ export function HallCanvas() {
     }
 
     if (tool === 'select') {
-      // First check for objects
+      // ZUERST: Resize-Handle des aktuell selektierten Objekts prüfen.
+      // Handles sind 8px Cyan-Quadrate an den 4 Ecken (im Screen-Space).
+      // Wir prüfen in Screen-Koordinaten mit Toleranz, damit's auch bei
+      // kleinem Zoom treffbar bleibt.
+      if (selectedObject) {
+        const oPos = worldToScreen(selectedObject.x, selectedObject.y);
+        const oW = selectedObject.width * SCALE * zoom;
+        const oH = selectedObject.height * SCALE * zoom;
+        const HANDLE_TOL = 10;
+        const corners: Array<['nw'|'ne'|'sw'|'se', number, number]> = [
+          ['nw', oPos.x,      oPos.y],
+          ['ne', oPos.x + oW, oPos.y],
+          ['sw', oPos.x,      oPos.y + oH],
+          ['se', oPos.x + oW, oPos.y + oH],
+        ];
+        for (const [which, hx, hy] of corners) {
+          if (Math.abs(x - hx) <= HANDLE_TOL && Math.abs(y - hy) <= HANDLE_TOL) {
+            setResizeHandle(which);
+            setResizeStart({
+              x: selectedObject.x, y: selectedObject.y,
+              w: selectedObject.width, h: selectedObject.height,
+              mx: world.x, my: world.y,
+            });
+            setIsDragging(true);
+            return;
+          }
+        }
+      }
+
+      // Dann normales Object-Drag
       const obj = findObjectAt(world.x, world.y);
       if (obj) {
         selectObject(obj); // also clears selectedPath
@@ -1555,6 +1587,41 @@ export function HallCanvas() {
         };
         updatePath(draggingWaypoint.pathId, { waypoints: newWaypoints });
       }
+    } else if (tool === 'select' && resizeHandle && resizeStart && selectedObject) {
+      // Resize: an welcher Ecke wird gezogen, Größe + Position entsprechend anpassen
+      const dx = world.x - resizeStart.mx;
+      const dy = world.y - resizeStart.my;
+      let newX = resizeStart.x;
+      let newY = resizeStart.y;
+      let newW = resizeStart.w;
+      let newH = resizeStart.h;
+      const MIN = 0.5;  // Mindestgröße 0.5m × 0.5m
+
+      if (resizeHandle === 'se') {
+        newW = Math.max(MIN, resizeStart.w + dx);
+        newH = Math.max(MIN, resizeStart.h + dy);
+      } else if (resizeHandle === 'ne') {
+        newW = Math.max(MIN, resizeStart.w + dx);
+        newH = Math.max(MIN, resizeStart.h - dy);
+        newY = resizeStart.y + (resizeStart.h - newH);
+      } else if (resizeHandle === 'sw') {
+        newW = Math.max(MIN, resizeStart.w - dx);
+        newX = resizeStart.x + (resizeStart.w - newW);
+        newH = Math.max(MIN, resizeStart.h + dy);
+      } else if (resizeHandle === 'nw') {
+        newW = Math.max(MIN, resizeStart.w - dx);
+        newX = resizeStart.x + (resizeStart.w - newW);
+        newH = Math.max(MIN, resizeStart.h - dy);
+        newY = resizeStart.y + (resizeStart.h - newH);
+      }
+
+      // Snap auf 0.1m für saubere Werte
+      newX = Math.round(newX * 10) / 10;
+      newY = Math.round(newY * 10) / 10;
+      newW = Math.round(newW * 10) / 10;
+      newH = Math.round(newH * 10) / 10;
+
+      updateObject(selectedObject.id, { x: newX, y: newY, width: newW, height: newH });
     } else if (tool === 'select' && dragObject) {
       // Snap to 0.1m grid (not 1m) for precise repositioning
       let newX = Math.round((world.x - dragStart.x) * 10) / 10;
@@ -1677,6 +1744,8 @@ export function HallCanvas() {
 
     setIsDragging(false);
     setDragObject(null);
+    setResizeHandle(null);
+    setResizeStart(null);
   };
 
   // Wheel zoom is handled via native event listener above (non-passive)
@@ -1852,6 +1921,8 @@ export function HallCanvas() {
   const getCursor = () => {
     if (isDragging && tool === 'pan') return 'grabbing';
     if (tool === 'pan') return 'grab';
+    if (resizeHandle === 'nw' || resizeHandle === 'se') return 'nwse-resize';
+    if (resizeHandle === 'ne' || resizeHandle === 'sw') return 'nesw-resize';
     if (tool === 'select') return dragObject ? 'move' : 'default';
     if (tool === 'gang') return gangDrawStart ? 'crosshair' : 'crosshair';
     return 'crosshair';
