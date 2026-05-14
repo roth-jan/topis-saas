@@ -1,4 +1,4 @@
-import type { TopisObject } from './topis';
+import type { TopisObject, Gang } from './topis';
 
 /**
  * ProjektVorlage: Bündelt Layout + Prozessmodell-Parameter + Referenzwerte
@@ -16,6 +16,9 @@ export interface ProjektVorlage {
 
   /** Layout-Objekte (ohne id, wird beim Laden generiert) */
   objects: Omit<TopisObject, 'id'>[];
+
+  /** Gänge (Wege-Netz für FFZ) */
+  gaenge?: Gang[];
 
   /** Welches Prozessmodell-Template verwenden */
   prozessmodell: 'se_standard' | 'sa_standard';

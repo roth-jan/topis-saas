@@ -56,6 +56,7 @@ export const PROJEKT_GERSTHOFEN_2026: ProjektVorlage = {
     color: layoutJson.hall.color,
   },
   objects: layoutJson.objects as unknown as Omit<TopisObject, 'id'>[],
+  gaenge: layoutJson.gaenge as unknown as Gang[],
   prozessmodell: 'se_standard',
   parameterOverrides: {
     colliProTag: 15000,

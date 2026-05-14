@@ -23,8 +23,8 @@ export function ladeProjektVorlage(id: string): ProjektVorlage | undefined {
   const vorlage = PROJEKT_VORLAGEN.find(v => v.id === id);
   if (!vorlage) return undefined;
 
-  // 1. Layout laden
-  const { resetState, updateHall, addObject } = useTopisStore.getState();
+  // 1. Layout laden (Halle + Objekte + Gänge)
+  const { resetState, updateHall, addObject, setGaenge } = useTopisStore.getState();
   resetState();
   updateHall(1, {
     width: vorlage.hall.width,
@@ -33,6 +33,9 @@ export function ladeProjektVorlage(id: string): ProjektVorlage | undefined {
     color: vorlage.hall.color || '#16213e',
   });
   vorlage.objects.forEach(obj => addObject(obj));
+  if (vorlage.gaenge && vorlage.gaenge.length > 0) {
+    setGaenge(vorlage.gaenge);
+  }
 
   // 2. Prozessmodell laden + Parameter setzen
   const pm = useProzessmodellStore.getState();
