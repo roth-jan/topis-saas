@@ -32,10 +32,10 @@ export function loadSchmidHalle6_2026() {
   });
 
   for (const obj of layoutJson.objects) {
-    addObject(obj as Omit<TopisObject, 'id'>);
+    addObject(obj as unknown as Omit<TopisObject, 'id'>);
   }
 
-  setGaenge(layoutJson.gaenge as Gang[]);
+  setGaenge(layoutJson.gaenge as unknown as Gang[]);
 }
 
 export const HALLE6_2026_META = layoutJson.meta;
@@ -55,7 +55,7 @@ export const PROJEKT_GERSTHOFEN_2026: ProjektVorlage = {
     name: layoutJson.hall.name,
     color: layoutJson.hall.color,
   },
-  objects: layoutJson.objects as Omit<TopisObject, 'id'>[],
+  objects: layoutJson.objects as unknown as Omit<TopisObject, 'id'>[],
   prozessmodell: 'se_standard',
   parameterOverrides: {
     colliProTag: 15000,
