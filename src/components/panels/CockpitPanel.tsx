@@ -81,14 +81,24 @@ export function CockpitPanel() {
     if (!a || !b) return null;
     try {
       const result = findPathBetweenObjects(a, b, gaenge);
-      if (!result) return { error: 'Keine Route gefunden (Gänge fehlen?)' };
+      if (!result || result.path.length < 2) return { error: 'Keine Route gefunden (Gänge fehlen?)' };
+      // Tor- und Ziel-Mittelpunkte + Anbindung Tor↔Gang einrechnen
+      const aCx = a.x + a.width / 2;
+      const aCy = a.y + a.height / 2;
+      const bCx = b.x + b.width / 2;
+      const bCy = b.y + b.height / 2;
+      const firstWp = result.path[0];
+      const lastWp = result.path[result.path.length - 1];
+      const dStart = Math.hypot(firstWp.x - aCx, firstWp.y - aCy);
+      const dEnd = Math.hypot(lastWp.x - bCx, lastWp.y - bCy);
+      const totalDist = dStart + result.distance + dEnd;
       // Geschwindigkeit-Annahme: 2.44 m/s (Schnelläufer)
       const SPEED = 2.44;
-      const sek = result.distance / SPEED;
+      const sek = totalDist / SPEED;
       return {
         from: a.name,
         to: b.name,
-        distanz: result.distance,
+        distanz: totalDist,
         sek,
         error: null,
       };

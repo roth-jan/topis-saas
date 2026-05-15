@@ -942,16 +942,47 @@ export function HallCanvas() {
           const result = findPathBetweenObjects(a, b, gaenge);
           if (result && result.path.length >= 2) {
             ctx.save();
-            // Schatten/Glow für Sichtbarkeit
-            ctx.shadowColor = 'rgba(251,191,36,0.9)';  // amber-400 glow
-            ctx.shadowBlur = 12;
-            ctx.strokeStyle = 'rgba(251,191,36,0.95)';  // amber
-            ctx.lineWidth = Math.max(2.5, 4 * zoom);
+
+            // Tor- und Ziel-Mittelpunkte (Welt-Koordinaten)
+            const aCenter = { x: a.x + a.width / 2, y: a.y + a.height / 2 };
+            const bCenter = { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+            const aCenterPx = worldToScreen(aCenter.x, aCenter.y);
+            const bCenterPx = worldToScreen(bCenter.x, bCenter.y);
+            const firstWp = result.path[0];
+            const lastWp = result.path[result.path.length - 1];
+            const firstWpPx = worldToScreen(firstWp.x, firstWp.y);
+            const lastWpPx = worldToScreen(lastWp.x, lastWp.y);
+
+            // Gesamt-Distanz inkl. Anbindung Tor↔Gang
+            const dStart = Math.hypot(firstWp.x - aCenter.x, firstWp.y - aCenter.y);
+            const dEnd = Math.hypot(lastWp.x - bCenter.x, lastWp.y - bCenter.y);
+            const totalDistance = dStart + result.distance + dEnd;
+
+            // 1) Anbindung Tor → Gang (gestrichelt amber, signalisiert "kein Gang")
+            ctx.shadowColor = 'rgba(251,191,36,0.9)';
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = 'rgba(251,191,36,0.85)';
+            ctx.lineWidth = Math.max(2, 3 * zoom);
             ctx.lineCap = 'round';
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(aCenterPx.x, aCenterPx.y);
+            ctx.lineTo(firstWpPx.x, firstWpPx.y);
+            ctx.stroke();
+
+            // 2) Anbindung Gang → Ziel (gestrichelt)
+            ctx.beginPath();
+            ctx.moveTo(lastWpPx.x, lastWpPx.y);
+            ctx.lineTo(bCenterPx.x, bCenterPx.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 3) Pfad über Gänge (durchgezogen, dicker)
+            ctx.strokeStyle = 'rgba(251,191,36,0.95)';
+            ctx.lineWidth = Math.max(2.5, 4 * zoom);
             ctx.lineJoin = 'round';
             ctx.beginPath();
-            const first = worldToScreen(result.path[0].x, result.path[0].y);
-            ctx.moveTo(first.x, first.y);
+            ctx.moveTo(firstWpPx.x, firstWpPx.y);
             for (let i = 1; i < result.path.length; i++) {
               const p = worldToScreen(result.path[i].x, result.path[i].y);
               ctx.lineTo(p.x, p.y);
@@ -959,42 +990,45 @@ export function HallCanvas() {
             ctx.stroke();
             ctx.shadowBlur = 0;
 
-            // Start-Marker (grüner Punkt)
+            // Start-Marker (grüner Punkt am Tor selbst)
             ctx.fillStyle = '#22c55e';
             ctx.beginPath();
-            ctx.arc(first.x, first.y, 6, 0, Math.PI * 2);
+            ctx.arc(aCenterPx.x, aCenterPx.y, 7, 0, Math.PI * 2);
             ctx.fill();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
 
-            // Ziel-Marker (cyan Punkt) + Pfeilspitze
-            const lastWp = result.path[result.path.length - 1];
-            const prevWp = result.path[result.path.length - 2];
-            const last = worldToScreen(lastWp.x, lastWp.y);
-            const prev = worldToScreen(prevWp.x, prevWp.y);
+            // Ziel-Marker (cyan Punkt am Ziel) + Pfeilspitze Richtung Ziel
             ctx.fillStyle = '#06b6d4';
             ctx.beginPath();
-            ctx.arc(last.x, last.y, 6, 0, Math.PI * 2);
+            ctx.arc(bCenterPx.x, bCenterPx.y, 7, 0, Math.PI * 2);
             ctx.fill();
-            // Pfeilspitze
-            const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
-            const arrowSize = 10;
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Pfeilspitze am Ziel — Richtung aus letztem Anbindungs-Segment
+            const angle = Math.atan2(bCenterPx.y - lastWpPx.y, bCenterPx.x - lastWpPx.x);
+            const arrowSize = 11;
             ctx.fillStyle = 'rgba(251,191,36,0.95)';
             ctx.beginPath();
-            ctx.moveTo(last.x, last.y);
-            ctx.lineTo(last.x - arrowSize * Math.cos(angle - Math.PI / 6),
-                       last.y - arrowSize * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(last.x - arrowSize * Math.cos(angle + Math.PI / 6),
-                       last.y - arrowSize * Math.sin(angle + Math.PI / 6));
+            ctx.moveTo(bCenterPx.x, bCenterPx.y);
+            ctx.lineTo(bCenterPx.x - arrowSize * Math.cos(angle - Math.PI / 6),
+                       bCenterPx.y - arrowSize * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(bCenterPx.x - arrowSize * Math.cos(angle + Math.PI / 6),
+                       bCenterPx.y - arrowSize * Math.sin(angle + Math.PI / 6));
             ctx.closePath();
             ctx.fill();
 
-            // Distanz-Label in der Mitte des Pfads
+            // Distanz-Label in der Mitte des Gang-Pfads
             if (zoom > 0.3) {
               const midIdx = Math.floor(result.path.length / 2);
               const mid = worldToScreen(result.path[midIdx].x, result.path[midIdx].y);
-              const label = `${Math.round(result.distance)} m`;
+              const label = `${Math.round(totalDistance)} m`;
               ctx.font = `bold ${Math.max(11, 13 * zoom)}px Inter, sans-serif`;
               const textW = ctx.measureText(label).width;
-              ctx.fillStyle = 'rgba(0,0,0,0.75)';
+              ctx.fillStyle = 'rgba(0,0,0,0.78)';
               ctx.fillRect(mid.x - textW / 2 - 6, mid.y - 12, textW + 12, 18);
               ctx.fillStyle = '#fbbf24';
               ctx.textAlign = 'center';
