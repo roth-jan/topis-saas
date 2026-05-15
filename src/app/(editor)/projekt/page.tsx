@@ -83,9 +83,9 @@ export default function EditorPage() {
           onExpand={() => setLeftCollapsed(false)}
           order={1}
         >
-          <div className="h-full border-r bg-card flex flex-col">
-            <Tabs defaultValue="objects" className="flex-1 flex flex-col">
-              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1">
+          <div className="h-full border-r bg-card flex flex-col min-h-0">
+            <Tabs defaultValue="objects" className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1 shrink-0">
                 <TabsTrigger value="objects" className="text-xs gap-1.5">
                   <LayoutGrid className="h-3.5 w-3.5" />
                   Objekte
@@ -108,17 +108,17 @@ export default function EditorPage() {
                   <PanelLeftClose className="h-4 w-4" />
                 </Button>
               </TabsList>
-              <TabsContent value="objects" className="flex-1 mt-0">
+              <TabsContent value="objects" className="flex-1 mt-0 min-h-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   <ObjectList />
                 </ScrollArea>
               </TabsContent>
-              <TabsContent value="wege" className="flex-1 mt-0 p-3">
+              <TabsContent value="wege" className="flex-1 mt-0 p-3 min-h-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   <PathPanel />
                 </ScrollArea>
               </TabsContent>
-              <TabsContent value="gaenge" className="flex-1 mt-0 p-3">
+              <TabsContent value="gaenge" className="flex-1 mt-0 p-3 min-h-0 overflow-hidden">
                 <ScrollArea className="h-full">
                   <GangPanel />
                 </ScrollArea>
@@ -177,9 +177,9 @@ export default function EditorPage() {
           onCollapse={() => setRightCollapsed(true)}
           onExpand={() => setRightCollapsed(false)}
         >
-          <div className="h-full border-l bg-card flex flex-col">
-            <Tabs defaultValue="properties" className="flex-1 flex flex-col">
-              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1">
+          <div className="h-full border-l bg-card flex flex-col min-h-0">
+            <Tabs defaultValue="properties" className="flex-1 flex flex-col min-h-0">
+              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1 shrink-0">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -202,13 +202,13 @@ export default function EditorPage() {
                   Analyse
                 </TabsTrigger>
               </TabsList>
-              <TabsContent value="properties" className="flex-1 mt-0">
+              <TabsContent value="properties" className="flex-1 mt-0 min-h-0 overflow-hidden">
                 <PropertiesPanel />
               </TabsContent>
-              <TabsContent value="cockpit" className="flex-1 mt-0">
+              <TabsContent value="cockpit" className="flex-1 mt-0 min-h-0 overflow-hidden">
                 <CockpitPanel />
               </TabsContent>
-              <TabsContent value="analytics" className="flex-1 mt-0">
+              <TabsContent value="analytics" className="flex-1 mt-0 min-h-0 overflow-hidden">
                 <AnalyticsPanel />
               </TabsContent>
             </Tabs>
