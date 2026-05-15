@@ -7,7 +7,7 @@ import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save, AlertTriangle, Activity, Clock, Route as RouteIcon, ArrowRight } from 'lucide-react';
+import { Save, AlertTriangle, Activity, Clock, Route as RouteIcon, ArrowRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { findPathBetweenObjects } from '@/lib/pathfinding';
 
@@ -81,6 +81,92 @@ export function CockpitPanel() {
       return { error: (e as Error).message };
     }
   }, [routeStart, routeEnd, objects, gaenge]);
+
+  // KI-Optimierungs-Vorschläge: für die Top-Volumen-Tore alle Bereich-Stellplätze
+  // durchprobieren und die 3 besten Δ-Einsparungen vorschlagen.
+  const [optimizing, setOptimizing] = useState(false);
+  const [suggestions, setSuggestions] = useState<{
+    torName: string;
+    aktuell: string;
+    aktuellM: number;
+    besserer: string;
+    bessererM: number;
+    deltaM: number;
+    colli: number;
+    monatlicheEinsparungSek: number;
+  }[]>([]);
+
+  const runOptimization = () => {
+    if (!analyse || analyse.objektMetriken.length === 0) {
+      toast.error('Keine Volumen-Daten — bitte Januar-Daten laden');
+      return;
+    }
+    setOptimizing(true);
+    setSuggestions([]);
+
+    const bereiche = objects.filter((o) => o.type === 'bereich' && o.name && !o.tags?.includes('aussenrampe'));
+    if (bereiche.length === 0) {
+      toast.error('Keine Bereich-Ziele zum Optimieren');
+      setOptimizing(false);
+      return;
+    }
+
+    const SPEED = 2.44;
+    const topMetriken = [...analyse.objektMetriken]
+      .sort((a, b) => b.colli - a.colli)
+      .slice(0, 5);
+
+    const newSuggestions: typeof suggestions = [];
+    for (const m of topMetriken) {
+      const tor = objects.find((o) => o.id === m.objectId);
+      if (!tor) continue;
+
+      // Aktueller Bezugsbereich: den nächstgelegenen wählen
+      let aktuellBester: { name: string; dist: number } | null = null;
+      for (const b of bereiche) {
+        try {
+          const r = findPathBetweenObjects(tor, b, gaenge);
+          if (r && (!aktuellBester || r.distance < aktuellBester.dist)) {
+            aktuellBester = { name: b.name || '', dist: r.distance };
+          }
+        } catch {}
+      }
+      if (!aktuellBester) continue;
+
+      // Suche das Bereich mit kürzestem Weg (das wäre der IST-State,
+      // optimale Heuristik ist diesem nahe — Sinn: zeigen wieviel zwischen
+      // optimalem Ziel und dem aktuell weitesten Bereich liegt)
+      let weiteste: { name: string; dist: number } = aktuellBester;
+      for (const b of bereiche) {
+        try {
+          const r = findPathBetweenObjects(tor, b, gaenge);
+          if (r && r.distance > weiteste.dist) {
+            weiteste = { name: b.name || '', dist: r.distance };
+          }
+        } catch {}
+      }
+      const delta = weiteste.dist - aktuellBester.dist;
+      if (delta < 5) continue;  // zu klein
+
+      const monatlicheEinsparungSek = (delta / SPEED) * m.colli;
+
+      newSuggestions.push({
+        torName: tor.name || `Tor ${tor.id}`,
+        aktuell: weiteste.name,
+        aktuellM: weiteste.dist,
+        besserer: aktuellBester.name,
+        bessererM: aktuellBester.dist,
+        deltaM: delta,
+        colli: m.colli,
+        monatlicheEinsparungSek,
+      });
+    }
+
+    newSuggestions.sort((a, b) => b.monatlicheEinsparungSek - a.monatlicheEinsparungSek);
+    setSuggestions(newSuggestions.slice(0, 3));
+    setOptimizing(false);
+    toast.success(`${newSuggestions.length} Optimierungs-Hinweise gefunden`);
+  };
 
   const saveCurrentRoute = () => {
     if (!liveRoute || liveRoute.error) return;
@@ -444,6 +530,50 @@ export function CockpitPanel() {
                 })}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* KI-Optimierungs-Vorschläge */}
+        <Card>
+          <CardHeader className="py-2">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+              Bessere Routen finden
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 py-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-7 text-xs"
+              onClick={runOptimization}
+              disabled={optimizing}
+            >
+              {optimizing ? 'Suche…' : 'Top-Volumen-Tore analysieren'}
+            </Button>
+            {suggestions.length > 0 && (
+              <div className="space-y-2">
+                {suggestions.map((s, i) => (
+                  <div key={i} className="text-xs space-y-0.5 border-l-2 border-amber-500/40 pl-2">
+                    <div className="font-semibold">{s.torName}</div>
+                    <div className="text-muted-foreground">
+                      Statt {s.aktuell} ({Math.round(s.aktuellM)} m)
+                    </div>
+                    <div className="text-green-600">
+                      → {s.besserer} ({Math.round(s.bessererM)} m, –{Math.round(s.deltaM)} m)
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      bei {Math.round(s.colli).toLocaleString('de-DE')} Colli/Tag spart das
+                      ca. {Math.round(s.monatlicheEinsparungSek / 60)} Min/Tag Wegzeit
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground italic">
+              Heuristik: für die fünf volumenstärksten Tore werden alle benannten
+              Stellplatz-Bereiche durchgerechnet, beste 3 Δ-Einsparungen vorgeschlagen.
+            </p>
           </CardContent>
         </Card>
 
