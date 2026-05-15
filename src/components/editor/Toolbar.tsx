@@ -367,6 +367,18 @@ export function Toolbar() {
   const [showRulers, setShowRulers] = useState(true);
   const [showMeasurements, setShowMeasurements] = useState(true);
 
+  // Workflow-Phasen — gliedert die Toolbar nach Beratungs-Story
+  type Phase = 'daten' | 'layout' | 'wege' | 'auswertung' | 'vergleich' | 'cockpit';
+  const [phase, setPhase] = useState<Phase>('layout');
+  const phases: { id: Phase; label: string; hint: string }[] = [
+    { id: 'daten', label: 'Daten', hint: 'Scandaten und Vorlagen laden' },
+    { id: 'layout', label: 'Layout', hint: 'Halle aufbauen' },
+    { id: 'wege', label: 'Wege', hint: 'Wegberechnung + Distanzmatrix' },
+    { id: 'auswertung', label: 'Auswertung', hint: 'Prozessmodell + KPIs' },
+    { id: 'vergleich', label: 'Vergleich', hint: 'Szenarien gegenüberstellen' },
+    { id: 'cockpit', label: 'Cockpit', hint: 'Live-Dashboard für die Demo' },
+  ];
+
   // Export handlers
   const handleExportJSON = () => {
     const state = { halls, activeHallId, objects, paths, pathAreas, gaenge, ffz, conveyors };
@@ -503,10 +515,12 @@ export function Toolbar() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="h-12 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex items-center px-2 gap-1 overflow-x-auto min-w-0">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex flex-col">
 
+      {/* ============ ROW 1: GLOBAL (Logo + Phasen-Tabs + globale Aktionen) ============ */}
+      <div className="h-11 flex items-center px-2 gap-2 min-w-0 border-b border-border/40">
         {/* Logo */}
-        <div className="flex items-center gap-2 px-2">
+        <div className="flex items-center gap-2 px-1 shrink-0">
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center font-bold text-primary-foreground text-sm">
             T
           </div>
@@ -516,7 +530,70 @@ export function Toolbar() {
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* ============ FILE MENU ============ */}
+        {/* Phasen-Tabs */}
+        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
+          {phases.map((p) => (
+            <Tooltip key={p.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={phase === p.id ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-8 px-3 text-sm font-medium shrink-0"
+                  onClick={() => setPhase(p.id)}
+                >
+                  {p.label}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{p.hint}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+
+        {/* Globale Aktionen rechts */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2 h-8 text-muted-foreground hidden sm:flex shrink-0"
+          onClick={() => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+          }}
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="text-xs">Suche…</span>
+          <kbd className="px-1.5 py-0.5 text-[10px] bg-muted rounded">⌘K</kbd>
+        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { undo(); toast.info('Rückgängig'); }} disabled={!canUndo}>
+              <Undo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Rückgängig <kbd className="ml-1 text-[10px]">⌘Z</kbd></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => { redo(); toast.info('Wiederholt'); }} disabled={!canRedo}>
+              <Redo2 className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Wiederholen <kbd className="ml-1 text-[10px]">⇧⌘Z</kbd></TooltipContent>
+        </Tooltip>
+        <ThemeToggleSimple />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startTour()}>
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Geführte Tour</TooltipContent>
+        </Tooltip>
+      </div>
+
+      {/* ============ ROW 2: PHASEN-SPEZIFISCH ============ */}
+      <div className="h-11 flex items-center px-2 gap-1 overflow-x-auto min-w-0">
+
+        {/* ============ FILE MENU (Daten-Phase) ============ */}
+        {(phase === 'daten') && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
@@ -632,8 +709,10 @@ export function Toolbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
-        {/* ============ EDIT MENU ============ */}
+        {/* ============ EDIT MENU (Layout-Phase) ============ */}
+        {(phase === 'layout') && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
@@ -688,8 +767,10 @@ export function Toolbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
-        {/* ============ VIEW MENU ============ */}
+        {/* ============ VIEW MENU (Layout-Phase) ============ */}
+        {(phase === 'layout') && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
@@ -758,8 +839,10 @@ export function Toolbar() {
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
-        {/* ============ OBJECTS MENU ============ */}
+        {/* ============ OBJECTS MENU (Layout-Phase) ============ */}
+        {(phase === 'layout') && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
@@ -850,8 +933,10 @@ export function Toolbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
-        {/* ============ SCENARIOS MENU ============ */}
+        {/* ============ SCENARIOS MENU (Daten-Phase) ============ */}
+        {(phase === 'daten') && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
@@ -895,10 +980,12 @@ export function Toolbar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+        {(phase === 'layout') && <Separator orientation="vertical" className="h-6 mx-1" />}
 
-        {/* ============ TOOL BUTTONS ============ */}
+        {/* ============ TOOL BUTTONS (Layout-Phase) ============ */}
+        {(phase === 'layout') && (
         <div className="flex items-center gap-0.5">
           {tools.map((tool, idx) => (
             <span key={tool.id} className="flex items-center">
@@ -924,10 +1011,12 @@ export function Toolbar() {
             </span>
           ))}
         </div>
+        )}
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+        {(phase === 'layout') && <Separator orientation="vertical" className="h-6 mx-1" />}
 
-        {/* ============ VIEW OPTIONS ============ */}
+        {/* ============ VIEW OPTIONS (Layout-Phase) ============ */}
+        {(phase === 'layout') && (
         <div className="flex items-center gap-0.5">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -956,8 +1045,10 @@ export function Toolbar() {
             <TooltipContent side="bottom">Einrasten</TooltipContent>
           </Tooltip>
         </div>
+        )}
 
-        {/* ============ ZOOM CONTROL ============ */}
+        {/* ============ ZOOM CONTROL (Layout-Phase) ============ */}
+        {(phase === 'layout') && (
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 w-20 text-xs">
@@ -982,68 +1073,66 @@ export function Toolbar() {
             </div>
           </PopoverContent>
         </Popover>
+        )}
 
-        <div className="flex-1" />
-
-        {/* ============ SEARCH ============ */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 h-8 text-muted-foreground hidden sm:flex"
-          onClick={() => {
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-          }}
-        >
-          <Search className="h-3.5 w-3.5" />
-          <span className="text-xs">Suche...</span>
-          <kbd className="px-1.5 py-0.5 text-[10px] bg-muted rounded">⌘K</kbd>
-        </Button>
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        {/* ============ ACTION BUTTONS ============ */}
+        {/* ============ LAYOUT — Hilfs-Dialoge ============ */}
+        {(phase === 'layout') && (
         <div id="tour-aktionen" className="flex items-center gap-1">
-          {/* Multi-Insert Dialog */}
           <MultiInsertDialog />
-
-          {/* Matrix Dialog */}
-          <span id="tour-matrix"><MatrixDialog /></span>
-
-          {/* Wegeberechnung Dialog */}
-          <span id="tour-wegeberechnung"><WegeberechnungDialog /></span>
-
-          {/* Hallen-Assistent Dialog */}
           <HallenAssistentDialog />
-
-          {/* Tor-Kalkulation Dialog */}
-          <span id="tour-torkalkulation"><TorKalkulationDialog /></span>
         </div>
+        )}
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
+        {/* ============ WEGE — Wegberechnung + Distanzmatrix + Tor-Kalkulation ============ */}
+        {(phase === 'wege') && (
+        <div id="tour-wege" className="flex items-center gap-1">
+          <span id="tour-matrix"><MatrixDialog /></span>
+          <span id="tour-wegeberechnung"><WegeberechnungDialog /></span>
+          <span id="tour-torkalkulation"><TorKalkulationDialog /></span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={handleGenerateGaenge}
+            title="Fahrgänge automatisch generieren"
+          >
+            <Truck className="h-3.5 w-3.5" />
+            Gang-Generator
+          </Button>
+        </div>
+        )}
 
-        {/* ============ BETRIEBSDATEN & SZENARIEN ============ */}
+        {/* ============ AUSWERTUNG ============ */}
+        {(phase === 'auswertung') && (
         <div id="tour-analyse" className="flex items-center gap-1">
-          <span id="tour-betriebsdaten"><BetriebsdatenImportDialog /></span>
           <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
           <ProzessmodellImportDialog />
           <span id="tour-flaechenbedarf"><FlaechenbedarfDialog /></span>
           <span id="tour-benchmark"><BenchmarkDialog /></span>
           <span id="tour-istsoll"><IstSollDialog /></span>
           <span id="tour-torbelegung"><TorbelegungDialog /></span>
-          <VergleichDialog />
           {betriebsAnalyse && (
             <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleExportReport}>
               <FileText className="h-3.5 w-3.5" />
               Report
             </Button>
           )}
+        </div>
+        )}
+
+        {/* ============ VERGLEICH ============ */}
+        {(phase === 'vergleich') && (
+        <div className="flex items-center gap-1">
           <span id="tour-szenarien"><SzenarienDialog /></span>
+          <VergleichDialog />
+          <ProjektVergleichDialog />
+          <SimulationDialog />
           {originalLayout && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1 text-xs">
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Reset
+                  Layout-Reset
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
@@ -1064,79 +1153,46 @@ export function Toolbar() {
             </AlertDialog>
           )}
         </div>
+        )}
 
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        {/* ============ DASHBOARD ============ */}
-        <a href="/topis-saas/dashboard">
-          <Button variant="outline" size="sm" className="gap-1 text-xs">
-            <BarChart3 className="h-3.5 w-3.5" />
-            Dashboard
+        {/* ============ COCKPIT ============ */}
+        {(phase === 'cockpit') && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={() => handleLoadMonth('as-jan2026-scans', 'Januar 2026')}
+          >
+            <Database className="h-3.5 w-3.5" />
+            Januar 2026 laden
           </Button>
-        </a>
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        {/* ============ SHOWCASE & SIMULATION ============ */}
-        <div className="flex items-center gap-1">
-          {/* Project Comparison Dialog */}
-          <ProjektVergleichDialog />
-
-          {/* Simulation Dialog */}
-          <SimulationDialog />
-        </div>
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        {/* ============ GUIDED TOUR ============ */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1 text-xs"
-                onClick={() => startTour()}
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-                Tour
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Geführte Tour durch TOPIS starten</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-
-        {/* ============ THEME TOGGLE ============ */}
-        <ThemeToggleSimple />
-
-        <Separator orientation="vertical" className="h-6 mx-1" />
-
-        {/* ============ HELP / SETTINGS ============ */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <HelpCircle className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={() => handleLoadMonth('as-feb2026-scans', 'Februar 2026')}
+          >
+            <Database className="h-3.5 w-3.5" />
+            Februar 2026 laden
+          </Button>
+          <a href="/topis-saas/dashboard">
+            <Button variant="outline" size="sm" className="gap-1 text-xs">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Dashboard
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem>
-              <Keyboard className="mr-2 h-4 w-4" />
-              Tastaturkürzel
-              <DropdownMenuShortcut>⌘/</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Info className="mr-2 h-4 w-4" />
-              Dokumentation
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              Einstellungen
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </a>
+          <span className="text-[11px] text-muted-foreground ml-2">
+            → Cockpit-Reiter rechts öffnen
+          </span>
+        </div>
+        )}
 
-        {/* Clear All - with Alert Dialog */}
+        {/* Spacer + Clear-All immer rechts in Layout-Phase */}
+        {(phase === 'layout') && <div className="flex-1" />}
+
+        {/* Clear All - with Alert Dialog (nur Layout-Phase) */}
+        {(phase === 'layout') && (
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -1158,7 +1214,14 @@ export function Toolbar() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        )}
 
+        {/* Datenphase: Betriebsdaten-Dialog-Trigger immer mounten (wird im Datei-Menü via querySelector geklickt) */}
+        {(phase === 'daten') && (
+          <span id="tour-betriebsdaten"><BetriebsdatenImportDialog /></span>
+        )}
+
+      </div>
       </div>
     </TooltipProvider>
   );
