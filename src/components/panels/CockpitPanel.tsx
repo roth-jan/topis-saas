@@ -7,8 +7,9 @@ import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save, AlertTriangle, Activity, Clock, ChevronRight } from 'lucide-react';
+import { Save, AlertTriangle, Activity, Clock, Route as RouteIcon, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { findPathBetweenObjects } from '@/lib/pathfinding';
 
 /**
  * Cockpit-Panel — Vaters Idee: aus dem Plan-System ein Tages-Werkzeug machen.
@@ -35,10 +36,62 @@ interface SavedVariant {
 export function CockpitPanel() {
   const analyse = useBetriebsdatenStore((s) => s.analyse);
   const objects = useTopisStore((s) => s.objects);
+  const gaenge = useTopisStore((s) => s.gaenge);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
 
   const [variants, setVariants] = useState<SavedVariant[]>([]);
+  const [routeStart, setRouteStart] = useState<number | null>(null);
+  const [routeEnd, setRouteEnd] = useState<number | null>(null);
+  const [savedRoutes, setSavedRoutes] = useState<{ id: string; label: string; distanz: number; sek: number }[]>([]);
+
+  // Auswählbare Punkte: Tore und benannte Bereiche
+  const routeOptions = useMemo(() => {
+    return objects
+      .filter((o) => o.type === 'tor' || (o.type === 'bereich' && o.name))
+      .sort((a, b) => {
+        const aTor = a.type === 'tor';
+        const bTor = b.type === 'tor';
+        if (aTor && !bTor) return -1;
+        if (!aTor && bTor) return 1;
+        return (a.torNummer ?? 999) - (b.torNummer ?? 999);
+      });
+  }, [objects]);
+
+  // Live-Routenberechnung
+  const liveRoute = useMemo(() => {
+    if (routeStart === null || routeEnd === null) return null;
+    const a = objects.find((o) => o.id === routeStart);
+    const b = objects.find((o) => o.id === routeEnd);
+    if (!a || !b) return null;
+    try {
+      const result = findPathBetweenObjects(a, b, gaenge);
+      if (!result) return { error: 'Keine Route gefunden (Gänge fehlen?)' };
+      // Geschwindigkeit-Annahme: 2.44 m/s (Schnelläufer)
+      const SPEED = 2.44;
+      const sek = result.distance / SPEED;
+      return {
+        from: a.name,
+        to: b.name,
+        distanz: result.distance,
+        sek,
+        error: null,
+      };
+    } catch (e) {
+      return { error: (e as Error).message };
+    }
+  }, [routeStart, routeEnd, objects, gaenge]);
+
+  const saveCurrentRoute = () => {
+    if (!liveRoute || liveRoute.error || !('distanz' in liveRoute)) return;
+    setSavedRoutes((r) => [...r, {
+      id: `route-${Date.now()}`,
+      label: `${liveRoute.from} → ${liveRoute.to}`,
+      distanz: liveRoute.distanz,
+      sek: liveRoute.sek,
+    }]);
+    toast.success(`${liveRoute.from} → ${liveRoute.to}: ${Math.round(liveRoute.distanz)}m`);
+  };
 
   const minProColli = ergebnis?.minProColli ?? 0;
   const arbeitsminProStunde =
@@ -296,6 +349,98 @@ export function CockpitPanel() {
             </CardContent>
           </Card>
         )}
+
+        {/* Route-Spiel-Modus */}
+        <Card>
+          <CardHeader className="py-2">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <RouteIcon className="h-3.5 w-3.5" />
+              Route durchspielen
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 py-2">
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted-foreground">Von</label>
+              <select
+                value={routeStart ?? ''}
+                onChange={(e) => setRouteStart(e.target.value ? parseInt(e.target.value) : null)}
+                className="flex h-7 w-full rounded border border-input bg-background px-2 text-xs"
+              >
+                <option value="">— wählen —</option>
+                {routeOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.type === 'tor' ? `Tor ${o.torNummer ?? o.name}` : o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] text-muted-foreground">Nach</label>
+              <select
+                value={routeEnd ?? ''}
+                onChange={(e) => setRouteEnd(e.target.value ? parseInt(e.target.value) : null)}
+                className="flex h-7 w-full rounded border border-input bg-background px-2 text-xs"
+              >
+                <option value="">— wählen —</option>
+                {routeOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.type === 'tor' ? `Tor ${o.torNummer ?? o.name}` : o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {liveRoute && (
+              <div className="mt-2 p-2 rounded bg-muted text-xs space-y-1">
+                {liveRoute.error ? (
+                  <span className="text-amber-600">{liveRoute.error}</span>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Strecke</span>
+                      <span className="font-semibold">
+                        {Math.round((liveRoute as { distanz: number }).distanz)} m
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Zeit (Ø Schnelläufer)</span>
+                      <span className="font-semibold">
+                        {(liveRoute as { sek: number }).sek.toFixed(1)} s
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-7 text-xs"
+                      onClick={saveCurrentRoute}
+                    >
+                      <Save className="h-3 w-3 mr-1" />
+                      Route speichern
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {savedRoutes.length > 0 && (
+              <div className="mt-2 space-y-1 border-t pt-2">
+                <div className="text-[10px] text-muted-foreground">Gespeicherte Routen:</div>
+                {savedRoutes.map((r, i) => {
+                  const ref = savedRoutes[0].distanz;
+                  const delta = r.distanz - ref;
+                  return (
+                    <div key={r.id} className="text-[11px] flex justify-between">
+                      <span>{r.label.substring(0, 25)}</span>
+                      <span className={i > 0 ? (delta < 0 ? 'text-green-500' : 'text-red-500') : ''}>
+                        {Math.round(r.distanz)}m{i > 0 ? ` (${delta >= 0 ? '+' : ''}${Math.round(delta)})` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Hinweis-Zeile */}
         <div className="text-[10px] text-muted-foreground italic pt-2 border-t">
