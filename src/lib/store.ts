@@ -113,6 +113,7 @@ interface TopisStore extends TopisState {
   setTool: (tool: Tool) => void;
   toggleGrid: () => void;
   toggleSnap: () => void;
+  setCockpitRoute: (route: { startId: number; endId: number } | null) => void;
 
   // Project Actions
   saveVorher: (snapshot: ProjektSnapshot, screenshot: string) => void;
@@ -151,6 +152,7 @@ const initialState: TopisState = {
   conveyorIdCounter: 1,
   selectedConveyor: null,
   currentConveyor: null,
+  cockpitRoute: null,
   zoom: 1,
   pan: { x: 0, y: 0 },
   gridSize: 1,
@@ -435,6 +437,7 @@ export const useTopisStore = create<TopisStore>()(
   setTool: (tool) => set({ currentTool: tool }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
+  setCockpitRoute: (route) => set({ cockpitRoute: route }),
 
   // Project Actions
   saveVorher: (snapshot, screenshot) => set((state) => ({

@@ -5,6 +5,7 @@ import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } fr
 import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
 import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor } from '@/types/topis';
 import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
+import { findPathBetweenObjects } from '@/lib/pathfinding';
 import { toast } from 'sonner';
 
 export function HallCanvas() {
@@ -20,6 +21,7 @@ export function HallCanvas() {
   const pan = usePan();
   const tool = useTool();
   const gaenge = useTopisStore((s) => s.gaenge);
+  const cockpitRoute = useTopisStore((s) => s.cockpitRoute);
   const showGaenge = useTopisStore((s) => s.showGaenge);
   const showGrid = useTopisStore((s) => s.showGrid);
   const selectedObject = useTopisStore((s) => s.selectedObject);
@@ -930,6 +932,83 @@ export function HallCanvas() {
       });
     }
 
+    // Draw Cockpit-Route (gewählte Tor→Tor-Route aus dem Cockpit-Tab)
+    // — leuchtende cyan-amber Linie über A* mit Pfeilspitze am Ende.
+    if (cockpitRoute) {
+      const a = objects.find((o) => o.id === cockpitRoute.startId);
+      const b = objects.find((o) => o.id === cockpitRoute.endId);
+      if (a && b && gaenge.length > 0) {
+        try {
+          const result = findPathBetweenObjects(a, b, gaenge);
+          if (result && result.path.length >= 2) {
+            ctx.save();
+            // Schatten/Glow für Sichtbarkeit
+            ctx.shadowColor = 'rgba(251,191,36,0.9)';  // amber-400 glow
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = 'rgba(251,191,36,0.95)';  // amber
+            ctx.lineWidth = Math.max(2.5, 4 * zoom);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            const first = worldToScreen(result.path[0].x, result.path[0].y);
+            ctx.moveTo(first.x, first.y);
+            for (let i = 1; i < result.path.length; i++) {
+              const p = worldToScreen(result.path[i].x, result.path[i].y);
+              ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Start-Marker (grüner Punkt)
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.arc(first.x, first.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Ziel-Marker (cyan Punkt) + Pfeilspitze
+            const lastWp = result.path[result.path.length - 1];
+            const prevWp = result.path[result.path.length - 2];
+            const last = worldToScreen(lastWp.x, lastWp.y);
+            const prev = worldToScreen(prevWp.x, prevWp.y);
+            ctx.fillStyle = '#06b6d4';
+            ctx.beginPath();
+            ctx.arc(last.x, last.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            // Pfeilspitze
+            const angle = Math.atan2(last.y - prev.y, last.x - prev.x);
+            const arrowSize = 10;
+            ctx.fillStyle = 'rgba(251,191,36,0.95)';
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(last.x - arrowSize * Math.cos(angle - Math.PI / 6),
+                       last.y - arrowSize * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(last.x - arrowSize * Math.cos(angle + Math.PI / 6),
+                       last.y - arrowSize * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            // Distanz-Label in der Mitte des Pfads
+            if (zoom > 0.3) {
+              const midIdx = Math.floor(result.path.length / 2);
+              const mid = worldToScreen(result.path[midIdx].x, result.path[midIdx].y);
+              const label = `${Math.round(result.distance)} m`;
+              ctx.font = `bold ${Math.max(11, 13 * zoom)}px Inter, sans-serif`;
+              const textW = ctx.measureText(label).width;
+              ctx.fillStyle = 'rgba(0,0,0,0.75)';
+              ctx.fillRect(mid.x - textW / 2 - 6, mid.y - 12, textW + 12, 18);
+              ctx.fillStyle = '#fbbf24';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(label, mid.x, mid.y - 3);
+            }
+            ctx.restore();
+          }
+        } catch {
+          // A*-Fehler stillschweigend
+        }
+      }
+    }
+
     // Draw selection handles
     if (selectedObject) {
       const pos = worldToScreen(selectedObject.x, selectedObject.y);
@@ -992,7 +1071,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);

@@ -278,6 +278,9 @@ export interface TopisState {
 
   // Project
   projektVergleich: ProjektVergleich;
+
+  // Cockpit-Route: zwei Objekt-IDs, deren A*-Pfad live im Canvas gezeichnet wird
+  cockpitRoute: { startId: number; endId: number } | null;
 }
 
 // ==================== CONSTANTS ====================

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
@@ -37,6 +37,7 @@ export function CockpitPanel() {
   const analyse = useBetriebsdatenStore((s) => s.analyse);
   const objects = useTopisStore((s) => s.objects);
   const gaenge = useTopisStore((s) => s.gaenge);
+  const setCockpitRoute = useTopisStore((s) => s.setCockpitRoute);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
 
@@ -44,6 +45,20 @@ export function CockpitPanel() {
   const [routeStart, setRouteStart] = useState<number | null>(null);
   const [routeEnd, setRouteEnd] = useState<number | null>(null);
   const [savedRoutes, setSavedRoutes] = useState<{ id: string; label: string; distanz: number; sek: number }[]>([]);
+
+  // Bei jeder Änderung von Start/End → Store updaten, damit HallCanvas die
+  // Route zeichnen kann. Beim Unmount zurücksetzen.
+  useEffect(() => {
+    if (routeStart !== null && routeEnd !== null && routeStart !== routeEnd) {
+      setCockpitRoute({ startId: routeStart, endId: routeEnd });
+    } else {
+      setCockpitRoute(null);
+    }
+  }, [routeStart, routeEnd, setCockpitRoute]);
+
+  useEffect(() => {
+    return () => setCockpitRoute(null);  // Beim Unmount Pfad weg
+  }, [setCockpitRoute]);
 
   // Auswählbare Punkte: Tore und benannte Bereiche
   const routeOptions = useMemo(() => {
