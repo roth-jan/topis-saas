@@ -10,6 +10,7 @@ import { CommandPalette } from '@/components/editor/CommandPalette';
 import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
 import { AnalyticsPanel } from '@/components/panels/AnalyticsPanel';
+import { CockpitPanel } from '@/components/panels/CockpitPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { GuidedTour } from '@/components/editor/GuidedTour';
 import {
@@ -20,7 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Truck, BarChart3, Settings, Route, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { LayoutGrid, Truck, BarChart3, Settings, Route, Activity, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 export default function EditorPage() {
   // Enable keyboard shortcuts
@@ -190,7 +191,11 @@ export default function EditorPage() {
                 </Button>
                 <TabsTrigger value="properties" className="text-xs gap-1.5">
                   <Settings className="h-3.5 w-3.5" />
-                  Eigenschaften
+                  Eigensch.
+                </TabsTrigger>
+                <TabsTrigger value="cockpit" className="text-xs gap-1.5">
+                  <Activity className="h-3.5 w-3.5" />
+                  Cockpit
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="text-xs gap-1.5">
                   <BarChart3 className="h-3.5 w-3.5" />
@@ -199,6 +204,9 @@ export default function EditorPage() {
               </TabsList>
               <TabsContent value="properties" className="flex-1 mt-0">
                 <PropertiesPanel />
+              </TabsContent>
+              <TabsContent value="cockpit" className="flex-1 mt-0">
+                <CockpitPanel />
               </TabsContent>
               <TabsContent value="analytics" className="flex-1 mt-0">
                 <AnalyticsPanel />
