@@ -83,14 +83,19 @@ export function CockpitPanel() {
   }, [routeStart, routeEnd, objects, gaenge]);
 
   const saveCurrentRoute = () => {
-    if (!liveRoute || liveRoute.error || !('distanz' in liveRoute)) return;
+    if (!liveRoute || liveRoute.error) return;
+    const d = liveRoute.distanz;
+    const s = liveRoute.sek;
+    if (typeof d !== 'number' || typeof s !== 'number') return;
+    const from = liveRoute.from ?? 'unbekannt';
+    const to = liveRoute.to ?? 'unbekannt';
     setSavedRoutes((r) => [...r, {
       id: `route-${Date.now()}`,
-      label: `${liveRoute.from} → ${liveRoute.to}`,
-      distanz: liveRoute.distanz,
-      sek: liveRoute.sek,
+      label: `${from} → ${to}`,
+      distanz: d,
+      sek: s,
     }]);
-    toast.success(`${liveRoute.from} → ${liveRoute.to}: ${Math.round(liveRoute.distanz)}m`);
+    toast.success(`${from} → ${to}: ${Math.round(d)}m`);
   };
 
   const minProColli = ergebnis?.minProColli ?? 0;
