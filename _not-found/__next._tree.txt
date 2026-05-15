@@ -1,3 +1,3 @@
 :HL["/topis-saas/_next/static/chunks/d41ba60faff93bff.css","style"]
-:HL["/topis-saas/_next/static/chunks/71ef231e82085d57.css","style"]
-0:{"buildId":"1D_J5g6rzHRUmN0rL4v8b","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"/_not-found","paramType":null,"paramKey":"/_not-found","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
+:HL["/topis-saas/_next/static/chunks/5c60ff52ff60d4f7.css","style"]
+0:{"buildId":"dU_zRJF46bLMEvN7eSQ0U","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"/_not-found","paramType":null,"paramKey":"/_not-found","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":false}},"isRootLayout":true},"staleTime":300}
