@@ -176,34 +176,63 @@ export function HallPreview({
 
     // === Heatmap Overlay ===
     if (heatmapConfig?.aktiv && analyse) {
-      const torObjects = objects.filter((o) => o.type === 'tor');
+      const heatObjects = objects.filter(
+        (o) => o.type === 'tor' || o.tags?.includes('messpunkt')
+      );
       const maxColli = Math.max(...analyse.objektMetriken.map((m) => m.colli), 1);
 
-      for (const tor of torObjects) {
-        const metrik = analyse.objektMetriken.find((m) => m.objectId === tor.id);
+      for (const obj of heatObjects) {
+        const metrik = analyse.objektMetriken.find((m) => m.objectId === obj.id);
         if (!metrik || metrik.colli === 0) continue;
 
         const intensity = metrik.colli / maxColli;
         const color = getHeatmapColor(intensity, heatmapConfig.farbskala, heatmapConfig.intensitaet);
 
-        const tl = worldToScreen(tor.x, tor.y);
-        const w = tor.width * SCALE * zoom;
-        const h = tor.height * SCALE * zoom;
+        const tl = worldToScreen(obj.x, obj.y);
+        const w = obj.width * SCALE * zoom;
+        const h = obj.height * SCALE * zoom;
+        const isCircle = obj.shape === 'circle' || obj.tags?.includes('messpunkt');
 
-        ctx.fillStyle = color;
-        ctx.fillRect(tl.x, tl.y, w, h);
-
-        // Colli-Wert anzeigen
-        const fontSize = Math.max(7, Math.min(10, w / 5));
-        ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(
-          metrik.colli >= 1000 ? `${(metrik.colli / 1000).toFixed(1)}k` : `${Math.round(metrik.colli)}`,
-          tl.x + w / 2,
-          tl.y + h / 2
-        );
+        if (isCircle) {
+          // Messpunkt — Kreis mit Glow
+          const cx = tl.x + w / 2;
+          const cy = tl.y + h / 2;
+          const r = Math.max(w, h) / 2;
+          // Glow
+          ctx.save();
+          ctx.shadowColor = color;
+          ctx.shadowBlur = Math.max(4, 8 + intensity * 8);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(cx, cy, Math.max(3, r * 0.7), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+          // Zahl
+          const fontSize = Math.max(8, Math.min(11, r * 0.8));
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(
+            metrik.colli >= 1000 ? `${(metrik.colli / 1000).toFixed(1)}k` : `${Math.round(metrik.colli)}`,
+            cx,
+            cy
+          );
+        } else {
+          // Tor — Rechteck
+          ctx.fillStyle = color;
+          ctx.fillRect(tl.x, tl.y, w, h);
+          const fontSize = Math.max(7, Math.min(10, w / 5));
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(
+            metrik.colli >= 1000 ? `${(metrik.colli / 1000).toFixed(1)}k` : `${Math.round(metrik.colli)}`,
+            tl.x + w / 2,
+            tl.y + h / 2
+          );
+        }
       }
     }
   }, [hall, objects, gaenge, analyse, heatmapConfig, width, height, routeWaypoints, routeStartId, routeEndId]);

@@ -1155,9 +1155,16 @@ export function Toolbar() {
         </div>
         )}
 
-        {/* ============ COCKPIT ============ */}
+        {/* ============ COCKPIT / DASHBOARD ============ */}
         {(phase === 'cockpit') && (
         <div className="flex items-center gap-2">
+          <a href="/topis-saas/dashboard">
+            <Button variant="default" size="sm" className="gap-1.5 text-xs">
+              <BarChart3 className="h-4 w-4" />
+              Dashboard öffnen (Tages-Werkzeug)
+            </Button>
+          </a>
+          <Separator orientation="vertical" className="h-6 mx-1" />
           <Button
             variant="outline"
             size="sm"
@@ -1176,14 +1183,8 @@ export function Toolbar() {
             <Database className="h-3.5 w-3.5" />
             Februar 2026 laden
           </Button>
-          <a href="/topis-saas/dashboard">
-            <Button variant="outline" size="sm" className="gap-1 text-xs">
-              <BarChart3 className="h-3.5 w-3.5" />
-              Dashboard
-            </Button>
-          </a>
-          <span className="text-[11px] text-muted-foreground ml-2">
-            → Cockpit-Reiter rechts öffnen
+          <span className="text-[11px] text-muted-foreground ml-1">
+            oder kompakte Sicht: Reiter „Cockpit" rechts
           </span>
         </div>
         )}
