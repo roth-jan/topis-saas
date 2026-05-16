@@ -119,7 +119,7 @@ export default function PlanungPage() {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b bg-card shrink-0">
-        <Link href="/topis-saas/projekt">
+        <Link href="/projekt">
           <Button variant="ghost" size="sm" className="gap-1">
             <ArrowLeft className="h-4 w-4" />
             Editor
