@@ -619,39 +619,40 @@ export function Toolbar() {
               <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Betriebsdaten</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => {
-              // Trigger the BetriebsdatenImportDialog by clicking its trigger
-              const btn = document.querySelector('[data-betriebsdaten-trigger]') as HTMLButtonElement;
-              if (btn) btn.click();
-            }}>
-              <Database className="mr-2 h-4 w-4" />
-              Betriebsdaten importieren...
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              window.location.href = '/topis-saas/check';
-            }}>
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Kunden-Check (Self-Service)...
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Vorlagen</DropdownMenuLabel>
+            <DropdownMenuLabel>Halle laden (Geometrie)</DropdownMenuLabel>
             {PROJEKT_VORLAGEN.map(vorlage => (
               <DropdownMenuItem key={vorlage.id} onClick={() => {
                 ladeProjektVorlage(vorlage.id);
-                toast.success(`"${vorlage.name} — ${vorlage.standort}" geladen`);
+                toast.success(`Halle "${vorlage.name} — ${vorlage.standort}" geladen`);
               }}>
                 <Warehouse className="mr-2 h-4 w-4" />
                 {vorlage.name} — {vorlage.standort}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Volumen-Daten laden (Scans)</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => handleLoadMonth('as-jan2026-scans', 'Januar 2026')}>
               <Database className="mr-2 h-4 w-4" />
-              AS Januar 2026 — echte Scan-Daten laden
+              AS Januar 2026
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleLoadMonth('as-feb2026-scans', 'Februar 2026')}>
               <Database className="mr-2 h-4 w-4" />
-              AS Februar 2026 — echte Scan-Daten laden
+              AS Februar 2026
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              // Eigene CSV via Dialog
+              const btn = document.querySelector('[data-betriebsdaten-trigger]') as HTMLButtonElement;
+              if (btn) btn.click();
+            }}>
+              <Upload className="mr-2 h-4 w-4" />
+              Eigene CSV importieren…
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => {
+              window.location.href = '/topis-saas/check';
+            }}>
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Kunden-Check (Self-Service)…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSave}>
@@ -1155,7 +1156,7 @@ export function Toolbar() {
         </div>
         )}
 
-        {/* ============ COCKPIT / DASHBOARD ============ */}
+        {/* ============ DASHBOARD ============ */}
         {(phase === 'cockpit') && (
         <div className="flex items-center gap-2">
           <a href="/topis-saas/dashboard">
@@ -1164,27 +1165,14 @@ export function Toolbar() {
               Dashboard öffnen (Tages-Werkzeug)
             </Button>
           </a>
-          <Separator orientation="vertical" className="h-6 mx-1" />
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={() => handleLoadMonth('as-jan2026-scans', 'Januar 2026')}
-          >
-            <Database className="h-3.5 w-3.5" />
-            Januar 2026 laden
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={() => handleLoadMonth('as-feb2026-scans', 'Februar 2026')}
-          >
-            <Database className="h-3.5 w-3.5" />
-            Februar 2026 laden
-          </Button>
+          <a href="/topis-saas/projekt/planung">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+              <FileText className="h-4 w-4" />
+              Auftrags-Planung
+            </Button>
+          </a>
           <span className="text-[11px] text-muted-foreground ml-1">
-            oder kompakte Sicht: Reiter „Cockpit" rechts
+            Halle und Volumen-Daten lädst du oben in Phase „Daten"
           </span>
         </div>
         )}
