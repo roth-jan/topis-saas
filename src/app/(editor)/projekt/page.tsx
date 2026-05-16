@@ -10,7 +10,6 @@ import { CommandPalette } from '@/components/editor/CommandPalette';
 import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
 import { AnalyticsPanel } from '@/components/panels/AnalyticsPanel';
-import { CockpitPanel } from '@/components/panels/CockpitPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { GuidedTour } from '@/components/editor/GuidedTour';
 import {
@@ -21,7 +20,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Truck, BarChart3, Settings, Route, Activity, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { LayoutGrid, Truck, BarChart3, Settings, Route, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 export default function EditorPage() {
   // Enable keyboard shortcuts
@@ -65,11 +64,13 @@ export default function EditorPage() {
       {/* Guided Tour (auto-start beim ersten Besuch) */}
       <GuidedTour />
 
-      {/* Top Toolbar */}
-      <Toolbar />
+      {/* Top Toolbar — mit Schatten + dickerer Trennlinie, damit Canvas optisch klar darunter sitzt */}
+      <div className="shadow-md shadow-black/20 border-b-2 border-border z-30 relative">
+        <Toolbar />
+      </div>
 
       {/* Main Content */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1" autoSaveId="topis-editor-layout-v2">
+      <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0" autoSaveId="topis-editor-layout-v2">
         {/* Left Sidebar - Object List & Gänge */}
         <ResizablePanel
           id="left-panel"
@@ -85,17 +86,17 @@ export default function EditorPage() {
         >
           <div className="h-full border-r bg-card flex flex-col min-h-0">
             <Tabs defaultValue="objects" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1 shrink-0">
-                <TabsTrigger value="objects" className="text-xs gap-1.5">
-                  <LayoutGrid className="h-3.5 w-3.5" />
+              <TabsList className="w-full justify-start rounded-none border-b-2 h-11 px-2 pr-1 shrink-0 bg-muted/40">
+                <TabsTrigger value="objects" className="text-sm gap-1.5 px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <LayoutGrid className="h-4 w-4" />
                   Objekte
                 </TabsTrigger>
-                <TabsTrigger value="wege" className="text-xs gap-1.5">
-                  <Route className="h-3.5 w-3.5" />
+                <TabsTrigger value="wege" className="text-sm gap-1.5 px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Route className="h-4 w-4" />
                   Wege
                 </TabsTrigger>
-                <TabsTrigger value="gaenge" className="text-xs gap-1.5">
-                  <Truck className="h-3.5 w-3.5" />
+                <TabsTrigger value="gaenge" className="text-sm gap-1.5 px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Truck className="h-4 w-4" />
                   Gänge
                 </TabsTrigger>
                 <Button
@@ -132,30 +133,34 @@ export default function EditorPage() {
         {/* Canvas Area */}
         <ResizablePanel id="canvas-panel" order={2} defaultSize={62}>
           <div className="relative h-full">
-            {/* Seitenleiste links: vertikaler Reiter wenn Panel collapsed */}
+            {/* Seitenleiste links: breiter Reiter mit Beschriftung wenn Panel collapsed */}
             {leftCollapsed && (
               <button
                 type="button"
                 onClick={toggleLeft}
                 title="Linkes Panel öffnen ([)"
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1 h-32 w-7 bg-primary text-primary-foreground rounded-r-md shadow-lg hover:w-9 transition-all border-y border-r border-primary/30"
-                aria-label="Linkes Panel öffnen"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center justify-center gap-2 h-44 w-10 bg-primary text-primary-foreground rounded-r-md shadow-lg hover:w-12 transition-all border border-l-0 border-primary-foreground/30"
+                aria-label="Linkes Panel öffnen — Objekte, Wege, Gänge"
               >
-                <PanelLeftOpen className="h-4 w-4 mx-auto" />
-                <span className="sr-only">Objekte / Wege / Gänge öffnen</span>
+                <PanelLeftOpen className="h-5 w-5" />
+                <span className="text-[10px] font-medium tracking-wider rotate-180 [writing-mode:vertical-rl]">
+                  OBJEKTE · WEGE · GÄNGE
+                </span>
               </button>
             )}
-            {/* Seitenleiste rechts: vertikaler Reiter wenn Panel collapsed */}
+            {/* Seitenleiste rechts: breiter Reiter mit Beschriftung wenn Panel collapsed */}
             {rightCollapsed && (
               <button
                 type="button"
                 onClick={toggleRight}
                 title="Rechtes Panel öffnen (])"
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-1 h-32 w-7 bg-primary text-primary-foreground rounded-l-md shadow-lg hover:w-9 transition-all border-y border-l border-primary/30"
-                aria-label="Rechtes Panel öffnen"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center justify-center gap-2 h-44 w-10 bg-primary text-primary-foreground rounded-l-md shadow-lg hover:w-12 transition-all border border-r-0 border-primary-foreground/30"
+                aria-label="Rechtes Panel öffnen — Eigenschaften, Analyse"
               >
-                <PanelRightOpen className="h-4 w-4 mx-auto" />
-                <span className="sr-only">Eigenschaften / Analyse öffnen</span>
+                <PanelRightOpen className="h-5 w-5" />
+                <span className="text-[10px] font-medium tracking-wider [writing-mode:vertical-rl]">
+                  EIGENSCHAFTEN · ANALYSE
+                </span>
               </button>
             )}
             <HallCanvas />
@@ -179,7 +184,7 @@ export default function EditorPage() {
         >
           <div className="h-full border-l bg-card flex flex-col min-h-0">
             <Tabs defaultValue="properties" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="w-full justify-start rounded-none border-b h-10 px-2 pr-1 shrink-0">
+              <TabsList className="w-full justify-start rounded-none border-b-2 h-11 px-2 pr-1 shrink-0 bg-muted/40">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -189,24 +194,17 @@ export default function EditorPage() {
                 >
                   <PanelRightClose className="h-4 w-4" />
                 </Button>
-                <TabsTrigger value="properties" className="text-xs gap-1.5">
-                  <Settings className="h-3.5 w-3.5" />
-                  Eigensch.
+                <TabsTrigger value="properties" className="text-sm gap-1.5 px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Settings className="h-4 w-4" />
+                  Eigenschaften
                 </TabsTrigger>
-                <TabsTrigger value="cockpit" className="text-xs gap-1.5">
-                  <Activity className="h-3.5 w-3.5" />
-                  Cockpit
-                </TabsTrigger>
-                <TabsTrigger value="analytics" className="text-xs gap-1.5">
-                  <BarChart3 className="h-3.5 w-3.5" />
+                <TabsTrigger value="analytics" className="text-sm gap-1.5 px-3 py-1.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <BarChart3 className="h-4 w-4" />
                   Analyse
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="properties" className="flex-1 mt-0 min-h-0 overflow-hidden">
                 <PropertiesPanel />
-              </TabsContent>
-              <TabsContent value="cockpit" className="flex-1 mt-0 min-h-0 overflow-hidden">
-                <CockpitPanel />
               </TabsContent>
               <TabsContent value="analytics" className="flex-1 mt-0 min-h-0 overflow-hidden">
                 <AnalyticsPanel />
