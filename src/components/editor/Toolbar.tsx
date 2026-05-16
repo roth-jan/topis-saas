@@ -266,6 +266,8 @@ export function Toolbar() {
   const importScandatenRecords = useBetriebsdatenStore((s) => s.importScandatenRecords);
   const setAnalyseStore = useBetriebsdatenStore((s) => s.setAnalyse);
   const setHeatmapConfigStore = useBetriebsdatenStore((s) => s.setHeatmapConfig);
+  const setTorZuordnungenStore = useBetriebsdatenStore((s) => s.setTorZuordnungen);
+  const setRelationZuordnungenStore = useBetriebsdatenStore((s) => s.setRelationZuordnungen);
   const objectsForDemo = useTopisStore((s) => s.objects);
 
   // Generischer Demo-Daten-Loader für Monats-CSVs aus public/demo-data/
@@ -286,6 +288,9 @@ export function Toolbar() {
       const colMp = headers.indexOf('messpunkt');
       const colMpName = headers.indexOf('messpunktname');
       const colDate = headers.indexOf('scandatum');
+      const colTime = headers.indexOf('scanzeit');
+      const colTour = headers.indexOf('tour');
+      const colDispo = headers.indexOf('dispogebiet');
       const colSendungen = headers.indexOf('sendungen');
       const colColli = headers.indexOf('colli');
       const colGewicht = headers.indexOf('gewicht');
@@ -299,11 +304,13 @@ export function Toolbar() {
         return;
       }
 
-      // Aggregation pro MP-Code direkt aus CSV-Spalte
+      // Aggregation pro MP-Code (für die Heatmap-Analyse) UND Records-Array (für Planungs-Seite)
       type Bucket = { sendungen: number; colli: number; gewicht: number; count: number };
       const grouped = new Map<string, Bucket>();
       const tage = new Set<string>();
       let totalSendungen = 0, totalColli = 0, totalGewicht = 0;
+      const records: import('@/types/scandaten').ScandatenRecord[] = [];
+      const dispoSet = new Set<string>();
 
       for (let i = 1; i < lines.length; i++) {
         const parts = lines[i].split(';');
@@ -314,11 +321,31 @@ export function Toolbar() {
         const c = parseInt(parts[colColli]) || 0;
         const g = parseFloat(parts[colGewicht]) || 0;
         const d = parts[colDate]?.trim() || '';
+        const z = colTime >= 0 ? (parts[colTime]?.trim() || '') : '';
+        const tour = colTour >= 0 ? (parts[colTour]?.trim() || '') : '';
+        const dispo = colDispo >= 0 ? (parts[colDispo]?.trim() || '') : '';
         if (d) tage.add(d.substring(0, 10));
+        if (dispo) dispoSet.add(dispo);
         totalSendungen += s; totalColli += c; totalGewicht += g;
         const b = grouped.get(mpCode) || { sendungen: 0, colli: 0, gewicht: 0, count: 0 };
         b.sendungen += s; b.colli += c; b.gewicht += g; b.count += 1;
         grouped.set(mpCode, b);
+
+        records.push({
+          id: i,
+          scandatum: d,
+          scanzeit: z,
+          timestamp: 0,
+          stellplatz: mpCode,           // MP-Code als Stellplatz-Key (für Planungs-Seite)
+          messpunkt: parseInt(mpRaw) || 0,
+          messpunktName: colMpName >= 0 ? (parts[colMpName]?.trim() || mpCode) : mpCode,
+          tour,
+          dispogebiet: dispo,
+          ausgangsrelation: dispo,      // dispogebiet als Relation für die Auftrags-Aggregation
+          sendungen: s,
+          colli: c,
+          gewicht: g,
+        });
       }
 
       const arbeitstage = Math.max(tage.size, 1);
@@ -348,6 +375,39 @@ export function Toolbar() {
         objektMetriken: metriken,
       });
       setHeatmapConfigStore({ aktiv: true, modus: 'colli' });
+
+      // Für die Planungs-Seite: Records, Tor-Zuordnung (MP-Code → MP-Objekt),
+      // Relation-Zuordnung (dispogebiet → bisher unmapped, Berater kann später drinhängen)
+      importScandatenRecords(records);
+
+      const torZuordnungen: import('@/types/scandaten').TorZuordnung[] = [];
+      grouped.forEach((_b, mpCode) => {
+        const obj = mpObjects.find((o) => o.meta?.code === mpCode);
+        if (obj) {
+          torZuordnungen.push({
+            stellplatzKey: mpCode,
+            objectId: obj.id,
+            objectName: obj.name || mpCode,
+            autoMatched: true,
+          });
+        }
+      });
+      setTorZuordnungenStore(torZuordnungen);
+
+      // Bereich-Auto-Match: dispogebiet-Text mit Bereich-Objektnamen (Substring, case-insensitiv)
+      const bereiche = objectsForDemo.filter((o) => o.type === 'bereich' && o.name);
+      const relationZuordnungen: import('@/types/scandaten').RelationZuordnung[] = [...dispoSet].map((dispo) => {
+        const lower = dispo.toLowerCase();
+        const match = bereiche.find((b) =>
+          (b.name || '').toLowerCase().includes(lower) || lower.includes((b.name || '').toLowerCase())
+        );
+        return {
+          relationKey: dispo,
+          objectId: match?.id ?? null,
+          objectName: match?.name ?? dispo,
+        };
+      });
+      setRelationZuordnungenStore(relationZuordnungen);
 
       if (metriken.length === 0) {
         toast.error(`Keine MP-Matches: gefunden ${[...grouped.keys()].join(',')}, im Layout ${mpObjects.map(m => m.meta?.code).join(',')}`);
