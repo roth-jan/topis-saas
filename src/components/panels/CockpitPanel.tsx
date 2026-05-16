@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, AlertTriangle, Activity, Clock, Route as RouteIcon, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { findPathBetweenObjects } from '@/lib/pathfinding';
+import { HallPreview } from '@/components/check/HallPreview';
 
 /**
  * Cockpit-Panel — Vaters Idee: aus dem Plan-System ein Tages-Werkzeug machen.
@@ -40,11 +41,34 @@ export function CockpitPanel() {
   const setCockpitRoute = useTopisStore((s) => s.setCockpitRoute);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
+  const halls = useTopisStore((s) => s.halls);
+  const activeHallId = useTopisStore((s) => s.activeHallId);
+  const activeHall = halls.find((h) => h.id === activeHallId) || halls[0];
+  const heatmapConfig = useBetriebsdatenStore((s) => s.heatmapConfig);
 
   const [variants, setVariants] = useState<SavedVariant[]>([]);
   const [routeStart, setRouteStart] = useState<number | null>(null);
   const [routeEnd, setRouteEnd] = useState<number | null>(null);
   const [savedRoutes, setSavedRoutes] = useState<{ id: string; label: string; distanz: number; sek: number }[]>([]);
+
+  // Container-Width tracken für die Mini-Halle
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewSize, setPreviewSize] = useState({ width: 320, height: 110 });
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const w = Math.max(220, Math.floor(e.contentRect.width));
+        // Höhe anhand des Hallen-Seitenverhältnisses, mit Min/Max-Bounds
+        const aspect = activeHall ? activeHall.width / activeHall.height : 3;
+        const h = Math.max(80, Math.min(180, Math.floor(w / aspect)));
+        setPreviewSize({ width: w, height: h });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activeHall]);
 
   // Bei jeder Änderung von Start/End → Store updaten, damit HallCanvas die
   // Route zeichnen kann. Beim Unmount zurücksetzen.
@@ -72,6 +96,21 @@ export function CockpitPanel() {
         return (a.torNummer ?? 999) - (b.torNummer ?? 999);
       });
   }, [objects]);
+
+  // Aktuelle Route-Waypoints für die Mini-Halle
+  const routeWaypoints = useMemo(() => {
+    if (routeStart === null || routeEnd === null) return undefined;
+    const a = objects.find((o) => o.id === routeStart);
+    const b = objects.find((o) => o.id === routeEnd);
+    if (!a || !b || a.id === b.id) return undefined;
+    try {
+      const r = findPathBetweenObjects(a, b, gaenge);
+      if (!r || r.path.length < 2) return undefined;
+      return r.path;
+    } catch {
+      return undefined;
+    }
+  }, [routeStart, routeEnd, objects, gaenge]);
 
   // Live-Routenberechnung
   const liveRoute = useMemo(() => {
@@ -201,27 +240,60 @@ export function CockpitPanel() {
     toast.success(`${name} gespeichert (${Math.round(stats.totalStunden)} Std/Tag)`);
   };
 
-  if (!stats) {
-    return (
-      <div className="p-4 space-y-4">
-        <div className="text-center text-muted-foreground py-8">
-          <Activity className="h-12 w-12 mx-auto mb-3 opacity-40" />
-          <p className="text-sm">Lade Betriebsdaten, um das Cockpit zu aktivieren.</p>
-          <p className="text-xs mt-2 text-muted-foreground/70">
-            Datei → AS Januar 2026 — echte Scan-Daten laden
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const tagesColli = stats.totalColli / Math.max(stats.arbeitstage, 1);
-  const tagesStunden = stats.totalStunden / Math.max(stats.arbeitstage, 1);
+  const tagesColli = stats ? stats.totalColli / Math.max(stats.arbeitstage, 1) : 0;
+  const tagesStunden = stats ? stats.totalStunden / Math.max(stats.arbeitstage, 1) : 0;
 
   return (
     <ScrollArea className="h-full">
       <div className="p-3 space-y-3">
+        {/* Hallen-Vorschau mit Heatmap + ggf. Route */}
+        {activeHall && (
+          <Card className="overflow-hidden">
+            <CardContent className="p-2">
+              <div ref={previewRef} className="w-full">
+                <HallPreview
+                  hall={activeHall}
+                  objects={objects}
+                  gaenge={gaenge}
+                  analyse={analyse}
+                  heatmapConfig={heatmapConfig.aktiv ? heatmapConfig : { ...heatmapConfig, aktiv: true, modus: 'colli' }}
+                  width={previewSize.width}
+                  height={previewSize.height}
+                  routeWaypoints={routeWaypoints}
+                  routeStartId={routeStart ?? undefined}
+                  routeEndId={routeEnd ?? undefined}
+                />
+              </div>
+              <div className="text-[10px] text-muted-foreground text-center mt-1">
+                {analyse
+                  ? 'Volumen pro Tor — heller = mehr Colli. Route erscheint amber, wenn unten Von/Nach gewählt ist.'
+                  : 'Halle geladen, noch keine Volumen-Daten. Phase "Cockpit" oben → "Januar 2026 laden".'}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Hinweis wenn keine Volumen-Daten geladen */}
+        {!stats && (
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardContent className="py-3 text-xs">
+              <div className="flex gap-2 items-start">
+                <Activity className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-semibold mb-1">Volumen-Daten fehlen noch.</p>
+                  <p className="text-muted-foreground">
+                    Oben in der Toolbar Phase <strong>Cockpit</strong> wählen und
+                    auf <strong>„Januar 2026 laden"</strong> klicken. Dann erscheinen
+                    Tagesschnitt, Engpass-Tore und Personalstunden hier.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Tagesschnitt */}
+        {stats && (
         <Card>
           <CardHeader className="py-2">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -262,8 +334,10 @@ export function CockpitPanel() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Engpass-Tore (rot) */}
+        {stats && (
         <Card>
           <CardHeader className="py-2">
             <CardTitle className="text-xs flex items-center gap-1.5">
@@ -299,9 +373,10 @@ export function CockpitPanel() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Stunden-Aufwand */}
-        {minProColli > 0 && (
+        {stats && minProColli > 0 && (
           <Card>
             <CardHeader className="py-2">
               <CardTitle className="text-xs flex items-center gap-1.5">
@@ -337,15 +412,17 @@ export function CockpitPanel() {
         )}
 
         {/* Aktuelle als Variante speichern */}
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={saveCurrentAsVariant}
-        >
-          <Save className="h-3.5 w-3.5 mr-1.5" />
-          Aktuellen Stand als Variante speichern
-        </Button>
+        {stats && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={saveCurrentAsVariant}
+          >
+            <Save className="h-3.5 w-3.5 mr-1.5" />
+            Aktuellen Stand als Variante speichern
+          </Button>
+        )}
 
         {/* Varianten-Vergleich */}
         {variants.length > 0 && (

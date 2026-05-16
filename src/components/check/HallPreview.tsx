@@ -14,6 +14,10 @@ interface HallPreviewProps {
   heatmapConfig?: HeatmapConfig;
   width?: number;
   height?: number;
+  /** Optionale Cockpit-Route — wird als amber Linie über die Halle gezeichnet */
+  routeWaypoints?: { x: number; y: number }[];
+  routeStartId?: number;
+  routeEndId?: number;
 }
 
 /**
@@ -28,6 +32,9 @@ export function HallPreview({
   heatmapConfig,
   width = 700,
   height = 400,
+  routeWaypoints,
+  routeStartId,
+  routeEndId,
 }: HallPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -117,6 +124,56 @@ export function HallPreview({
       ctx.fillText(label, tl.x + w / 2, tl.y + h / 2);
     }
 
+    // === Cockpit-Route (vor Heatmap, damit Marker oben drauf liegen) ===
+    if (routeWaypoints && routeWaypoints.length >= 2) {
+      const a = routeStartId != null ? objects.find((o) => o.id === routeStartId) : null;
+      const b = routeEndId != null ? objects.find((o) => o.id === routeEndId) : null;
+      const aCx = a ? a.x + a.width / 2 : routeWaypoints[0].x;
+      const aCy = a ? a.y + a.height / 2 : routeWaypoints[0].y;
+      const bCx = b ? b.x + b.width / 2 : routeWaypoints[routeWaypoints.length - 1].x;
+      const bCy = b ? b.y + b.height / 2 : routeWaypoints[routeWaypoints.length - 1].y;
+      const first = worldToScreen(routeWaypoints[0].x, routeWaypoints[0].y);
+      const last = worldToScreen(routeWaypoints[routeWaypoints.length - 1].x, routeWaypoints[routeWaypoints.length - 1].y);
+      const aPx = worldToScreen(aCx, aCy);
+      const bPx = worldToScreen(bCx, bCy);
+
+      ctx.save();
+      // Anbindung Tor → Gang (gestrichelt)
+      ctx.strokeStyle = 'rgba(251,191,36,0.85)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 3]);
+      ctx.beginPath();
+      ctx.moveTo(aPx.x, aPx.y);
+      ctx.lineTo(first.x, first.y);
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(bPx.x, bPx.y);
+      ctx.stroke();
+      // Gang-Pfad (durchgezogen + Glow)
+      ctx.setLineDash([]);
+      ctx.shadowColor = 'rgba(251,191,36,0.9)';
+      ctx.shadowBlur = 8;
+      ctx.strokeStyle = 'rgba(251,191,36,0.95)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(first.x, first.y);
+      for (let i = 1; i < routeWaypoints.length; i++) {
+        const p = worldToScreen(routeWaypoints[i].x, routeWaypoints[i].y);
+        ctx.lineTo(p.x, p.y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Start (grün) + Ziel (cyan)
+      ctx.fillStyle = '#22c55e';
+      ctx.beginPath();
+      ctx.arc(aPx.x, aPx.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.arc(bPx.x, bPx.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     // === Heatmap Overlay ===
     if (heatmapConfig?.aktiv && analyse) {
       const torObjects = objects.filter((o) => o.type === 'tor');
@@ -149,7 +206,7 @@ export function HallPreview({
         );
       }
     }
-  }, [hall, objects, gaenge, analyse, heatmapConfig, width, height]);
+  }, [hall, objects, gaenge, analyse, heatmapConfig, width, height, routeWaypoints, routeStartId, routeEndId]);
 
   return (
     <canvas
