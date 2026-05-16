@@ -376,7 +376,7 @@ export function Toolbar() {
     { id: 'wege', label: 'Wege', hint: 'Wegberechnung + Distanzmatrix' },
     { id: 'auswertung', label: 'Auswertung', hint: 'Prozessmodell + KPIs' },
     { id: 'vergleich', label: 'Vergleich', hint: 'Szenarien gegenüberstellen' },
-    { id: 'cockpit', label: 'Cockpit', hint: 'Live-Dashboard für die Demo' },
+    { id: 'cockpit', label: 'Dashboard', hint: 'Tages-Werkzeug: Aufträge, Mengen, Kosten' },
   ];
 
   // Export handlers

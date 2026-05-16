@@ -1,12 +1,11 @@
 'use client';
 
-import { useMemo, useEffect, useState, useRef } from 'react';
+import { useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StundenChart } from '@/components/dashboard/StundenChart';
 import { AbteilungsChart } from '@/components/dashboard/AbteilungsChart';
 import { BenchmarkRadar } from '@/components/dashboard/BenchmarkRadar';
-import { HallPreview } from '@/components/check/HallPreview';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { useTopisStore } from '@/lib/store';
@@ -14,10 +13,8 @@ import { REFERENZHALLEN } from '@/lib/data/referenzhallen';
 import { berechneBenchmark } from '@/lib/benchmarking';
 import { berechneFlaechenbedarf } from '@/lib/flaechenrechner';
 import { berechneGewichtetenVerteilweg } from '@/lib/verteilweg-rechner';
-import { findPathBetweenObjects } from '@/lib/pathfinding';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Timer,
   Users,
@@ -38,9 +35,6 @@ export default function DashboardPage() {
   const relationZuordnungen = useBetriebsdatenStore((s) => s.relationZuordnungen);
   const objects = useTopisStore((s) => s.objects);
   const gaenge = useTopisStore((s) => s.gaenge);
-  const halls = useTopisStore((s) => s.halls);
-  const activeHallId = useTopisStore((s) => s.activeHallId);
-  const activeHall = halls.find((h) => h.id === activeHallId) || halls[0];
   const modell = useProzessmodellStore((s) => s.modell);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
@@ -105,90 +99,6 @@ export default function DashboardPage() {
 
   const hasData = analyse && analyse.objektMetriken.length > 0;
 
-  // === SE/SA-Split der Heatmap-Daten ===
-  // SE = Eingang (entladen), SA = Ausgang (verladen). MP-Codes aus ROTH-Methodik.
-  const SE_CODES = ['MP5', 'MP2', 'MP9b'];
-  const SA_CODES = ['MP7', 'MP4', 'MP4a', 'MP9a'];
-  const seAnalyse = useMemo(() => {
-    if (!analyse) return null;
-    const seIds = new Set(
-      objects
-        .filter((o) => SE_CODES.includes(o.meta?.code || ''))
-        .map((o) => o.id)
-    );
-    const metriken = analyse.objektMetriken.filter((m) => seIds.has(m.objectId));
-    return {
-      ...analyse,
-      objektMetriken: metriken,
-      gesamtColli: metriken.reduce((s, m) => s + m.colli, 0),
-    };
-  }, [analyse, objects]);
-  const saAnalyse = useMemo(() => {
-    if (!analyse) return null;
-    const saIds = new Set(
-      objects
-        .filter((o) => SA_CODES.includes(o.meta?.code || ''))
-        .map((o) => o.id)
-    );
-    const metriken = analyse.objektMetriken.filter((m) => saIds.has(m.objectId));
-    return {
-      ...analyse,
-      objektMetriken: metriken,
-      gesamtColli: metriken.reduce((s, m) => s + m.colli, 0),
-    };
-  }, [analyse, objects]);
-
-  // === Container-Width tracken für die zwei Hallen ===
-  const hallsRowRef = useRef<HTMLDivElement>(null);
-  const [hallSize, setHallSize] = useState({ width: 480, height: 160 });
-  useEffect(() => {
-    const el = hallsRowRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        const totalW = e.contentRect.width;
-        // 2 Hallen nebeneinander mit 12px gap, jeweils minus Padding
-        const eachW = Math.max(280, Math.floor((totalW - 16) / 2) - 16);
-        const aspect = activeHall ? activeHall.width / activeHall.height : 3.5;
-        const eachH = Math.max(120, Math.min(240, Math.floor(eachW / aspect)));
-        setHallSize({ width: eachW, height: eachH });
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [activeHall]);
-
-  // === Inline Route-Spiel im Dashboard ===
-  const [routeStart, setRouteStart] = useState<number | null>(null);
-  const [routeEnd, setRouteEnd] = useState<number | null>(null);
-  const routeOptions = useMemo(
-    () =>
-      objects
-        .filter((o) => o.type === 'tor' || (o.type === 'bereich' && o.name))
-        .sort((a, b) => (a.torNummer ?? 999) - (b.torNummer ?? 999)),
-    [objects]
-  );
-  const dashRoute = useMemo(() => {
-    if (routeStart == null || routeEnd == null || routeStart === routeEnd) return null;
-    const a = objects.find((o) => o.id === routeStart);
-    const b = objects.find((o) => o.id === routeEnd);
-    if (!a || !b) return null;
-    try {
-      const r = findPathBetweenObjects(a, b, gaenge);
-      if (!r || r.path.length < 2) return null;
-      const aCx = a.x + a.width / 2;
-      const aCy = a.y + a.height / 2;
-      const bCx = b.x + b.width / 2;
-      const bCy = b.y + b.height / 2;
-      const dStart = Math.hypot(r.path[0].x - aCx, r.path[0].y - aCy);
-      const dEnd = Math.hypot(r.path[r.path.length - 1].x - bCx, r.path[r.path.length - 1].y - bCy);
-      const total = dStart + r.distance + dEnd;
-      return { waypoints: r.path, totalM: total, sek: total / 2.44, from: a.name, to: b.name };
-    } catch {
-      return null;
-    }
-  }, [routeStart, routeEnd, objects, gaenge]);
-
   // === Aggregation Tag/Woche/Monat/Jahr ===
   const aggregation = useMemo(() => {
     if (!ergebnis || !analyse) return null;
@@ -241,131 +151,6 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              {/* ==================== Reihe 0: Zwei Hallen SE / SA + Route-Spiel ==================== */}
-              {activeHall && (
-                <>
-                  <div ref={hallsRowRef} className="grid grid-cols-2 gap-3">
-                    {/* SE-Halle */}
-                    <Card className="overflow-hidden">
-                      <CardContent className="p-3 space-y-2">
-                        <div className="flex items-baseline justify-between">
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-500">SE — Eingang</h3>
-                          <span className="text-[11px] text-muted-foreground">
-                            {seAnalyse ? `${Math.round(seAnalyse.gesamtColli).toLocaleString('de-DE')} Colli` : '–'}
-                          </span>
-                        </div>
-                        <HallPreview
-                          hall={activeHall}
-                          objects={objects}
-                          gaenge={gaenge}
-                          analyse={seAnalyse}
-                          heatmapConfig={{ aktiv: true, modus: 'colli', farbskala: 'blau-rot', intensitaet: 1 }}
-                          width={hallSize.width}
-                          height={hallSize.height}
-                          routeWaypoints={dashRoute?.waypoints}
-                          routeStartId={routeStart ?? undefined}
-                          routeEndId={routeEnd ?? undefined}
-                        />
-                      </CardContent>
-                    </Card>
-                    {/* SA-Halle */}
-                    <Card className="overflow-hidden">
-                      <CardContent className="p-3 space-y-2">
-                        <div className="flex items-baseline justify-between">
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500">SA — Ausgang</h3>
-                          <span className="text-[11px] text-muted-foreground">
-                            {saAnalyse ? `${Math.round(saAnalyse.gesamtColli).toLocaleString('de-DE')} Colli` : '–'}
-                          </span>
-                        </div>
-                        <HallPreview
-                          hall={activeHall}
-                          objects={objects}
-                          gaenge={gaenge}
-                          analyse={saAnalyse}
-                          heatmapConfig={{ aktiv: true, modus: 'colli', farbskala: 'gruen-rot', intensitaet: 1 }}
-                          width={hallSize.width}
-                          height={hallSize.height}
-                          routeWaypoints={dashRoute?.waypoints}
-                          routeStartId={routeStart ?? undefined}
-                          routeEndId={routeEnd ?? undefined}
-                        />
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Route-Spiel-Bereich */}
-                  <Card>
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <div className="text-xs font-semibold uppercase tracking-wider">Route prüfen</div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Von</span>
-                          <Select
-                            value={routeStart != null ? String(routeStart) : ''}
-                            onValueChange={(v) => setRouteStart(v ? Number(v) : null)}
-                          >
-                            <SelectTrigger className="h-8 w-[170px] text-xs">
-                              <SelectValue placeholder="Tor wählen" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {routeOptions.map((o) => (
-                                <SelectItem key={o.id} value={String(o.id)} className="text-xs">
-                                  {o.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">Nach</span>
-                          <Select
-                            value={routeEnd != null ? String(routeEnd) : ''}
-                            onValueChange={(v) => setRouteEnd(v ? Number(v) : null)}
-                          >
-                            <SelectTrigger className="h-8 w-[170px] text-xs">
-                              <SelectValue placeholder="Bereich/Tor wählen" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {routeOptions.map((o) => (
-                                <SelectItem key={o.id} value={String(o.id)} className="text-xs">
-                                  {o.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {dashRoute && (
-                          <div className="text-xs flex items-center gap-3 ml-auto">
-                            <span>
-                              <span className="text-muted-foreground">Distanz</span>{' '}
-                              <span className="font-semibold">{Math.round(dashRoute.totalM)} m</span>
-                            </span>
-                            <span>
-                              <span className="text-muted-foreground">Zeit</span>{' '}
-                              <span className="font-semibold">{dashRoute.sek.toFixed(1)} s</span>
-                            </span>
-                          </div>
-                        )}
-                        {(routeStart != null || routeEnd != null) && (
-                          <button
-                            type="button"
-                            className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                            onClick={() => {
-                              setRouteStart(null);
-                              setRouteEnd(null);
-                            }}
-                          >
-                            zurücksetzen
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-2">
-                        Wenn du Von und Nach wählst, wird der Weg in beiden Hallen oben eingezeichnet. TOPIS rechnet sofort Distanz + Zeit.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </>
-              )}
 
               {/* ==================== Reihe 1: KPI-Karten ==================== */}
               <div className="grid grid-cols-4 gap-3">

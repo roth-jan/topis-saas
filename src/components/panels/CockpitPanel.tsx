@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
@@ -10,7 +10,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Save, AlertTriangle, Activity, Clock, Route as RouteIcon, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { findPathBetweenObjects } from '@/lib/pathfinding';
-import { HallPreview } from '@/components/check/HallPreview';
 
 /**
  * Cockpit-Panel — Vaters Idee: aus dem Plan-System ein Tages-Werkzeug machen.
@@ -41,34 +40,11 @@ export function CockpitPanel() {
   const setCockpitRoute = useTopisStore((s) => s.setCockpitRoute);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
-  const halls = useTopisStore((s) => s.halls);
-  const activeHallId = useTopisStore((s) => s.activeHallId);
-  const activeHall = halls.find((h) => h.id === activeHallId) || halls[0];
-  const heatmapConfig = useBetriebsdatenStore((s) => s.heatmapConfig);
 
   const [variants, setVariants] = useState<SavedVariant[]>([]);
   const [routeStart, setRouteStart] = useState<number | null>(null);
   const [routeEnd, setRouteEnd] = useState<number | null>(null);
   const [savedRoutes, setSavedRoutes] = useState<{ id: string; label: string; distanz: number; sek: number }[]>([]);
-
-  // Container-Width tracken für die Mini-Halle
-  const previewRef = useRef<HTMLDivElement>(null);
-  const [previewSize, setPreviewSize] = useState({ width: 320, height: 110 });
-  useEffect(() => {
-    const el = previewRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const e of entries) {
-        const w = Math.max(220, Math.floor(e.contentRect.width));
-        // Höhe anhand des Hallen-Seitenverhältnisses, mit Min/Max-Bounds
-        const aspect = activeHall ? activeHall.width / activeHall.height : 3;
-        const h = Math.max(80, Math.min(180, Math.floor(w / aspect)));
-        setPreviewSize({ width: w, height: h });
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [activeHall]);
 
   // Bei jeder Änderung von Start/End → Store updaten, damit HallCanvas die
   // Route zeichnen kann. Beim Unmount zurücksetzen.
@@ -96,21 +72,6 @@ export function CockpitPanel() {
         return (a.torNummer ?? 999) - (b.torNummer ?? 999);
       });
   }, [objects]);
-
-  // Aktuelle Route-Waypoints für die Mini-Halle
-  const routeWaypoints = useMemo(() => {
-    if (routeStart === null || routeEnd === null) return undefined;
-    const a = objects.find((o) => o.id === routeStart);
-    const b = objects.find((o) => o.id === routeEnd);
-    if (!a || !b || a.id === b.id) return undefined;
-    try {
-      const r = findPathBetweenObjects(a, b, gaenge);
-      if (!r || r.path.length < 2) return undefined;
-      return r.path;
-    } catch {
-      return undefined;
-    }
-  }, [routeStart, routeEnd, objects, gaenge]);
 
   // Live-Routenberechnung
   const liveRoute = useMemo(() => {
@@ -246,33 +207,6 @@ export function CockpitPanel() {
   return (
     <ScrollArea className="h-full">
       <div className="p-3 space-y-3">
-        {/* Hallen-Vorschau mit Heatmap + ggf. Route */}
-        {activeHall && (
-          <Card className="overflow-hidden">
-            <CardContent className="p-2">
-              <div ref={previewRef} className="w-full">
-                <HallPreview
-                  hall={activeHall}
-                  objects={objects}
-                  gaenge={gaenge}
-                  analyse={analyse}
-                  heatmapConfig={heatmapConfig.aktiv ? heatmapConfig : { ...heatmapConfig, aktiv: true, modus: 'colli' }}
-                  width={previewSize.width}
-                  height={previewSize.height}
-                  routeWaypoints={routeWaypoints}
-                  routeStartId={routeStart ?? undefined}
-                  routeEndId={routeEnd ?? undefined}
-                />
-              </div>
-              <div className="text-[10px] text-muted-foreground text-center mt-1">
-                {analyse
-                  ? 'Volumen pro Tor — heller = mehr Colli. Route erscheint amber, wenn unten Von/Nach gewählt ist.'
-                  : 'Halle geladen, noch keine Volumen-Daten. Phase "Cockpit" oben → "Januar 2026 laden".'}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Hinweis wenn keine Volumen-Daten geladen */}
         {!stats && (
           <Card className="border-amber-500/30 bg-amber-500/5">
