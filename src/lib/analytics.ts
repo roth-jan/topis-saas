@@ -29,10 +29,6 @@ export interface ProduktivitaetsAnalyse {
   // Time metrics
   durchschnittlicheZeit: number; // seconds
   geschaetzteDurchsatzZeit: number; // seconds for one cycle
-
-  // Efficiency metrics
-  effizienzScore: number; // 0-100
-  optimierungspotential: number; // percentage
 }
 
 // Default FFZ for calculations
@@ -143,21 +139,6 @@ export function analyzeProduktivitaet(
   // Estimate cycle time (gate -> stellplatz -> gate)
   const geschaetzteDurchsatzZeit = (durchschnittlicheZeit * 2) + ffz.aufnahmeZeit + ffz.abgabeZeit;
 
-  // Calculate efficiency score (0-100)
-  const effizienzScore = calculateEffizienzScore({
-    durchschnittlicheDistanz,
-    hallenFlaeche,
-    gangAnteil,
-    stellplatzAnzahl,
-    torAnzahl,
-  });
-
-  // Calculate optimization potential
-  const optimalDistanz = Math.sqrt(hallenFlaeche) * 0.3; // theoretical optimal
-  const optimierungspotential = durchschnittlicheDistanz > optimalDistanz
-    ? ((durchschnittlicheDistanz - optimalDistanz) / durchschnittlicheDistanz) * 100
-    : 0;
-
   return {
     hallenFlaeche,
     nutzFlaeche,
@@ -175,48 +156,7 @@ export function analyzeProduktivitaet(
     minDistanz,
     durchschnittlicheZeit,
     geschaetzteDurchsatzZeit,
-    effizienzScore,
-    optimierungspotential,
   };
-}
-
-/**
- * Calculate efficiency score based on various metrics
- */
-function calculateEffizienzScore(params: {
-  durchschnittlicheDistanz: number;
-  hallenFlaeche: number;
-  gangAnteil: number;
-  stellplatzAnzahl: number;
-  torAnzahl: number;
-}): number {
-  const { durchschnittlicheDistanz, hallenFlaeche, gangAnteil, stellplatzAnzahl, torAnzahl } = params;
-
-  let score = 100;
-
-  // Penalize for high average distance relative to hall size
-  const optimalDistanz = Math.sqrt(hallenFlaeche) * 0.3;
-  if (durchschnittlicheDistanz > optimalDistanz) {
-    score -= Math.min(30, ((durchschnittlicheDistanz / optimalDistanz) - 1) * 20);
-  }
-
-  // Penalize for too much or too little corridor area (optimal 15-25%)
-  if (gangAnteil < 10) {
-    score -= (10 - gangAnteil) * 2;
-  } else if (gangAnteil > 30) {
-    score -= (gangAnteil - 30) * 1.5;
-  }
-
-  // Bonus for good stellplatz-to-tor ratio
-  if (torAnzahl > 0 && stellplatzAnzahl > 0) {
-    const ratio = stellplatzAnzahl / torAnzahl;
-    if (ratio >= 5 && ratio <= 15) {
-      score += 5;
-    }
-  }
-
-  // Ensure score is between 0 and 100
-  return Math.max(0, Math.min(100, score));
 }
 
 /**
@@ -245,16 +185,6 @@ export function generateEmpfehlungen(analyse: ProduktivitaetsAnalyse): string[] 
   // Stellplatz recommendations
   if (analyse.stellplatzAnzahl === 0) {
     empfehlungen.push('Keine Stellplätze definiert. Fügen Sie Stellplätze für eine genauere Analyse hinzu.');
-  }
-
-  // Efficiency recommendations
-  if (analyse.effizienzScore < 60) {
-    empfehlungen.push('Die Gesamt-Effizienz ist verbesserungswürdig. Nutzen Sie den Gang-Generator für optimierte Wege.');
-  }
-
-  // Optimization potential
-  if (analyse.optimierungspotential > 20) {
-    empfehlungen.push(`Es besteht ca. ${analyse.optimierungspotential.toFixed(0)}% Optimierungspotential bei den Wegstrecken.`);
   }
 
   // Regal recommendations
@@ -288,7 +218,6 @@ export function formatAnalyse(analyse: ProduktivitaetsAnalyse): {
     { label: 'Max. Distanz', wert: analyse.maxDistanz.toFixed(1), einheit: 'm' },
     { label: 'Ø Fahrzeit', wert: analyse.durchschnittlicheZeit.toFixed(0), einheit: 's' },
     { label: 'Durchsatzzeit', wert: analyse.geschaetzteDurchsatzZeit.toFixed(0), einheit: 's' },
-    { label: 'Effizienz-Score', wert: analyse.effizienzScore.toFixed(0), einheit: '/100' },
   ];
 
   return {

@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { useTopisStore, useActiveHall, useObjects } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,7 +11,6 @@ import {
   Route,
   Package,
   Clock,
-  TrendingUp,
   AlertCircle,
   CheckCircle,
 } from 'lucide-react';
@@ -32,40 +30,9 @@ export function AnalyticsPanel() {
     return formatAnalyse(analyse);
   }, [analyse]);
 
-  // Get efficiency color
-  const getEffizienzColor = (score: number) => {
-    if (score >= 80) return 'text-green-500';
-    if (score >= 60) return 'text-yellow-500';
-    return 'text-red-500';
-  };
-
   return (
     <ScrollArea className="h-full">
       <div className="p-4 space-y-4">
-        {/* Effizienz Score */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Effizienz-Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-2 mb-2">
-              <span className={`text-4xl font-bold ${getEffizienzColor(analyse.effizienzScore)}`}>
-                {analyse.effizienzScore.toFixed(0)}
-              </span>
-              <span className="text-muted-foreground text-sm mb-1">/100</span>
-            </div>
-            <Progress value={analyse.effizienzScore} className="h-2" />
-            {analyse.optimierungspotential > 10 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {analyse.optimierungspotential.toFixed(0)}% Optimierungspotential
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Hallenkennzahlen */}
         <Card>
           <CardHeader className="pb-2">
