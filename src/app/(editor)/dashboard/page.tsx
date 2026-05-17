@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StundenChart } from '@/components/dashboard/StundenChart';
 import { AbteilungsChart } from '@/components/dashboard/AbteilungsChart';
@@ -12,8 +12,11 @@ import { REFERENZHALLEN } from '@/lib/data/referenzhallen';
 import { berechneBenchmark } from '@/lib/benchmarking';
 import { berechneFlaechenbedarf } from '@/lib/flaechenrechner';
 import { berechneGewichtetenVerteilweg } from '@/lib/verteilweg-rechner';
+import { simAuftraegeToZeilen } from '@/lib/auftragsplanung';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Timer,
   Users,
@@ -34,6 +37,12 @@ export default function DashboardPage() {
   const relationZuordnungen = useBetriebsdatenStore((s) => s.relationZuordnungen);
   const objects = useTopisStore((s) => s.objects);
   const gaenge = useTopisStore((s) => s.gaenge);
+  const ffzList = useTopisStore((s) => s.ffz);
+  const simAuftraege = useTopisStore((s) => s.simAuftraege);
+
+  // Planungs-Block: Stundensatz + FFZ + Min/Colli-Fix als Dashboard-Parameter
+  const [planSatz, setPlanSatz] = useState(35);
+  const [planMinFix, setPlanMinFix] = useState(1.17);
   const modell = useProzessmodellStore((s) => s.modell);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
@@ -150,6 +159,134 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
+
+              {/* ==================== Reihe 0: Planungs-Block (Sim-Aufträge) ==================== */}
+              {(() => {
+                const simZeilen = simAuftraegeToZeilen({
+                  simAuftraege,
+                  objects,
+                  gaenge,
+                  ffzList,
+                  defaultFfzId: ffzList[0]?.id ?? null,
+                  stundensatzEuro: planSatz,
+                  minProColliFix: planMinFix,
+                });
+                const sumStd = simZeilen.reduce((s, z) => s + z.gesamtStunden, 0);
+                const sumKos = simZeilen.reduce((s, z) => s + z.kosten, 0);
+                const sumColli = simZeilen.reduce((s, z) => s + z.colli, 0);
+                const sumWeg = simZeilen.reduce((s, z) => s + z.distanzM * z.colli, 0);
+                const avgWeg = sumColli > 0 ? sumWeg / sumColli : 0;
+
+                return (
+                  <Card className="border-blue-500/40 bg-blue-500/5">
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-3">
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-blue-600">
+                          Planung — simulierte Aufträge ({simZeilen.length})
+                        </h3>
+                        <div className="flex items-end gap-3">
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor="plansatz" className="text-[10px]">Stundensatz</Label>
+                            <div className="flex items-center gap-1">
+                              <Input
+                                id="plansatz"
+                                type="number"
+                                value={planSatz}
+                                onChange={(e) => setPlanSatz(Number(e.target.value) || 0)}
+                                className="h-7 w-20 text-xs"
+                                min={0}
+                                step={0.5}
+                              />
+                              <span className="text-[10px] text-muted-foreground">€/h</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <Label htmlFor="planminfix" className="text-[10px]">Min/Colli fix</Label>
+                            <Input
+                              id="planminfix"
+                              type="number"
+                              value={planMinFix}
+                              onChange={(e) => setPlanMinFix(Number(e.target.value) || 0)}
+                              className="h-7 w-20 text-xs"
+                              min={0}
+                              step={0.01}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {simZeilen.length === 0 ? (
+                        <div className="text-xs text-muted-foreground py-3 text-center">
+                          Noch keine simulierten Aufträge angelegt.
+                          Zurück zum Editor → Phase „Planung" → Knopf „Auftrag anlegen" → auf der Halle erst Von-Tor,
+                          dann Nach-Bereich/Tor klicken, Colli eingeben.
+                        </div>
+                      ) : (
+                        <>
+                          {/* Gesamtsumme oben */}
+                          <div className="grid grid-cols-4 gap-3 text-sm border-y border-blue-500/20 py-2">
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Σ Aufträge</div>
+                              <div className="text-xl font-bold">{simZeilen.length}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Σ Colli</div>
+                              <div className="text-xl font-bold">{sumColli.toLocaleString('de-DE')}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Σ Stunden</div>
+                              <div className="text-xl font-bold">{sumStd.toFixed(1)}</div>
+                            </div>
+                            <div>
+                              <div className="text-[10px] text-muted-foreground uppercase">Σ Kosten</div>
+                              <div className="text-xl font-bold text-blue-600">
+                                {sumKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tabelle */}
+                          <div className="max-h-[300px] overflow-y-auto">
+                            <table className="w-full text-xs">
+                              <thead className="bg-blue-500/10 sticky top-0">
+                                <tr>
+                                  <th className="text-left p-1.5 font-medium">Von Tor</th>
+                                  <th className="text-left p-1.5 font-medium">Nach</th>
+                                  <th className="text-right p-1.5 font-medium">Colli</th>
+                                  <th className="text-right p-1.5 font-medium">Weg (m)</th>
+                                  <th className="text-right p-1.5 font-medium">Min/Colli</th>
+                                  <th className="text-right p-1.5 font-medium">Stunden</th>
+                                  <th className="text-right p-1.5 font-medium">Kosten</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {simZeilen.map((z) => (
+                                  <tr key={z.id} className="border-t border-blue-500/10 hover:bg-blue-500/5">
+                                    <td className="p-1.5 font-medium">{z.torName}</td>
+                                    <td className="p-1.5">{z.bereichName}</td>
+                                    <td className="p-1.5 text-right tabular-nums">{z.colli.toLocaleString('de-DE')}</td>
+                                    <td className="p-1.5 text-right tabular-nums">
+                                      {z.warnung ? <span className="text-amber-500">!</span> : Math.round(z.distanzM)}
+                                    </td>
+                                    <td className="p-1.5 text-right tabular-nums">{z.minProColli.toFixed(2)}</td>
+                                    <td className="p-1.5 text-right tabular-nums">{z.gesamtStunden.toFixed(1)}</td>
+                                    <td className="p-1.5 text-right tabular-nums font-semibold">
+                                      {z.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">
+                            Ø Weg (Colli-gewichtet): {Math.round(avgWeg)} m · Berechnung: Min/Colli × Colli / 60 × Stundensatz
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* ==================== Reihe 1: KPI-Karten ==================== */}
               <div className="grid grid-cols-4 gap-3">
