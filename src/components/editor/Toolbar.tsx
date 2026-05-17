@@ -261,6 +261,14 @@ export function Toolbar() {
   const seedBeispielAuftraege = useTopisStore((s) => s.seedBeispielAuftraege);
   const clearSimAuftraege = useTopisStore((s) => s.clearSimAuftraege);
   const simAuftraegeCount = useTopisStore((s) => s.simAuftraege.length);
+  const showAllSimRoutes = useTopisStore((s) => s.showAllSimRoutes);
+  const toggleShowAllSimRoutes = useTopisStore((s) => s.toggleShowAllSimRoutes);
+  const focusedTorId = useTopisStore((s) => s.focusedTorId);
+  const setFocusedTor = useTopisStore((s) => s.setFocusedTor);
+  const objsForFocus = useTopisStore((s) => s.objects);
+  const focusedTorName = focusedTorId != null
+    ? objsForFocus.find((o) => o.id === focusedTorId)?.name ?? null
+    : null;
 
   // Get active hall
   const activeHall = halls.find(h => h.id === activeHallId) || halls[0];
@@ -1270,10 +1278,28 @@ export function Toolbar() {
               Tabelle + Σ-Kosten
             </Button>
           </a>
-          <span className="text-[11px] text-muted-foreground ml-1 max-w-md">
+          <Separator orientation="vertical" className="h-6 mx-1" />
+          <Button
+            variant={showAllSimRoutes ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={toggleShowAllSimRoutes}
+            title="Alle Wege gleichzeitig zeichnen statt nur den fokussierten"
+          >
+            {showAllSimRoutes ? 'Alle Wege ✓' : 'Alle Wege zeigen'}
+          </Button>
+          {focusedTorName && !showAllSimRoutes && (
+            <span className="text-[11px] bg-amber-500/20 text-amber-600 px-2 py-1 rounded">
+              Fokus: {focusedTorName}
+              <button onClick={() => setFocusedTor(null)} className="ml-1 underline">×</button>
+            </span>
+          )}
+          <span className="text-[11px] text-muted-foreground ml-1 max-w-sm">
             {currentTool === 'auftrag'
-              ? '1. Klick auf Tor (Von) · 2. Klick auf Tor (Nach) · Colli eingeben'
-              : 'Aufträge anlegen oder die 10 Beispiele laden. Auf der Halle rot markiert.'}
+              ? '1. Klick auf Tor (Von) · 2. Klick (Nach) · Colli eingeben'
+              : focusedTorName
+              ? 'Linien des fokussierten Tors sichtbar — anderes Tor anklicken oder × drücken.'
+              : 'Klick auf ein belegtes Tor (roter Ring) zeigt dessen Wege.'}
           </span>
         </div>
         )}

@@ -310,6 +310,10 @@ export interface TopisState {
   simAuftraege: SimAuftrag[];
   /** Pendender Auftrag (1. Tor schon geklickt, 2. noch nicht) */
   simAuftragPending: { vonObjectId: number } | null;
+  /** Aktuell fokussiertes Tor — nur dessen Wege werden gezeichnet (sonst nur Marker) */
+  focusedTorId: number | null;
+  /** Wenn true: alle Wege gleichzeitig anzeigen (Übersichts-Modus) */
+  showAllSimRoutes: boolean;
 }
 
 // ==================== CONSTANTS ====================

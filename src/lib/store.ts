@@ -131,6 +131,10 @@ interface TopisStore extends TopisState {
   forkSimAuftragAsSim: (parentId: string, neuerNachObjectId: number, neueColli?: number) => void;
   /** Entfernt nur die SIM-Variante zu einem IST-Auftrag (parent bleibt). */
   removeSimVarianteFor: (parentId: string) => void;
+  /** Setzt das fokussierte Tor für die Wege-Anzeige. null = nichts fokussiert. */
+  setFocusedTor: (id: number | null) => void;
+  /** Schaltet den Übersichts-Modus (alle Wege gleichzeitig) ein/aus. */
+  toggleShowAllSimRoutes: () => void;
 
   // Project Actions
   saveVorher: (snapshot: ProjektSnapshot, screenshot: string) => void;
@@ -172,6 +176,8 @@ const initialState: TopisState = {
   cockpitRoute: null,
   simAuftraege: [],
   simAuftragPending: null,
+  focusedTorId: null,
+  showAllSimRoutes: false,
   zoom: 1,
   pan: { x: 0, y: 0 },
   gridSize: 1,
@@ -500,6 +506,8 @@ export const useTopisStore = create<TopisStore>()(
   removeSimVarianteFor: (parentId) => set((state) => ({
     simAuftraege: state.simAuftraege.filter((a) => a.parentId !== parentId),
   })),
+  setFocusedTor: (id) => set({ focusedTorId: id }),
+  toggleShowAllSimRoutes: () => set((state) => ({ showAllSimRoutes: !state.showAllSimRoutes })),
   seedBeispielAuftraege: () => set((state) => {
     // Dynamic import nicht möglich in der Set-Funktion; wir lassen die
     // Beispielliste hier inline (klein, Demo-Zweck).

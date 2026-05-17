@@ -27,6 +27,9 @@ export function HallCanvas() {
   const startSimAuftrag = useTopisStore((s) => s.startSimAuftrag);
   const cancelSimAuftrag = useTopisStore((s) => s.cancelSimAuftrag);
   const finishSimAuftrag = useTopisStore((s) => s.finishSimAuftrag);
+  const focusedTorId = useTopisStore((s) => s.focusedTorId);
+  const showAllSimRoutes = useTopisStore((s) => s.showAllSimRoutes);
+  const setFocusedTor = useTopisStore((s) => s.setFocusedTor);
   const showGaenge = useTopisStore((s) => s.showGaenge);
   const showGrid = useTopisStore((s) => s.showGrid);
   const selectedObject = useTopisStore((s) => s.selectedObject);
@@ -1066,19 +1069,45 @@ export function HallCanvas() {
       }
       const maxCount = Math.max(1, ...Array.from(auftragPerTor.values()));
 
+      // Filter: welche Aufträge bekommen jetzt eine Linie?
+      // Default: nur Aufträge des fokussierten Tors. Mit Toggle "alle anzeigen": alle.
+      const istToRender = showAllSimRoutes
+        ? istAuftraege
+        : focusedTorId != null
+        ? istAuftraege.filter((a) => a.vonObjectId === focusedTorId || a.nachObjectId === focusedTorId)
+        : [];
+      const simToRender = showAllSimRoutes
+        ? simVarianten
+        : focusedTorId != null
+        ? simVarianten.filter((a) => a.vonObjectId === focusedTorId || a.nachObjectId === focusedTorId)
+        : [];
+
       // 1a. IST-Linien (amber)
       ctx.save();
       ctx.shadowColor = 'rgba(251,191,36,0.6)';
       ctx.shadowBlur = 6;
-      for (const a of istAuftraege) {
+      for (const a of istToRender) {
         const von = objects.find((o) => o.id === a.vonObjectId);
         const nach = objects.find((o) => o.id === a.nachObjectId);
         if (!von || !nach) continue;
         try {
           const r = findPathBetweenObjects(von, nach, gaenge);
-          if (!r || r.path.length < 2) continue;
-          ctx.strokeStyle = 'rgba(251,191,36,0.85)';
-          ctx.lineWidth = Math.max(1.5, 2 * zoom);
+          if (!r || r.path.length < 2) {
+            // Fallback: direkte Linie zwischen Tor-Mittelpunkten (klar erkennbar)
+            const fromP = worldToScreen(von.x + von.width / 2, von.y + von.height / 2);
+            const toP = worldToScreen(nach.x + nach.width / 2, nach.y + nach.height / 2);
+            ctx.strokeStyle = 'rgba(251,191,36,0.5)';
+            ctx.lineWidth = Math.max(1.5, 2 * zoom);
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(fromP.x, fromP.y);
+            ctx.lineTo(toP.x, toP.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            continue;
+          }
+          ctx.strokeStyle = 'rgba(251,191,36,0.95)';
+          ctx.lineWidth = Math.max(2, 3 * zoom);
           ctx.lineCap = 'round';
           ctx.beginPath();
           const start = worldToScreen(r.path[0].x, r.path[0].y);
@@ -1095,13 +1124,13 @@ export function HallCanvas() {
       ctx.shadowBlur = 0;
       ctx.restore();
 
-      // 1b. SIM-Linien (blau gestrichelt)
-      if (simVarianten.length > 0) {
+      // 1b. SIM-Linien (blau gestrichelt) — auch gefiltert
+      if (simToRender.length > 0) {
         ctx.save();
         ctx.shadowColor = 'rgba(59,130,246,0.6)';
         ctx.shadowBlur = 8;
         ctx.setLineDash([8, 5]);
-        for (const a of simVarianten) {
+        for (const a of simToRender) {
           const von = objects.find((o) => o.id === a.vonObjectId);
           const nach = objects.find((o) => o.id === a.nachObjectId);
           if (!von || !nach) continue;
@@ -1267,7 +1296,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -1696,6 +1725,14 @@ export function HallCanvas() {
       if (obj) {
         selectObject(obj); // also clears selectedPath
         setSelectedWaypointIndex(null);
+        // Wenn das angeklickte Tor in einem Sim-Auftrag steckt → fokussieren
+        // (Wege werden auf der Halle nur für fokussiertes Tor gezeichnet)
+        const istInSim = simAuftraege.some((a) => a.vonObjectId === obj.id || a.nachObjectId === obj.id);
+        if (istInSim) {
+          setFocusedTor(obj.id === focusedTorId ? null : obj.id);
+        } else {
+          setFocusedTor(null);
+        }
         setDragObject(obj);
         setDragStart({ x: world.x - obj.x, y: world.y - obj.y });
         setIsDragging(true);
