@@ -299,7 +299,7 @@ export default function DashboardPage() {
                                       <td className="p-1.5 text-right tabular-nums">{ist.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</td>
                                       <td className="p-1.5">
                                         <select
-                                          className="h-7 w-[140px] text-xs bg-background border rounded px-1"
+                                          className="h-7 w-[200px] text-xs bg-background border rounded px-1"
                                           value={sim ? sim.bereichObjectId ?? '' : ''}
                                           onChange={(e) => {
                                             const val = e.target.value;
@@ -311,9 +311,30 @@ export default function DashboardPage() {
                                           }}
                                         >
                                           <option value="">— keine Simulation —</option>
-                                          {torObjects.filter((t) => t.id !== orig.vonObjectId).map((t) => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                          ))}
+                                          {(() => {
+                                            const sued = torObjects.filter((t) => t.id !== orig.vonObjectId && (t.torNummer ?? 0) >= 1 && (t.torNummer ?? 0) <= 52);
+                                            const kopf = torObjects.filter((t) => t.id !== orig.vonObjectId && (t.torNummer ?? 0) >= 53 && (t.torNummer ?? 0) <= 60);
+                                            const nord = torObjects.filter((t) => t.id !== orig.vonObjectId && (t.torNummer ?? 0) >= 61);
+                                            return (
+                                              <>
+                                                {sued.length > 0 && (
+                                                  <optgroup label={`Süd (Tor 1–52, ${sued.length})`}>
+                                                    {sued.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                  </optgroup>
+                                                )}
+                                                {kopf.length > 0 && (
+                                                  <optgroup label={`Kopframpe (Tor 53–60, ${kopf.length})`}>
+                                                    {kopf.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                  </optgroup>
+                                                )}
+                                                {nord.length > 0 && (
+                                                  <optgroup label={`Nord (Tor 61–115, ${nord.length})`}>
+                                                    {nord.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                  </optgroup>
+                                                )}
+                                              </>
+                                            );
+                                          })()}
                                         </select>
                                       </td>
                                       <td className="p-1.5 text-right tabular-nums text-blue-600 font-semibold">

@@ -150,10 +150,17 @@ export default function PlanungPage() {
         .sort((a, b) => (a.torNummer ?? 999) - (b.torNummer ?? 999)),
     [objects]
   );
-  const bereichOptions = useMemo(
-    () => objects.filter((o) => o.type === 'bereich' && o.name).sort((a, b) => (a.name || '').localeCompare(b.name || '')),
-    [objects]
-  );
+  // Ziel-Optionen für Sim-Aufträge: Tore (Cross-Docking) + Bereiche.
+  // Tore vorne, sortiert nach Nummer; Bereiche danach alphabetisch.
+  const bereichOptions = useMemo(() => {
+    const tore = objects
+      .filter((o) => o.type === 'tor')
+      .sort((a, b) => (a.torNummer ?? 999) - (b.torNummer ?? 999));
+    const bereiche = objects
+      .filter((o) => o.type === 'bereich' && o.name)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    return [...tore, ...bereiche];
+  }, [objects]);
 
   // "Daten da" = entweder echte Scandaten oder per Hand angelegte Sim-Aufträge.
   // Ohne beides hat die Tabelle nichts zu zeigen — sonst arbeitet sie.
