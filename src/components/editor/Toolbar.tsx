@@ -341,9 +341,10 @@ export function Toolbar() {
         b.sendungen += s; b.colli += c; b.gewicht += g; b.count += 1;
         grouped.set(mpCode, b);
 
-        // Kompakter Record-Bucket (pro MP × Relation × Tag × Stunde)
-        const stunde = z ? z.split(':')[0] : '00';
-        const aggKey = `${mpCode}|${dispo}|${d}|${stunde}`;
+        // Kompakter Record-Bucket pro (MP × Relation × Tag).
+        // Stunde wird nicht persistiert — Stunden-Aggregation berechnet der
+        // Store separat live aus diesem Aggregat.
+        const aggKey = `${mpCode}|${dispo}|${d}`;
         const existing = recordsBuckets.get(aggKey);
         if (existing) {
           existing.colli += c;
@@ -353,12 +354,12 @@ export function Toolbar() {
           recordsBuckets.set(aggKey, {
             id: nextRecordId++,
             scandatum: d,
-            scanzeit: `${stunde}:00`,
+            scanzeit: '',
             timestamp: 0,
             stellplatz: mpCode,
             messpunkt: parseInt(mpRaw) || 0,
             messpunktName: colMpName >= 0 ? (parts[colMpName]?.trim() || mpCode) : mpCode,
-            tour: '',                       // tour wird nicht aggregiert (zu granular für Persist)
+            tour: '',
             dispogebiet: dispo,
             ausgangsrelation: dispo,
             sendungen: s,
