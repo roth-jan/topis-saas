@@ -16,6 +16,7 @@ import {
   applyZeilenEdit,
   type Auftragszeile,
 } from '@/lib/auftragsplanung';
+import { RelationZuordnungDialog } from '@/components/dialogs/RelationZuordnungDialog';
 
 const fmtEUR = (v: number) =>
   v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -202,16 +203,19 @@ export default function PlanungPage() {
             </SelectContent>
           </Select>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-1 ml-auto"
-          onClick={resetAll}
-          disabled={sollOverrides.size === 0}
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          SOLL zurücksetzen
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <RelationZuordnungDialog />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1"
+            onClick={resetAll}
+            disabled={sollOverrides.size === 0}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            SOLL zurücksetzen
+          </Button>
+        </div>
       </div>
 
       {/* Inhalt */}
