@@ -21,15 +21,14 @@ export function GuidedTour() {
   useEffect(() => {
     if (!mounted) return;
 
-    // Nur beim ersten Besuch automatisch starten
-    const seen = localStorage.getItem(TOUR_SEEN_KEY);
-    if (!seen) {
-      // Kurz warten bis alle Elemente gerendert sind
-      const timer = setTimeout(() => {
-        startTour();
-        localStorage.setItem(TOUR_SEEN_KEY, 'true');
-      }, 1500);
-      return () => clearTimeout(timer);
+    // Auto-Start deaktiviert — die alten Tour-Schritte referenzieren Elemente
+    // (#tour-aktionen, #tour-wegeberechnung, #tour-betriebsdaten, …), die in der
+    // neuen Workflow-Phasen-Toolbar nur in der jeweiligen Phase existieren. Die
+    // Tour-Bibliothek setzt dabei ein Vollbild-Overlay, das beim Fehlen des
+    // Ziel-Elements alle Klicks blockiert — der User glaubt die Seite hängt.
+    // Tour bleibt über den "?"-Button in der Toolbar manuell startbar.
+    if (mounted) {
+      localStorage.setItem(TOUR_SEEN_KEY, 'true');
     }
   }, [mounted]);
 
