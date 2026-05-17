@@ -1106,17 +1106,49 @@ export function HallCanvas() {
             ctx.setLineDash([]);
             continue;
           }
+          // Tor-Mittelpunkte + erstes/letztes Wegpunkt — Anbindung gestrichelt zeichnen
+          const aCx = von.x + von.width / 2;
+          const aCy = von.y + von.height / 2;
+          const bCx = nach.x + nach.width / 2;
+          const bCy = nach.y + nach.height / 2;
+          const aPx = worldToScreen(aCx, aCy);
+          const bPx = worldToScreen(bCx, bCy);
+          const firstWp = worldToScreen(r.path[0].x, r.path[0].y);
+          const lastWp = worldToScreen(r.path[r.path.length - 1].x, r.path[r.path.length - 1].y);
+
+          // 1) Anbindung Tor → Gang (gestrichelt)
+          ctx.strokeStyle = 'rgba(251,191,36,0.6)';
+          ctx.lineWidth = Math.max(1.5, 2 * zoom);
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(aPx.x, aPx.y);
+          ctx.lineTo(firstWp.x, firstWp.y);
+          ctx.moveTo(lastWp.x, lastWp.y);
+          ctx.lineTo(bPx.x, bPx.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // 2) Gang-Pfad (durchgezogen, dicker)
           ctx.strokeStyle = 'rgba(251,191,36,0.95)';
           ctx.lineWidth = Math.max(2, 3 * zoom);
           ctx.lineCap = 'round';
           ctx.beginPath();
-          const start = worldToScreen(r.path[0].x, r.path[0].y);
-          ctx.moveTo(start.x, start.y);
+          ctx.moveTo(firstWp.x, firstWp.y);
           for (let i = 1; i < r.path.length; i++) {
             const p = worldToScreen(r.path[i].x, r.path[i].y);
             ctx.lineTo(p.x, p.y);
           }
           ctx.stroke();
+
+          // 3) Marker an Tor-Mittelpunkten
+          ctx.fillStyle = '#22c55e';
+          ctx.beginPath();
+          ctx.arc(aPx.x, aPx.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#06b6d4';
+          ctx.beginPath();
+          ctx.arc(bPx.x, bPx.y, 5, 0, Math.PI * 2);
+          ctx.fill();
         } catch {
           // skip
         }
@@ -1137,23 +1169,34 @@ export function HallCanvas() {
           try {
             const r = findPathBetweenObjects(von, nach, gaenge);
             if (!r || r.path.length < 2) continue;
+            const aCx = von.x + von.width / 2;
+            const aCy = von.y + von.height / 2;
+            const bCx = nach.x + nach.width / 2;
+            const bCy = nach.y + nach.height / 2;
+            const aPx = worldToScreen(aCx, aCy);
+            const bPx = worldToScreen(bCx, bCy);
+            const firstWp = worldToScreen(r.path[0].x, r.path[0].y);
+            const lastWp = worldToScreen(r.path[r.path.length - 1].x, r.path[r.path.length - 1].y);
+
             ctx.strokeStyle = 'rgba(59,130,246,0.95)';
             ctx.lineWidth = Math.max(2, 2.5 * zoom);
             ctx.lineCap = 'round';
+            // Komplett mit Anbindung Tor→Gang→Ziel
             ctx.beginPath();
-            const start = worldToScreen(r.path[0].x, r.path[0].y);
-            ctx.moveTo(start.x, start.y);
+            ctx.moveTo(aPx.x, aPx.y);
+            ctx.lineTo(firstWp.x, firstWp.y);
             for (let i = 1; i < r.path.length; i++) {
               const p = worldToScreen(r.path[i].x, r.path[i].y);
               ctx.lineTo(p.x, p.y);
             }
+            ctx.lineTo(bPx.x, bPx.y);
             ctx.stroke();
+
             // Blauer Pin auf dem neuen Ziel-Tor
-            const last = worldToScreen(r.path[r.path.length - 1].x, r.path[r.path.length - 1].y);
             ctx.setLineDash([]);
             ctx.fillStyle = '#3b82f6';
             ctx.beginPath();
-            ctx.arc(last.x, last.y, 5, 0, Math.PI * 2);
+            ctx.arc(bPx.x, bPx.y, 5, 0, Math.PI * 2);
             ctx.fill();
             ctx.setLineDash([8, 5]);
           } catch {
