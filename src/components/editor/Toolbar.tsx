@@ -428,13 +428,14 @@ export function Toolbar() {
   const [showMeasurements, setShowMeasurements] = useState(true);
 
   // Workflow-Phasen — gliedert die Toolbar nach Beratungs-Story
-  type Phase = 'daten' | 'layout' | 'wege' | 'auswertung' | 'vergleich' | 'cockpit';
+  type Phase = 'daten' | 'layout' | 'wege' | 'auswertung' | 'planung' | 'vergleich' | 'cockpit';
   const [phase, setPhase] = useState<Phase>('layout');
   const phases: { id: Phase; label: string; hint: string }[] = [
     { id: 'daten', label: 'Daten', hint: 'Scandaten und Vorlagen laden' },
     { id: 'layout', label: 'Layout', hint: 'Halle aufbauen' },
     { id: 'wege', label: 'Wege', hint: 'Wegberechnung + Distanzmatrix' },
     { id: 'auswertung', label: 'Auswertung', hint: 'Prozessmodell + KPIs' },
+    { id: 'planung', label: 'Planung', hint: 'Aufträge zeilenweise editieren, Kosten spielen' },
     { id: 'vergleich', label: 'Vergleich', hint: 'Szenarien gegenüberstellen' },
     { id: 'cockpit', label: 'Dashboard', hint: 'Tages-Werkzeug: Aufträge, Mengen, Kosten' },
   ];
@@ -610,6 +611,28 @@ export function Toolbar() {
         </div>
 
         {/* Globale Aktionen rechts */}
+        <a href="/topis-saas/projekt/planung" className="shrink-0 hidden md:inline-block">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <FileText className="h-3.5 w-3.5" />
+                Planung
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Auftrags-Planungsseite öffnen (Kosten + Wege spielen)</TooltipContent>
+          </Tooltip>
+        </a>
+        <a href="/topis-saas/dashboard" className="shrink-0 hidden md:inline-block">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Dashboard
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Dashboard öffnen (Σ-Sicht, KPIs)</TooltipContent>
+          </Tooltip>
+        </a>
         <Button
           variant="outline"
           size="sm"
@@ -1178,6 +1201,21 @@ export function Toolbar() {
               Report
             </Button>
           )}
+        </div>
+        )}
+
+        {/* ============ PLANUNG ============ */}
+        {(phase === 'planung') && (
+        <div className="flex items-center gap-2">
+          <a href="/topis-saas/projekt/planung">
+            <Button variant="default" size="sm" className="gap-1.5 text-xs">
+              <FileText className="h-4 w-4" />
+              Auftrags-Planung öffnen
+            </Button>
+          </a>
+          <span className="text-[11px] text-muted-foreground ml-1">
+            Aufträge zeilenweise editieren, Wege + FFZ ändern, IST vs. SOLL nebeneinander, Kosten live.
+          </span>
         </div>
         )}
 
