@@ -146,7 +146,10 @@ export default function PlanungPage() {
     [objects]
   );
 
-  const hasData = records.length > 0;
+  // "Daten da" = entweder echte Scandaten oder per Hand angelegte Sim-Aufträge.
+  // Ohne beides hat die Tabelle nichts zu zeigen — sonst arbeitet sie.
+  const hasData = records.length > 0 || simAuftraege.length > 0;
+  const hatNurSim = records.length === 0 && simAuftraege.length > 0;
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -265,17 +268,37 @@ export default function PlanungPage() {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
           {!hasData && (
-            <Card className="border-amber-500/30 bg-amber-500/5">
+            <Card className="border-primary/30 bg-primary/5">
               <CardContent className="py-4">
                 <div className="flex gap-3 items-start text-sm">
-                  <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+                  <Calculator className="h-5 w-5 text-primary mt-0.5 shrink-0" />
                   <div>
-                    <p className="font-semibold mb-1">Keine Scandaten geladen.</p>
+                    <p className="font-semibold mb-1">Noch keine Aufträge vorhanden.</p>
                     <p className="text-muted-foreground">
-                      Im Editor unter Datei → „Volumen-Daten laden (Scans)" → z.B. AS Januar 2026.
-                      Anschließend kommen die Auftragszeilen hier automatisch.
+                      Du hast zwei Wege:
                     </p>
+                    <ul className="text-muted-foreground mt-1 space-y-1 list-disc list-inside">
+                      <li>
+                        <strong>Reine Simulation:</strong> zurück zum Editor → Phase „Planung" → Knopf „Auftrag anlegen"
+                        → auf der Halle erst Tor, dann Bereich/Tor klicken, Colli eingeben. So oft du willst.
+                      </li>
+                      <li>
+                        <strong>Aus IST-Daten:</strong> im Editor unter Datei → „Volumen-Daten laden" → z.B. AS Januar 2026,
+                        dann landen die Aufträge hier automatisch.
+                      </li>
+                    </ul>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {hatNurSim && (
+            <Card className="border-blue-500/30 bg-blue-500/5">
+              <CardContent className="py-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <Calculator className="h-3.5 w-3.5 text-blue-500" />
+                  <span><strong>{simAuftraege.length}</strong> Auftrag(e) aus reiner Simulation — keine IST-Daten geladen. Σ-Werte zeigen also nur was du selbst angelegt hast.</span>
                 </div>
               </CardContent>
             </Card>
