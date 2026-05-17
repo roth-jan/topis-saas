@@ -1229,15 +1229,27 @@ export function Toolbar() {
 
         {/* ============ PLANUNG ============ */}
         {(phase === 'planung') && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={currentTool === 'auftrag' ? 'default' : 'outline'}
+            size="sm"
+            className={`gap-1.5 text-xs ${currentTool === 'auftrag' ? 'ring-2 ring-blue-500/50' : ''}`}
+            onClick={() => setTool(currentTool === 'auftrag' ? 'select' : 'auftrag')}
+          >
+            <FileText className="h-4 w-4" />
+            {currentTool === 'auftrag' ? 'Auftrag-Modus aktiv ✓' : 'Auftrag anlegen (Klick-Klick-Colli)'}
+          </Button>
+          <Separator orientation="vertical" className="h-6 mx-1" />
           <a href="/topis-saas/projekt/planung">
-            <Button variant="default" size="sm" className="gap-1.5 text-xs">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
               <FileText className="h-4 w-4" />
-              Auftrags-Planung öffnen
+              Tabelle + Σ-Kosten
             </Button>
           </a>
-          <span className="text-[11px] text-muted-foreground ml-1">
-            Aufträge zeilenweise editieren, Wege + FFZ ändern, IST vs. SOLL nebeneinander, Kosten live.
+          <span className="text-[11px] text-muted-foreground ml-1 max-w-md">
+            {currentTool === 'auftrag'
+              ? '1. Klick auf Tor (Von) · 2. Klick auf Bereich oder Tor (Nach) · Colli eingeben'
+              : 'Mehrere Aufträge nacheinander anlegen, in der Halle als rote Marker sichtbar, daraus Σ-Kosten in der Planungs-Tabelle.'}
           </span>
         </div>
         )}
