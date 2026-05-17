@@ -304,13 +304,21 @@ export function Toolbar() {
         return;
       }
 
-      // Aggregation pro MP-Code (für die Heatmap-Analyse) UND Records-Array (für Planungs-Seite)
+      // Zweistufige Aggregation:
+      // 1) pro MP-Code für die Heatmap-Analyse (wie bisher)
+      // 2) pro (MP × Relation × Tag × Stunde) als kompakte Records — passt in
+      //    localStorage. 219k Rohzeilen würden ~55 MB JSON, das überschreitet
+      //    das Browser-Limit (~5-10 MB) → silent-fail in der Persistenz.
       type Bucket = { sendungen: number; colli: number; gewicht: number; count: number };
       const grouped = new Map<string, Bucket>();
       const tage = new Set<string>();
       let totalSendungen = 0, totalColli = 0, totalGewicht = 0;
-      const records: import('@/types/scandaten').ScandatenRecord[] = [];
       const dispoSet = new Set<string>();
+
+      // Bucket-Key: mpCode|dispogebiet|datum|stunde
+      type AggKey = string;
+      const recordsBuckets = new Map<AggKey, import('@/types/scandaten').ScandatenRecord>();
+      let nextRecordId = 1;
 
       for (let i = 1; i < lines.length; i++) {
         const parts = lines[i].split(';');
@@ -327,26 +335,39 @@ export function Toolbar() {
         if (d) tage.add(d.substring(0, 10));
         if (dispo) dispoSet.add(dispo);
         totalSendungen += s; totalColli += c; totalGewicht += g;
+
+        // MP-Bucket
         const b = grouped.get(mpCode) || { sendungen: 0, colli: 0, gewicht: 0, count: 0 };
         b.sendungen += s; b.colli += c; b.gewicht += g; b.count += 1;
         grouped.set(mpCode, b);
 
-        records.push({
-          id: i,
-          scandatum: d,
-          scanzeit: z,
-          timestamp: 0,
-          stellplatz: mpCode,           // MP-Code als Stellplatz-Key (für Planungs-Seite)
-          messpunkt: parseInt(mpRaw) || 0,
-          messpunktName: colMpName >= 0 ? (parts[colMpName]?.trim() || mpCode) : mpCode,
-          tour,
-          dispogebiet: dispo,
-          ausgangsrelation: dispo,      // dispogebiet als Relation für die Auftrags-Aggregation
-          sendungen: s,
-          colli: c,
-          gewicht: g,
-        });
+        // Kompakter Record-Bucket (pro MP × Relation × Tag × Stunde)
+        const stunde = z ? z.split(':')[0] : '00';
+        const aggKey = `${mpCode}|${dispo}|${d}|${stunde}`;
+        const existing = recordsBuckets.get(aggKey);
+        if (existing) {
+          existing.colli += c;
+          existing.sendungen += s;
+          existing.gewicht += g;
+        } else {
+          recordsBuckets.set(aggKey, {
+            id: nextRecordId++,
+            scandatum: d,
+            scanzeit: `${stunde}:00`,
+            timestamp: 0,
+            stellplatz: mpCode,
+            messpunkt: parseInt(mpRaw) || 0,
+            messpunktName: colMpName >= 0 ? (parts[colMpName]?.trim() || mpCode) : mpCode,
+            tour: '',                       // tour wird nicht aggregiert (zu granular für Persist)
+            dispogebiet: dispo,
+            ausgangsrelation: dispo,
+            sendungen: s,
+            colli: c,
+            gewicht: g,
+          });
+        }
       }
+      const records = [...recordsBuckets.values()];
 
       const arbeitstage = Math.max(tage.size, 1);
       const metriken: ObjektMetrik[] = [];

@@ -28,8 +28,13 @@ function flushKey(key: string): void {
   clearTimeout(entry.timerId);
   try {
     window.localStorage.setItem(key, entry.value);
-  } catch {
-    // Quota exceeded or storage unavailable — silently drop; next write may succeed.
+  } catch (err) {
+    // Quota exceeded → laut loggen, sonst Silent-Failure (Planungs-Seite blieb leer)
+    const sizeKB = Math.round(entry.value.length / 1024);
+    console.error(`[persist] localStorage.setItem("${key}") failed — value=${sizeKB} KB`, err);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('persist-failed', { detail: { key, sizeKB } }));
+    }
   }
   pending.delete(key);
 }
