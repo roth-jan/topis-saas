@@ -13,6 +13,7 @@
 import type { ScandatenRecord, TorZuordnung, RelationZuordnung } from '@/types/scandaten';
 import type { TopisObject, Gang, FFZ, SimAuftrag } from '@/types/topis';
 import { berechneDistanzMitCache } from '@/lib/verteilweg-rechner';
+import { findPathBetweenObjects } from '@/lib/pathfinding';
 
 export interface Auftragszeile {
   /** Stabile ID (Tor-ObjectId + Bereich-ObjectId) — gleich für IST und SOLL */
@@ -282,14 +283,25 @@ export function simAuftraegeToZeilen(input: {
     const nach = objects.find((o) => o.id === a.nachObjectId);
     if (!von || !nach) continue;
 
+    // Distanz: A*-Pfad. Wenn keiner gefunden → warnung markieren und
+    // Luftlinie als grobe Schätzung verwenden (transparent gemacht).
     let distanzM = 0;
     let warnung: Auftragszeile['warnung'] = null;
     try {
-      distanzM = berechneDistanzMitCache(von, nach, gaenge, defaultFfz ?? undefined);
+      const pf = findPathBetweenObjects(von, nach, gaenge, defaultFfz ?? undefined);
+      if (pf && pf.distance > 0) {
+        distanzM = pf.distance;
+      } else {
+        // Luftlinie als Schätzung, plus warnung
+        const dx = (nach.x + nach.width / 2) - (von.x + von.width / 2);
+        const dy = (nach.y + nach.height / 2) - (von.y + von.height / 2);
+        distanzM = Math.sqrt(dx * dx + dy * dy);
+        warnung = 'weg-fehlt';
+      }
     } catch {
       distanzM = 0;
+      warnung = 'weg-fehlt';
     }
-    if (distanzM === 0) warnung = 'weg-fehlt';
 
     let minProColliWeg = 0;
     if (defaultFfz && distanzM > 0) {

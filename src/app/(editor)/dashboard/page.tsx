@@ -275,9 +275,10 @@ export default function DashboardPage() {
                                 <tr>
                                   <th className="text-left p-1.5 font-medium">IST Von → Nach</th>
                                   <th className="text-right p-1.5 font-medium">Colli</th>
-                                  <th className="text-right p-1.5 font-medium">Weg</th>
+                                  <th className="text-right p-1.5 font-medium">IST Weg</th>
                                   <th className="text-right p-1.5 font-medium">IST €</th>
                                   <th className="p-1.5 font-medium">SIM Ziel-Tor</th>
+                                  <th className="text-right p-1.5 font-medium">SIM Weg</th>
                                   <th className="text-right p-1.5 font-medium">SIM €</th>
                                   <th className="text-right p-1.5 font-medium">Δ</th>
                                   <th className="p-1.5 font-medium"></th>
@@ -294,7 +295,11 @@ export default function DashboardPage() {
                                       <td className="p-1.5 font-medium">{ist.torName} → {ist.bereichName}</td>
                                       <td className="p-1.5 text-right tabular-nums">{ist.colli.toLocaleString('de-DE')}</td>
                                       <td className="p-1.5 text-right tabular-nums">
-                                        {ist.warnung ? <span className="text-amber-500">!</span> : `${Math.round(ist.distanzM)} m`}
+                                        {ist.warnung === 'weg-fehlt'
+                                          ? <span className="text-amber-500" title="A* fand keinen Gang-Pfad — Luftlinie als Schätzung">~{Math.round(ist.distanzM)}m</span>
+                                          : ist.warnung
+                                          ? <span className="text-amber-500">!</span>
+                                          : `${Math.round(ist.distanzM)}m`}
                                       </td>
                                       <td className="p-1.5 text-right tabular-nums">{ist.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</td>
                                       <td className="p-1.5">
@@ -336,6 +341,13 @@ export default function DashboardPage() {
                                             );
                                           })()}
                                         </select>
+                                      </td>
+                                      <td className="p-1.5 text-right tabular-nums">
+                                        {sim
+                                          ? (sim.warnung === 'weg-fehlt'
+                                              ? <span className="text-amber-500" title="A* fand keinen Gang-Pfad — Luftlinie">~{Math.round(sim.distanzM)}m</span>
+                                              : `${Math.round(sim.distanzM)}m`)
+                                          : '—'}
                                       </td>
                                       <td className="p-1.5 text-right tabular-nums text-blue-600 font-semibold">
                                         {sim ? sim.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : '—'}
