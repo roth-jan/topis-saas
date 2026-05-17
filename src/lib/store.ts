@@ -122,6 +122,8 @@ interface TopisStore extends TopisState {
   updateSimAuftrag: (id: string, patch: Partial<Pick<import('@/types/topis').SimAuftrag, 'vonObjectId' | 'nachObjectId' | 'colli' | 'minProColliOverride' | 'notiz'>>) => void;
   removeSimAuftrag: (id: string) => void;
   clearSimAuftraege: () => void;
+  /** Lädt eine vorgefertigte Liste von Beispiel-Aufträgen (für Demo-Zwecke) */
+  seedBeispielAuftraege: () => void;
 
   // Project Actions
   saveVorher: (snapshot: ProjektSnapshot, screenshot: string) => void;
@@ -473,6 +475,54 @@ export const useTopisStore = create<TopisStore>()(
     simAuftraege: state.simAuftraege.filter((a) => a.id !== id),
   })),
   clearSimAuftraege: () => set({ simAuftraege: [], simAuftragPending: null }),
+  seedBeispielAuftraege: () => set((state) => {
+    // Dynamic import nicht möglich in der Set-Funktion; wir lassen die
+    // Beispielliste hier inline (klein, Demo-Zweck).
+    const tore = state.objects.filter((o) => o.type === 'tor');
+    if (tore.length < 2) return state;
+    const samples: Array<{ vonNr: number; nachNr: number; colli: number; notiz: string }> = [
+      { vonNr: 5,   nachNr: 88,  colli: 1200, notiz: 'Süd → Nord, lang' },
+      { vonNr: 12,  nachNr: 102, colli: 800,  notiz: 'Süd → Nord-Ost' },
+      { vonNr: 18,  nachNr: 75,  colli: 1500, notiz: 'Süd → Nord, kurz' },
+      { vonNr: 25,  nachNr: 67,  colli: 600,  notiz: 'Süd-Mitte → Nord-West' },
+      { vonNr: 47,  nachNr: 95,  colli: 2000, notiz: 'Süd-Ost → Nord, lang' },
+      { vonNr: 53,  nachNr: 78,  colli: 450,  notiz: 'Kopframpe → Nord' },
+      { vonNr: 8,   nachNr: 110, colli: 1100, notiz: 'Süd → Nord-Ost, lang' },
+      { vonNr: 35,  nachNr: 70,  colli: 900,  notiz: 'Süd-Mitte → Nord' },
+      { vonNr: 22,  nachNr: 82,  colli: 700,  notiz: 'Süd → Nord, mittel' },
+      { vonNr: 41,  nachNr: 105, colli: 1300, notiz: 'Süd-Ost → Nord-Ost' },
+    ];
+    const findTor = (nr: number) => {
+      const exact = tore.find((t) => t.torNummer === nr);
+      if (exact) return exact;
+      let best = tore[0];
+      let bestDiff = Infinity;
+      for (const t of tore) {
+        if (t.torNummer == null) continue;
+        const diff = Math.abs(t.torNummer - nr);
+        if (diff < bestDiff) { best = t; bestDiff = diff; }
+      }
+      return best;
+    };
+    const neu = samples
+      .map((s) => {
+        const von = findTor(s.vonNr);
+        const nach = findTor(s.nachNr);
+        if (!von || !nach || von.id === nach.id) return null;
+        return {
+          id: `sim-seed-${s.vonNr}-${s.nachNr}-${Date.now().toString(36)}`,
+          vonObjectId: von.id,
+          nachObjectId: nach.id,
+          colli: s.colli,
+          notiz: s.notiz,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
+    return {
+      simAuftraege: [...state.simAuftraege, ...neu],
+      simAuftragPending: null,
+    };
+  }),
 
   // Project Actions
   saveVorher: (snapshot, screenshot) => set((state) => ({

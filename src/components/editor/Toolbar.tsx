@@ -258,6 +258,9 @@ export function Toolbar() {
   const canRedo = useTopisStore((s) => s.redoStack.length > 0);
   const resetToOriginal = useTopisStore((s) => s.resetToOriginal);
   const originalLayout = useTopisStore((s) => s.originalLayout);
+  const seedBeispielAuftraege = useTopisStore((s) => s.seedBeispielAuftraege);
+  const clearSimAuftraege = useTopisStore((s) => s.clearSimAuftraege);
+  const simAuftraegeCount = useTopisStore((s) => s.simAuftraege.length);
 
   // Get active hall
   const activeHall = halls.find(h => h.id === activeHallId) || halls[0];
@@ -1239,6 +1242,27 @@ export function Toolbar() {
             <FileText className="h-4 w-4" />
             {currentTool === 'auftrag' ? 'Auftrag-Modus aktiv ✓' : 'Auftrag anlegen (Klick-Klick-Colli)'}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={() => { seedBeispielAuftraege(); toast.success('10 Beispiel-Aufträge geladen'); }}
+            title="Lädt 10 vordefinierte Tor→Tor-Aufträge zum Spielen"
+          >
+            <Zap className="h-3.5 w-3.5" />
+            10 Beispiele laden
+          </Button>
+          {simAuftraegeCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-xs text-muted-foreground"
+              onClick={() => { clearSimAuftraege(); toast.success('Alle Sim-Aufträge gelöscht'); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              alle {simAuftraegeCount} löschen
+            </Button>
+          )}
           <Separator orientation="vertical" className="h-6 mx-1" />
           <a href="/topis-saas/projekt/planung">
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
@@ -1248,8 +1272,8 @@ export function Toolbar() {
           </a>
           <span className="text-[11px] text-muted-foreground ml-1 max-w-md">
             {currentTool === 'auftrag'
-              ? '1. Klick auf Tor (Von) · 2. Klick auf Bereich oder Tor (Nach) · Colli eingeben'
-              : 'Mehrere Aufträge nacheinander anlegen, in der Halle als rote Marker sichtbar, daraus Σ-Kosten in der Planungs-Tabelle.'}
+              ? '1. Klick auf Tor (Von) · 2. Klick auf Tor (Nach) · Colli eingeben'
+              : 'Aufträge anlegen oder die 10 Beispiele laden. Auf der Halle rot markiert.'}
           </span>
         </div>
         )}
