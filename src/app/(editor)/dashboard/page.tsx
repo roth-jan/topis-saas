@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useEffect } from 'react';
-import Link from 'next/link';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StundenChart } from '@/components/dashboard/StundenChart';
 import { AbteilungsChart } from '@/components/dashboard/AbteilungsChart';
@@ -115,12 +114,12 @@ export default function DashboardPage() {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b bg-card">
-        <Link href="/projekt">
+        <a href="/topis-saas/projekt">
           <Button variant="ghost" size="sm" className="gap-1">
             <ArrowLeft className="h-4 w-4" />
             Editor
           </Button>
-        </Link>
+        </a>
         <div className="h-6 w-px bg-border" />
         <h1 className="text-sm font-bold flex items-center gap-2">
           <BarChart3 className="h-4 w-4" />
@@ -142,12 +141,12 @@ export default function DashboardPage() {
               <p className="text-sm mt-1">
                 Importiere Betriebsdaten und berechne das Prozessmodell im Editor.
               </p>
-              <Link href="/projekt">
+              <a href="/topis-saas/projekt">
                 <Button className="mt-4" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   Zum Editor
                 </Button>
-              </Link>
+              </a>
             </div>
           ) : (
             <>
