@@ -220,7 +220,24 @@ export type Tool =
   | 'pathArea'
   | 'gang'
   | 'conveyor'
-  | 'measure';
+  | 'measure'
+  | 'auftrag';
+
+/**
+ * Simulierter Auftrag — wird per Klick im Canvas angelegt (Tor 1 → Tor 2 → Colli).
+ * Geht in die Auftrags-Tabelle als zusätzliche SOLL-Zeile ein, wird mit
+ * den durchschnittlichen Min/Colli des Prozessmodells × FFZ-Wegzeit
+ * gerechnet und liefert Kosten = Std × Stundensatz.
+ */
+export interface SimAuftrag {
+  id: string;
+  vonObjectId: number;
+  nachObjectId: number;
+  colli: number;
+  /** Optional: pro Auftrag überschriebene Min/Colli (sonst Standard) */
+  minProColliOverride?: number;
+  notiz?: string;
+}
 
 export interface TopisState {
   // Halls
@@ -281,6 +298,11 @@ export interface TopisState {
 
   // Cockpit-Route: zwei Objekt-IDs, deren A*-Pfad live im Canvas gezeichnet wird
   cockpitRoute: { startId: number; endId: number } | null;
+
+  /** Simulierte Aufträge — vom Berater per Klick im Canvas angelegt */
+  simAuftraege: SimAuftrag[];
+  /** Pendender Auftrag (1. Tor schon geklickt, 2. noch nicht) */
+  simAuftragPending: { vonObjectId: number } | null;
 }
 
 // ==================== CONSTANTS ====================

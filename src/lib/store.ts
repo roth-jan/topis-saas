@@ -115,6 +115,14 @@ interface TopisStore extends TopisState {
   toggleSnap: () => void;
   setCockpitRoute: (route: { startId: number; endId: number } | null) => void;
 
+  // SimAuftrag-Actions (visuelles Auftrags-Anlegen im Canvas)
+  startSimAuftrag: (vonObjectId: number) => void;
+  cancelSimAuftrag: () => void;
+  finishSimAuftrag: (nachObjectId: number, colli: number, notiz?: string) => void;
+  updateSimAuftrag: (id: string, patch: Partial<Pick<import('@/types/topis').SimAuftrag, 'vonObjectId' | 'nachObjectId' | 'colli' | 'minProColliOverride' | 'notiz'>>) => void;
+  removeSimAuftrag: (id: string) => void;
+  clearSimAuftraege: () => void;
+
   // Project Actions
   saveVorher: (snapshot: ProjektSnapshot, screenshot: string) => void;
   saveNachher: (snapshot: ProjektSnapshot, screenshot: string) => void;
@@ -153,6 +161,8 @@ const initialState: TopisState = {
   selectedConveyor: null,
   currentConveyor: null,
   cockpitRoute: null,
+  simAuftraege: [],
+  simAuftragPending: null,
   zoom: 1,
   pan: { x: 0, y: 0 },
   gridSize: 1,
@@ -439,6 +449,31 @@ export const useTopisStore = create<TopisStore>()(
   toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
   setCockpitRoute: (route) => set({ cockpitRoute: route }),
 
+  startSimAuftrag: (vonObjectId) => set({ simAuftragPending: { vonObjectId } }),
+  cancelSimAuftrag: () => set({ simAuftragPending: null }),
+  finishSimAuftrag: (nachObjectId, colli, notiz) => set((state) => {
+    const pending = state.simAuftragPending;
+    if (!pending) return state;
+    const auftrag = {
+      id: `sim-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      vonObjectId: pending.vonObjectId,
+      nachObjectId,
+      colli,
+      notiz,
+    };
+    return {
+      simAuftraege: [...state.simAuftraege, auftrag],
+      simAuftragPending: null,
+    };
+  }),
+  updateSimAuftrag: (id, patch) => set((state) => ({
+    simAuftraege: state.simAuftraege.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+  })),
+  removeSimAuftrag: (id) => set((state) => ({
+    simAuftraege: state.simAuftraege.filter((a) => a.id !== id),
+  })),
+  clearSimAuftraege: () => set({ simAuftraege: [], simAuftragPending: null }),
+
   // Project Actions
   saveVorher: (snapshot, screenshot) => set((state) => ({
     projektVergleich: {
@@ -490,6 +525,7 @@ export const useTopisStore = create<TopisStore>()(
       ffz: state.ffz,
       conveyors: state.conveyors,
       conveyorIdCounter: state.conveyorIdCounter,
+      simAuftraege: state.simAuftraege,
     }),
   }
 ));

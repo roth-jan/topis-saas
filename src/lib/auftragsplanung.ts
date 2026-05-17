@@ -11,7 +11,7 @@
 // und Ziel-Bereich, nicht aus einem Hallen-Durchschnitt.
 
 import type { ScandatenRecord, TorZuordnung, RelationZuordnung } from '@/types/scandaten';
-import type { TopisObject, Gang, FFZ } from '@/types/topis';
+import type { TopisObject, Gang, FFZ, SimAuftrag } from '@/types/topis';
 import { berechneDistanzMitCache } from '@/lib/verteilweg-rechner';
 
 export interface Auftragszeile {
@@ -42,6 +42,10 @@ export interface Auftragszeile {
 
   /** Plausi-Marker */
   warnung: 'tor-nicht-gemappt' | 'bereich-nicht-gemappt' | 'weg-fehlt' | null;
+  /** Quelle: aus Scandaten aggregiert oder per Klick im Canvas angelegt */
+  quelle: 'ist' | 'sim';
+  /** Bei sim: Verweis auf den simAuftrag im Layout-Store */
+  simAuftragId?: string;
 }
 
 export interface AuftragsAggregationInput {
@@ -223,6 +227,7 @@ export function aggregateAuftragszeilen(input: AuftragsAggregationInput): {
       gesamtStunden,
       kosten,
       warnung,
+      quelle: 'ist',
     });
   }
 
@@ -249,6 +254,81 @@ export function aggregateAuftragszeilen(input: AuftragsAggregationInput): {
     },
     verfuegbareWochen: [...wochenSet].sort(),
   };
+}
+
+/**
+ * Wandelt simulierte Aufträge (per Klick im Canvas angelegt) in Auftragszeilen
+ * um — gleiche Formel wie IST-Aggregation, aber Quelle ist die `simAuftraege`-
+ * Liste im Layout-Store, nicht die Scandaten.
+ */
+export function simAuftraegeToZeilen(input: {
+  simAuftraege: SimAuftrag[];
+  objects: TopisObject[];
+  gaenge: Gang[];
+  ffzList: FFZ[];
+  defaultFfzId: number | null;
+  stundensatzEuro: number;
+  minProColliFix: number;
+}): Auftragszeile[] {
+  const { simAuftraege, objects, gaenge, ffzList, defaultFfzId, stundensatzEuro, minProColliFix } = input;
+  const defaultFfz: FFZ | null =
+    (defaultFfzId != null && ffzList.find((f) => f.id === defaultFfzId)) ||
+    ffzList[0] ||
+    null;
+
+  const result: Auftragszeile[] = [];
+  for (const a of simAuftraege) {
+    const von = objects.find((o) => o.id === a.vonObjectId);
+    const nach = objects.find((o) => o.id === a.nachObjectId);
+    if (!von || !nach) continue;
+
+    let distanzM = 0;
+    let warnung: Auftragszeile['warnung'] = null;
+    try {
+      distanzM = berechneDistanzMitCache(von, nach, gaenge, defaultFfz ?? undefined);
+    } catch {
+      distanzM = 0;
+    }
+    if (distanzM === 0) warnung = 'weg-fehlt';
+
+    let minProColliWeg = 0;
+    if (defaultFfz && distanzM > 0) {
+      const speed_ms = ((defaultFfz.geschwindigkeit || 10) * 1000) / 3600;
+      const wegSek = speed_ms > 0 ? (distanzM * 2) / speed_ms : 0;
+      const cpF = defaultFfz.colliProBewegung || 1.37;
+      const sekProColli = (wegSek + (defaultFfz.aufnahmeZeit || 0) + (defaultFfz.abgabeZeit || 0)) / cpF;
+      minProColliWeg = sekProColli / 60;
+    }
+    const fixUsed = a.minProColliOverride ?? minProColliFix;
+    const minProColli = fixUsed + minProColliWeg;
+    const gesamtMin = a.colli * minProColli;
+    const gesamtStunden = gesamtMin / 60;
+    const kosten = gesamtStunden * stundensatzEuro;
+
+    result.push({
+      id: `sim-${a.id}`,
+      simAuftragId: a.id,
+      quelle: 'sim',
+      torObjectId: von.id,
+      torName: von.name ?? `Tor ${von.id}`,
+      bereichObjectId: nach.id,
+      bereichName: nach.name ?? `Ziel ${nach.id}`,
+      colli: a.colli,
+      sendungen: 1,
+      sourceRecords: 1,
+      distanzM,
+      ffzId: defaultFfz?.id ?? null,
+      ffzName: defaultFfz?.name ?? '–',
+      minProColliFix: fixUsed,
+      minProColliWeg,
+      minProColli,
+      gesamtMin,
+      gesamtStunden,
+      kosten,
+      warnung,
+    });
+  }
+  return result;
 }
 
 /**

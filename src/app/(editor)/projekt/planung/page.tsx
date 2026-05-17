@@ -14,6 +14,7 @@ import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import {
   aggregateAuftragszeilen,
   applyZeilenEdit,
+  simAuftraegeToZeilen,
   type Auftragszeile,
 } from '@/lib/auftragsplanung';
 import { RelationZuordnungDialog } from '@/components/dialogs/RelationZuordnungDialog';
@@ -30,6 +31,9 @@ export default function PlanungPage() {
   const objects = useTopisStore((s) => s.objects);
   const gaenge = useTopisStore((s) => s.gaenge);
   const ffzList = useTopisStore((s) => s.ffz);
+  const simAuftraege = useTopisStore((s) => s.simAuftraege);
+  const removeSimAuftrag = useTopisStore((s) => s.removeSimAuftrag);
+  const clearSimAuftraege = useTopisStore((s) => s.clearSimAuftraege);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
 
   // Stundensatz + Default-FFZ + Min/Colli-Fix als Parameter oben
@@ -61,11 +65,29 @@ export default function PlanungPage() {
     [records, objects, gaenge, torZuordnungen, relationZuordnungen, ffzList, defaultFfzId, stundensatz, minFix]
   );
 
+  // Simulierte Aufträge aus dem Layout-Store (per Klick im Canvas angelegt)
+  const simZeilen = useMemo(
+    () =>
+      simAuftraegeToZeilen({
+        simAuftraege,
+        objects,
+        gaenge,
+        ffzList,
+        defaultFfzId,
+        stundensatzEuro: stundensatz,
+        minProColliFix: minFix,
+      }),
+    [simAuftraege, objects, gaenge, ffzList, defaultFfzId, stundensatz, minFix]
+  );
+
+  // Komplette IST-Liste = aggregierte Scandaten + simulierte Aufträge
+  const allIstZeilen = useMemo(() => [...simZeilen, ...istAgg.zeilen], [simZeilen, istAgg.zeilen]);
+
   // SOLL-Zeilen: Kopie vom IST, vom User editierbar
   const [sollOverrides, setSollOverrides] = useState<Map<string, Auftragszeile>>(new Map());
   const sollZeilen: Auftragszeile[] = useMemo(() => {
-    return istAgg.zeilen.map((z) => sollOverrides.get(z.id) ?? z);
-  }, [istAgg.zeilen, sollOverrides]);
+    return allIstZeilen.map((z) => sollOverrides.get(z.id) ?? z);
+  }, [allIstZeilen, sollOverrides]);
 
   const sollMeta = useMemo(() => {
     const gColli = sollZeilen.reduce((s, z) => s + z.colli, 0);
@@ -74,8 +96,19 @@ export default function PlanungPage() {
     return { gesamtColli: gColli, gesamtStunden: gStd, gesamtKosten: gKos };
   }, [sollZeilen]);
 
-  const deltaKosten = sollMeta.gesamtKosten - istAgg.meta.gesamtKosten;
-  const deltaStunden = sollMeta.gesamtStunden - istAgg.meta.gesamtStunden;
+  // Komplette IST-Meta inkl. Sim-Aufträge
+  const allIstMeta = useMemo(() => ({
+    gesamtColli: allIstZeilen.reduce((s, z) => s + z.colli, 0),
+    gesamtStunden: allIstZeilen.reduce((s, z) => s + z.gesamtStunden, 0),
+    gesamtKosten: allIstZeilen.reduce((s, z) => s + z.kosten, 0),
+    simAnzahl: simZeilen.length,
+    simKosten: simZeilen.reduce((s, z) => s + z.kosten, 0),
+    simStunden: simZeilen.reduce((s, z) => s + z.gesamtStunden, 0),
+    simColli: simZeilen.reduce((s, z) => s + z.colli, 0),
+  }), [allIstZeilen, simZeilen]);
+
+  const deltaKosten = sollMeta.gesamtKosten - allIstMeta.gesamtKosten;
+  const deltaStunden = sollMeta.gesamtStunden - allIstMeta.gesamtStunden;
 
   function editZeile(id: string, edit: Partial<Pick<Auftragszeile, 'torObjectId' | 'bereichObjectId' | 'colli' | 'ffzId'>>) {
     const baseline = sollOverrides.get(id) ?? istAgg.zeilen.find((z) => z.id === id);
@@ -205,6 +238,16 @@ export default function PlanungPage() {
         </div>
         <div className="ml-auto flex items-center gap-2">
           <RelationZuordnungDialog />
+          {simAuftraege.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1 text-blue-500 border-blue-500/40"
+              onClick={clearSimAuftraege}
+            >
+              {simAuftraege.length} Sim löschen
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -245,16 +288,31 @@ export default function PlanungPage() {
                 <CardContent className="py-3">
                   <div className="grid grid-cols-4 gap-4 text-sm">
                     <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">IST Σ Colli</div>
-                      <div className="text-lg font-semibold">{fmtNum(istAgg.meta.gesamtColli)}</div>
+                      <div className="text-[11px] text-muted-foreground uppercase">Σ Colli</div>
+                      <div className="text-lg font-semibold">{fmtNum(allIstMeta.gesamtColli)}</div>
+                      {allIstMeta.simAnzahl > 0 && (
+                        <div className="text-[10px] text-amber-500">
+                          davon {fmtNum(allIstMeta.simColli)} aus {allIstMeta.simAnzahl} Sim
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">IST Σ Stunden</div>
-                      <div className="text-lg font-semibold">{fmtNum(istAgg.meta.gesamtStunden, 1)}</div>
+                      <div className="text-[11px] text-muted-foreground uppercase">Σ Stunden</div>
+                      <div className="text-lg font-semibold">{fmtNum(allIstMeta.gesamtStunden, 1)}</div>
+                      {allIstMeta.simAnzahl > 0 && (
+                        <div className="text-[10px] text-amber-500">
+                          davon {fmtNum(allIstMeta.simStunden, 1)} h Sim
+                        </div>
+                      )}
                     </div>
                     <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">IST Σ Kosten</div>
-                      <div className="text-lg font-semibold">{fmtEUR(istAgg.meta.gesamtKosten)}</div>
+                      <div className="text-[11px] text-muted-foreground uppercase">Σ Kosten</div>
+                      <div className="text-lg font-semibold">{fmtEUR(allIstMeta.gesamtKosten)}</div>
+                      {allIstMeta.simAnzahl > 0 && (
+                        <div className="text-[10px] text-amber-500">
+                          davon {fmtEUR(allIstMeta.simKosten)} Sim
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="text-[11px] text-muted-foreground uppercase">Δ SOLL</div>
@@ -306,16 +364,20 @@ export default function PlanungPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {istAgg.zeilen.map((ist) => {
+                        {allIstZeilen.map((ist) => {
                           const soll = sollOverrides.get(ist.id) ?? ist;
                           const edited = sollOverrides.has(ist.id);
+                          const isSim = ist.quelle === 'sim';
                           return (
                             <tr
                               key={ist.id}
-                              className={`border-t hover:bg-muted/30 ${edited ? 'bg-amber-500/5' : ''}`}
+                              className={`border-t hover:bg-muted/30 ${edited ? 'bg-amber-500/5' : isSim ? 'bg-blue-500/5' : ''}`}
                             >
                               {/* Von Tor */}
                               <td className="p-1.5">
+                                {isSim && (
+                                  <span className="inline-block text-[9px] uppercase tracking-wider text-blue-500 font-semibold mr-1">Sim</span>
+                                )}
                                 <Select
                                   value={soll.torObjectId != null ? String(soll.torObjectId) : ''}
                                   onValueChange={(v) =>
@@ -414,17 +476,28 @@ export default function PlanungPage() {
                               <td className={`p-1.5 text-right tabular-nums ${edited ? 'font-semibold' : ''}`}>
                                 {fmtEUR(soll.kosten)}
                               </td>
-                              {/* Reset */}
+                              {/* Reset / Sim-Löschen */}
                               <td className="p-1.5 border-l">
-                                {edited && (
+                                {isSim && ist.simAuftragId ? (
                                   <button
                                     type="button"
-                                    onClick={() => resetZeile(ist.id)}
-                                    className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                                    title="Zeile auf IST zurücksetzen"
+                                    onClick={() => removeSimAuftrag(ist.simAuftragId!)}
+                                    className="text-[11px] text-red-500 hover:text-red-700 underline"
+                                    title="Sim-Auftrag löschen"
                                   >
-                                    reset
+                                    löschen
                                   </button>
+                                ) : (
+                                  edited && (
+                                    <button
+                                      type="button"
+                                      onClick={() => resetZeile(ist.id)}
+                                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                                      title="Zeile auf IST zurücksetzen"
+                                    >
+                                      reset
+                                    </button>
+                                  )
                                 )}
                               </td>
                             </tr>
@@ -434,13 +507,13 @@ export default function PlanungPage() {
                       <tfoot className="bg-muted/60 sticky bottom-0">
                         <tr className="border-t-2 font-semibold">
                           <td className="p-2" colSpan={2}>Σ</td>
-                          <td className="p-2 text-right">{fmtNum(istAgg.meta.gesamtColli)}</td>
+                          <td className="p-2 text-right">{fmtNum(allIstMeta.gesamtColli)}</td>
                           <td className="p-2"></td>
                           <td className="p-2 text-right">{fmtNum(istAgg.meta.durchschnittWegM, 0)}</td>
                           <td className="p-2 text-right">Ø</td>
-                          <td className="p-2 text-right border-l tabular-nums">{fmtNum(istAgg.meta.gesamtStunden, 1)}</td>
+                          <td className="p-2 text-right border-l tabular-nums">{fmtNum(allIstMeta.gesamtStunden, 1)}</td>
                           <td className="p-2 text-right tabular-nums">{fmtNum(sollMeta.gesamtStunden, 1)}</td>
-                          <td className="p-2 text-right border-l tabular-nums">{fmtEUR(istAgg.meta.gesamtKosten)}</td>
+                          <td className="p-2 text-right border-l tabular-nums">{fmtEUR(allIstMeta.gesamtKosten)}</td>
                           <td className="p-2 text-right tabular-nums">{fmtEUR(sollMeta.gesamtKosten)}</td>
                           <td className="p-2 border-l"></td>
                         </tr>

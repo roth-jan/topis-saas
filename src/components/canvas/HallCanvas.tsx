@@ -22,6 +22,11 @@ export function HallCanvas() {
   const tool = useTool();
   const gaenge = useTopisStore((s) => s.gaenge);
   const cockpitRoute = useTopisStore((s) => s.cockpitRoute);
+  const simAuftraege = useTopisStore((s) => s.simAuftraege);
+  const simAuftragPending = useTopisStore((s) => s.simAuftragPending);
+  const startSimAuftrag = useTopisStore((s) => s.startSimAuftrag);
+  const cancelSimAuftrag = useTopisStore((s) => s.cancelSimAuftrag);
+  const finishSimAuftrag = useTopisStore((s) => s.finishSimAuftrag);
   const showGaenge = useTopisStore((s) => s.showGaenge);
   const showGrid = useTopisStore((s) => s.showGrid);
   const selectedObject = useTopisStore((s) => s.selectedObject);
@@ -1043,6 +1048,119 @@ export function HallCanvas() {
       }
     }
 
+    // ============ Simulierte Aufträge ============
+    // Pro Auftrag eine amber Linie zwischen Tor und Bereich, beide Endpunkte
+    // mit roten "Belegt"-Markern. Σ Colli pro Tor wird über jedes Tor geschrieben.
+    if (simAuftraege.length > 0 || simAuftragPending) {
+      // Σ Colli pro Tor sammeln für Tor-Beschriftung
+      const colliPerTor = new Map<number, number>();
+      const auftragPerTor = new Map<number, number>();
+      for (const a of simAuftraege) {
+        colliPerTor.set(a.vonObjectId, (colliPerTor.get(a.vonObjectId) ?? 0) + a.colli);
+        colliPerTor.set(a.nachObjectId, (colliPerTor.get(a.nachObjectId) ?? 0) + a.colli);
+        auftragPerTor.set(a.vonObjectId, (auftragPerTor.get(a.vonObjectId) ?? 0) + 1);
+        auftragPerTor.set(a.nachObjectId, (auftragPerTor.get(a.nachObjectId) ?? 0) + 1);
+      }
+      const maxCount = Math.max(1, ...Array.from(auftragPerTor.values()));
+
+      // 1. Linien pro Auftrag
+      ctx.save();
+      ctx.shadowColor = 'rgba(251,191,36,0.6)';
+      ctx.shadowBlur = 6;
+      for (const a of simAuftraege) {
+        const von = objects.find((o) => o.id === a.vonObjectId);
+        const nach = objects.find((o) => o.id === a.nachObjectId);
+        if (!von || !nach) continue;
+        try {
+          const r = findPathBetweenObjects(von, nach, gaenge);
+          if (!r || r.path.length < 2) continue;
+          ctx.strokeStyle = 'rgba(251,191,36,0.85)';
+          ctx.lineWidth = Math.max(1.5, 2 * zoom);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          const start = worldToScreen(r.path[0].x, r.path[0].y);
+          ctx.moveTo(start.x, start.y);
+          for (let i = 1; i < r.path.length; i++) {
+            const p = worldToScreen(r.path[i].x, r.path[i].y);
+            ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        } catch {
+          // skip
+        }
+      }
+      ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // 2. Belegungs-Marker auf jedem beteiligten Tor (rot, Intensität nach Anzahl)
+      for (const [objectId, anzahlAuftraege] of auftragPerTor.entries()) {
+        const obj = objects.find((o) => o.id === objectId);
+        if (!obj) continue;
+        const cx = obj.x + obj.width / 2;
+        const cy = obj.y + obj.height / 2;
+        const p = worldToScreen(cx, cy);
+        const isCircle = obj.shape === 'circle' || obj.tags?.includes('messpunkt');
+        const r = isCircle
+          ? Math.max(obj.width, obj.height) * SCALE * zoom * 0.6
+          : Math.max(obj.width, obj.height) * SCALE * zoom * 0.5;
+        const intensity = anzahlAuftraege / maxCount;
+        ctx.save();
+        // Roter Belegungs-Glow
+        ctx.shadowColor = 'rgba(239,68,68,0.9)';
+        ctx.shadowBlur = 10 + intensity * 12;
+        ctx.strokeStyle = `rgba(239,68,68,${0.5 + intensity * 0.4})`;
+        ctx.lineWidth = 2 + intensity * 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, Math.max(8, r + 4), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Beschriftung: Σ Colli
+        const colli = colliPerTor.get(objectId) ?? 0;
+        if (zoom > 0.4) {
+          const label = colli >= 1000 ? `${(colli / 1000).toFixed(1)}k` : `${colli}`;
+          ctx.font = `bold ${Math.max(10, 12 * zoom)}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          const textW = ctx.measureText(label).width;
+          ctx.fillStyle = 'rgba(239,68,68,0.95)';
+          ctx.fillRect(p.x - textW / 2 - 4, p.y - r - 12, textW + 8, 14);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(label, p.x, p.y - r - 5);
+        }
+      }
+
+      // 3. Pending-Markierung (1. Tor angeklickt, wartet auf 2. Tor)
+      if (simAuftragPending) {
+        const von = objects.find((o) => o.id === simAuftragPending.vonObjectId);
+        if (von) {
+          const cx = von.x + von.width / 2;
+          const cy = von.y + von.height / 2;
+          const p = worldToScreen(cx, cy);
+          const isCircle = von.shape === 'circle' || von.tags?.includes('messpunkt');
+          const r = isCircle
+            ? Math.max(von.width, von.height) * SCALE * zoom * 0.6
+            : Math.max(von.width, von.height) * SCALE * zoom * 0.55;
+          ctx.save();
+          ctx.shadowColor = 'rgba(34,197,94,0.9)';
+          ctx.shadowBlur = 14;
+          ctx.strokeStyle = '#22c55e';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.max(10, r + 6), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#22c55e';
+          ctx.font = `bold ${Math.max(10, 12 * zoom)}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('VON — jetzt 2. Tor klicken', p.x, p.y - r - 14);
+          ctx.restore();
+        }
+      }
+    }
+
     // Draw selection handles
     if (selectedObject) {
       const pos = worldToScreen(selectedObject.x, selectedObject.y);
@@ -1105,7 +1223,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -1436,6 +1554,49 @@ export function HallCanvas() {
         // Reset for new measurement
         setMeasureStart(snapPos);
         setMeasureEnd(snapPos);
+      }
+      return;
+    }
+
+    // Auftrag-Anlege-Tool: 1. Klick = Von, 2. Klick = Nach → Colli-Prompt → Auftrag speichern
+    if (tool === 'auftrag') {
+      const hit = objects.find((o) => {
+        const onCircle = o.shape === 'circle' || o.tags?.includes('messpunkt');
+        if (onCircle) {
+          const cx = o.x + o.width / 2;
+          const cy = o.y + o.height / 2;
+          const r = Math.max(o.width, o.height) / 2;
+          const dx = world.x - cx;
+          const dy = world.y - cy;
+          return dx * dx + dy * dy <= r * r;
+        }
+        return world.x >= o.x && world.x <= o.x + o.width && world.y >= o.y && world.y <= o.y + o.height;
+      });
+      if (!hit) return;
+      // Nur Tore + benannte Bereiche + Messpunkte als Ziele zulassen
+      const istZiel = hit.type === 'tor' || hit.type === 'bereich' || hit.tags?.includes('messpunkt');
+      if (!istZiel) return;
+
+      if (!simAuftragPending) {
+        // 1. Klick → Pending starten
+        startSimAuftrag(hit.id);
+      } else if (simAuftragPending.vonObjectId === hit.id) {
+        // Auf gleiches Tor klicken → abbrechen
+        cancelSimAuftrag();
+      } else {
+        // 2. Klick → Colli-Eingabe und Auftrag fertigmachen
+        const von = objects.find((o) => o.id === simAuftragPending.vonObjectId);
+        const colliStr = window.prompt(`Auftrag ${von?.name ?? 'Von'} → ${hit.name ?? 'Nach'}\nWieviele Colli?`, '100');
+        if (colliStr == null) {
+          cancelSimAuftrag();
+          return;
+        }
+        const colli = Math.max(0, parseInt(colliStr.replace(',', '.')) || 0);
+        if (colli === 0) {
+          cancelSimAuftrag();
+          return;
+        }
+        finishSimAuftrag(hit.id, colli);
       }
       return;
     }

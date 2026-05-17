@@ -187,6 +187,7 @@ const tools: { id: Tool; label: string; shortcut: string; icon: React.ReactNode;
   { id: 'gang', label: 'Fahrgang', shortcut: 'G', icon: <Truck className="h-4 w-4" />, group: 3 },
   { id: 'conveyor', label: 'Förderband', shortcut: 'C', icon: <ArrowRight className="h-4 w-4" />, group: 3 },
   { id: 'measure', label: 'Messen', shortcut: 'M', icon: <Ruler className="h-4 w-4" />, group: 3 },
+  { id: 'auftrag', label: 'Auftrag anlegen', shortcut: 'A', icon: <FileText className="h-4 w-4" />, group: 4 },
 ];
 
 // All object types for the dropdown menu
