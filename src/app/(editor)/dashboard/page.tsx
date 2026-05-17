@@ -39,6 +39,8 @@ export default function DashboardPage() {
   const gaenge = useTopisStore((s) => s.gaenge);
   const ffzList = useTopisStore((s) => s.ffz);
   const simAuftraege = useTopisStore((s) => s.simAuftraege);
+  const forkSimAuftragAsSim = useTopisStore((s) => s.forkSimAuftragAsSim);
+  const removeSimVarianteFor = useTopisStore((s) => s.removeSimVarianteFor);
 
   // Planungs-Block: Stundensatz + FFZ + Min/Colli-Fix als Dashboard-Parameter
   const [planSatz, setPlanSatz] = useState(35);
@@ -160,9 +162,9 @@ export default function DashboardPage() {
           ) : (
             <>
 
-              {/* ==================== Reihe 0: Planungs-Block (Sim-Aufträge) ==================== */}
+              {/* ==================== Reihe 0: Planungs-Block (IST + SIM) ==================== */}
               {(() => {
-                const simZeilen = simAuftraegeToZeilen({
+                const allZeilen = simAuftraegeToZeilen({
                   simAuftraege,
                   objects,
                   gaenge,
@@ -171,115 +173,174 @@ export default function DashboardPage() {
                   stundensatzEuro: planSatz,
                   minProColliFix: planMinFix,
                 });
-                const sumStd = simZeilen.reduce((s, z) => s + z.gesamtStunden, 0);
-                const sumKos = simZeilen.reduce((s, z) => s + z.kosten, 0);
-                const sumColli = simZeilen.reduce((s, z) => s + z.colli, 0);
-                const sumWeg = simZeilen.reduce((s, z) => s + z.distanzM * z.colli, 0);
-                const avgWeg = sumColli > 0 ? sumWeg / sumColli : 0;
+                // Trennen: IST = ohne parentId, SIM = mit parentId
+                const istRaw = simAuftraege.filter((a) => !a.parentId);
+                const simByParent = new Map(simAuftraege.filter((a) => a.parentId).map((a) => [a.parentId!, a]));
+                const torObjects = objects.filter((o) => o.type === 'tor').sort((a, b) => (a.torNummer ?? 999) - (b.torNummer ?? 999));
+
+                const istZeilen = allZeilen.filter((z) => {
+                  const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
+                  return orig && !orig.parentId;
+                });
+                const simZeilen = allZeilen.filter((z) => {
+                  const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
+                  return orig && orig.parentId;
+                });
+                const simZeilenByParent = new Map(simZeilen.map((z) => {
+                  const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
+                  return [orig?.parentId ?? '', z];
+                }));
+
+                const sumIstStd = istZeilen.reduce((s, z) => s + z.gesamtStunden, 0);
+                const sumIstKos = istZeilen.reduce((s, z) => s + z.kosten, 0);
+                // Effektive SIM-Summe: für jeden IST-Auftrag nimm SIM wenn vorhanden, sonst IST
+                let sumEffStd = 0, sumEffKos = 0;
+                for (const ist of istZeilen) {
+                  const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
+                  if (!orig) continue;
+                  const sim = simZeilenByParent.get(orig.id);
+                  if (sim) {
+                    sumEffStd += sim.gesamtStunden;
+                    sumEffKos += sim.kosten;
+                  } else {
+                    sumEffStd += ist.gesamtStunden;
+                    sumEffKos += ist.kosten;
+                  }
+                }
+                const deltaKos = sumEffKos - sumIstKos;
+                const deltaStd = sumEffStd - sumIstStd;
+                const simAnzahl = simZeilenByParent.size;
 
                 return (
                   <Card className="border-blue-500/40 bg-blue-500/5">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-3">
                         <h3 className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-                          Planung — simulierte Aufträge ({simZeilen.length})
+                          Planung — IST ({istZeilen.length}) {simAnzahl > 0 ? `· SIM-Varianten (${simAnzahl})` : ''}
                         </h3>
                         <div className="flex items-end gap-3">
                           <div className="flex flex-col gap-1">
                             <Label htmlFor="plansatz" className="text-[10px]">Stundensatz</Label>
                             <div className="flex items-center gap-1">
-                              <Input
-                                id="plansatz"
-                                type="number"
-                                value={planSatz}
+                              <Input id="plansatz" type="number" value={planSatz}
                                 onChange={(e) => setPlanSatz(Number(e.target.value) || 0)}
-                                className="h-7 w-20 text-xs"
-                                min={0}
-                                step={0.5}
-                              />
+                                className="h-7 w-20 text-xs" min={0} step={0.5} />
                               <span className="text-[10px] text-muted-foreground">€/h</span>
                             </div>
                           </div>
                           <div className="flex flex-col gap-1">
                             <Label htmlFor="planminfix" className="text-[10px]">Min/Colli fix</Label>
-                            <Input
-                              id="planminfix"
-                              type="number"
-                              value={planMinFix}
+                            <Input id="planminfix" type="number" value={planMinFix}
                               onChange={(e) => setPlanMinFix(Number(e.target.value) || 0)}
-                              className="h-7 w-20 text-xs"
-                              min={0}
-                              step={0.01}
-                            />
+                              className="h-7 w-20 text-xs" min={0} step={0.01} />
                           </div>
                         </div>
                       </div>
 
-                      {simZeilen.length === 0 ? (
+                      {istZeilen.length === 0 ? (
                         <div className="text-xs text-muted-foreground py-3 text-center">
-                          Noch keine simulierten Aufträge angelegt.
-                          Zurück zum Editor → Phase „Planung" → Knopf „Auftrag anlegen" → auf der Halle erst Von-Tor,
-                          dann Nach-Bereich/Tor klicken, Colli eingeben.
+                          Noch keine IST-Aufträge. Zurück zum Editor → Phase „Planung" →
+                          „10 Beispiele laden" oder „Auftrag anlegen".
                         </div>
                       ) : (
                         <>
-                          {/* Gesamtsumme oben */}
-                          <div className="grid grid-cols-4 gap-3 text-sm border-y border-blue-500/20 py-2">
+                          {/* Gesamtsummen oben: IST | SIM-effektiv | Δ */}
+                          <div className="grid grid-cols-3 gap-3 text-sm border-y border-blue-500/20 py-2">
                             <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">Σ Aufträge</div>
-                              <div className="text-xl font-bold">{simZeilen.length}</div>
+                              <div className="text-[10px] text-muted-foreground uppercase">IST Σ Kosten</div>
+                              <div className="text-xl font-bold">{sumIstKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                              <div className="text-[10px] text-muted-foreground">{sumIstStd.toFixed(1)} h</div>
                             </div>
                             <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">Σ Colli</div>
-                              <div className="text-xl font-bold">{sumColli.toLocaleString('de-DE')}</div>
+                              <div className="text-[10px] text-muted-foreground uppercase">SIM Σ Kosten (effektiv)</div>
+                              <div className="text-xl font-bold text-blue-600">{sumEffKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
+                              <div className="text-[10px] text-muted-foreground">{sumEffStd.toFixed(1)} h</div>
                             </div>
                             <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">Σ Stunden</div>
-                              <div className="text-xl font-bold">{sumStd.toFixed(1)}</div>
-                            </div>
-                            <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">Σ Kosten</div>
-                              <div className="text-xl font-bold text-blue-600">
-                                {sumKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                              <div className="text-[10px] text-muted-foreground uppercase">Δ SIM vs IST</div>
+                              <div className={`text-xl font-bold ${deltaKos < 0 ? 'text-green-600' : deltaKos > 0 ? 'text-red-500' : ''}`}>
+                                {deltaKos < 0 ? '−' : deltaKos > 0 ? '+' : '±'}
+                                {Math.abs(deltaKos).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                {deltaStd < 0 ? '−' : '+'}{Math.abs(deltaStd).toFixed(1)} h
                               </div>
                             </div>
                           </div>
 
-                          {/* Tabelle */}
-                          <div className="max-h-[300px] overflow-y-auto">
+                          {/* Tabelle: pro IST eine Zeile + Sim-Auswahl rechts */}
+                          <div className="max-h-[400px] overflow-y-auto">
                             <table className="w-full text-xs">
                               <thead className="bg-blue-500/10 sticky top-0">
                                 <tr>
-                                  <th className="text-left p-1.5 font-medium">Von Tor</th>
-                                  <th className="text-left p-1.5 font-medium">Nach</th>
+                                  <th className="text-left p-1.5 font-medium">IST Von → Nach</th>
                                   <th className="text-right p-1.5 font-medium">Colli</th>
-                                  <th className="text-right p-1.5 font-medium">Weg (m)</th>
-                                  <th className="text-right p-1.5 font-medium">Min/Colli</th>
-                                  <th className="text-right p-1.5 font-medium">Stunden</th>
-                                  <th className="text-right p-1.5 font-medium">Kosten</th>
+                                  <th className="text-right p-1.5 font-medium">Weg</th>
+                                  <th className="text-right p-1.5 font-medium">IST €</th>
+                                  <th className="p-1.5 font-medium">SIM Ziel-Tor</th>
+                                  <th className="text-right p-1.5 font-medium">SIM €</th>
+                                  <th className="text-right p-1.5 font-medium">Δ</th>
+                                  <th className="p-1.5 font-medium"></th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {simZeilen.map((z) => (
-                                  <tr key={z.id} className="border-t border-blue-500/10 hover:bg-blue-500/5">
-                                    <td className="p-1.5 font-medium">{z.torName}</td>
-                                    <td className="p-1.5">{z.bereichName}</td>
-                                    <td className="p-1.5 text-right tabular-nums">{z.colli.toLocaleString('de-DE')}</td>
-                                    <td className="p-1.5 text-right tabular-nums">
-                                      {z.warnung ? <span className="text-amber-500">!</span> : Math.round(z.distanzM)}
-                                    </td>
-                                    <td className="p-1.5 text-right tabular-nums">{z.minProColli.toFixed(2)}</td>
-                                    <td className="p-1.5 text-right tabular-nums">{z.gesamtStunden.toFixed(1)}</td>
-                                    <td className="p-1.5 text-right tabular-nums font-semibold">
-                                      {z.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
-                                    </td>
-                                  </tr>
-                                ))}
+                                {istZeilen.map((ist) => {
+                                  const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
+                                  if (!orig) return null;
+                                  const sim = simZeilenByParent.get(orig.id);
+                                  const rowDelta = sim ? sim.kosten - ist.kosten : 0;
+                                  return (
+                                    <tr key={ist.id} className="border-t border-blue-500/10 hover:bg-blue-500/5">
+                                      <td className="p-1.5 font-medium">{ist.torName} → {ist.bereichName}</td>
+                                      <td className="p-1.5 text-right tabular-nums">{ist.colli.toLocaleString('de-DE')}</td>
+                                      <td className="p-1.5 text-right tabular-nums">
+                                        {ist.warnung ? <span className="text-amber-500">!</span> : `${Math.round(ist.distanzM)} m`}
+                                      </td>
+                                      <td className="p-1.5 text-right tabular-nums">{ist.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</td>
+                                      <td className="p-1.5">
+                                        <select
+                                          className="h-7 w-[140px] text-xs bg-background border rounded px-1"
+                                          value={sim ? sim.bereichObjectId ?? '' : ''}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (!val) {
+                                              removeSimVarianteFor(orig.id);
+                                            } else {
+                                              forkSimAuftragAsSim(orig.id, Number(val));
+                                            }
+                                          }}
+                                        >
+                                          <option value="">— keine Simulation —</option>
+                                          {torObjects.filter((t) => t.id !== orig.vonObjectId).map((t) => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                      <td className="p-1.5 text-right tabular-nums text-blue-600 font-semibold">
+                                        {sim ? sim.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : '—'}
+                                      </td>
+                                      <td className={`p-1.5 text-right tabular-nums ${rowDelta < 0 ? 'text-green-600' : rowDelta > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                                        {sim ? `${rowDelta < 0 ? '−' : '+'}${Math.abs(rowDelta).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}` : '—'}
+                                      </td>
+                                      <td className="p-1.5">
+                                        {sim && (
+                                          <button
+                                            type="button"
+                                            onClick={() => removeSimVarianteFor(orig.id)}
+                                            className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                                          >
+                                            ×
+                                          </button>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
                           <div className="text-[10px] text-muted-foreground">
-                            Ø Weg (Colli-gewichtet): {Math.round(avgWeg)} m · Berechnung: Min/Colli × Colli / 60 × Stundensatz
+                            IST = wie heute geplant · SIM = was-wäre-wenn anderes Ziel-Tor · Linien auf der Halle: IST amber, SIM blau gestrichelt
                           </div>
                         </>
                       )}

@@ -237,6 +237,13 @@ export interface SimAuftrag {
   /** Optional: pro Auftrag überschriebene Min/Colli (sonst Standard) */
   minProColliOverride?: number;
   notiz?: string;
+  /**
+   * Wenn gesetzt: dieser Auftrag ist eine SIM-Variante eines anderen
+   * Auftrags (parentId). IST = Original-Plan, SIM = was-wäre-wenn.
+   * IST-Auftrag mit aktiver SIM bleibt sichtbar, aber rechnet nicht in
+   * die SIM-Summe ein (statt dessen nimmt die SIM seinen Platz).
+   */
+  parentId?: string;
 }
 
 export interface TopisState {

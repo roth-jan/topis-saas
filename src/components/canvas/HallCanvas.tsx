@@ -1049,13 +1049,16 @@ export function HallCanvas() {
     }
 
     // ============ Simulierte Aufträge ============
-    // Pro Auftrag eine amber Linie zwischen Tor und Bereich, beide Endpunkte
-    // mit roten "Belegt"-Markern. Σ Colli pro Tor wird über jedes Tor geschrieben.
+    // IST-Aufträge: rote Belegungs-Marker + amber Linie. SIM-Varianten
+    // (parentId gesetzt): blau gestrichelt — was-wäre-wenn-Vergleich.
     if (simAuftraege.length > 0 || simAuftragPending) {
-      // Σ Colli pro Tor sammeln für Tor-Beschriftung
+      const istAuftraege = simAuftraege.filter((a) => !a.parentId);
+      const simVarianten = simAuftraege.filter((a) => a.parentId);
+
+      // Σ Colli + Auftragsanzahl pro Tor (für IST-Marker)
       const colliPerTor = new Map<number, number>();
       const auftragPerTor = new Map<number, number>();
-      for (const a of simAuftraege) {
+      for (const a of istAuftraege) {
         colliPerTor.set(a.vonObjectId, (colliPerTor.get(a.vonObjectId) ?? 0) + a.colli);
         colliPerTor.set(a.nachObjectId, (colliPerTor.get(a.nachObjectId) ?? 0) + a.colli);
         auftragPerTor.set(a.vonObjectId, (auftragPerTor.get(a.vonObjectId) ?? 0) + 1);
@@ -1063,11 +1066,11 @@ export function HallCanvas() {
       }
       const maxCount = Math.max(1, ...Array.from(auftragPerTor.values()));
 
-      // 1. Linien pro Auftrag
+      // 1a. IST-Linien (amber)
       ctx.save();
       ctx.shadowColor = 'rgba(251,191,36,0.6)';
       ctx.shadowBlur = 6;
-      for (const a of simAuftraege) {
+      for (const a of istAuftraege) {
         const von = objects.find((o) => o.id === a.vonObjectId);
         const nach = objects.find((o) => o.id === a.nachObjectId);
         if (!von || !nach) continue;
@@ -1091,6 +1094,47 @@ export function HallCanvas() {
       }
       ctx.shadowBlur = 0;
       ctx.restore();
+
+      // 1b. SIM-Linien (blau gestrichelt)
+      if (simVarianten.length > 0) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(59,130,246,0.6)';
+        ctx.shadowBlur = 8;
+        ctx.setLineDash([8, 5]);
+        for (const a of simVarianten) {
+          const von = objects.find((o) => o.id === a.vonObjectId);
+          const nach = objects.find((o) => o.id === a.nachObjectId);
+          if (!von || !nach) continue;
+          try {
+            const r = findPathBetweenObjects(von, nach, gaenge);
+            if (!r || r.path.length < 2) continue;
+            ctx.strokeStyle = 'rgba(59,130,246,0.95)';
+            ctx.lineWidth = Math.max(2, 2.5 * zoom);
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            const start = worldToScreen(r.path[0].x, r.path[0].y);
+            ctx.moveTo(start.x, start.y);
+            for (let i = 1; i < r.path.length; i++) {
+              const p = worldToScreen(r.path[i].x, r.path[i].y);
+              ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+            // Blauer Pin auf dem neuen Ziel-Tor
+            const last = worldToScreen(r.path[r.path.length - 1].x, r.path[r.path.length - 1].y);
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath();
+            ctx.arc(last.x, last.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.setLineDash([8, 5]);
+          } catch {
+            // skip
+          }
+        }
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
 
       // 2. Belegungs-Marker auf jedem beteiligten Tor (rot, Intensität nach Anzahl)
       for (const [objectId, anzahlAuftraege] of auftragPerTor.entries()) {

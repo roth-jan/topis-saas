@@ -124,6 +124,13 @@ interface TopisStore extends TopisState {
   clearSimAuftraege: () => void;
   /** Lädt eine vorgefertigte Liste von Beispiel-Aufträgen (für Demo-Zwecke) */
   seedBeispielAuftraege: () => void;
+  /**
+   * Forkt einen IST-Auftrag zu einer SIM-Variante (was-wäre-wenn).
+   * Wenn der parent schon eine SIM hat, wird die alte ersetzt.
+   */
+  forkSimAuftragAsSim: (parentId: string, neuerNachObjectId: number, neueColli?: number) => void;
+  /** Entfernt nur die SIM-Variante zu einem IST-Auftrag (parent bleibt). */
+  removeSimVarianteFor: (parentId: string) => void;
 
   // Project Actions
   saveVorher: (snapshot: ProjektSnapshot, screenshot: string) => void;
@@ -475,6 +482,24 @@ export const useTopisStore = create<TopisStore>()(
     simAuftraege: state.simAuftraege.filter((a) => a.id !== id),
   })),
   clearSimAuftraege: () => set({ simAuftraege: [], simAuftragPending: null }),
+  forkSimAuftragAsSim: (parentId, neuerNachObjectId, neueColli) => set((state) => {
+    const parent = state.simAuftraege.find((a) => a.id === parentId);
+    if (!parent) return state;
+    // Existierende SIM zu diesem Parent entfernen
+    const ohneAlteSim = state.simAuftraege.filter((a) => a.parentId !== parentId);
+    const sim = {
+      id: `sim-fork-${parentId}-${Date.now().toString(36)}`,
+      vonObjectId: parent.vonObjectId,
+      nachObjectId: neuerNachObjectId,
+      colli: neueColli ?? parent.colli,
+      notiz: `Simulation von ${parent.notiz ?? parent.id}`,
+      parentId,
+    };
+    return { simAuftraege: [...ohneAlteSim, sim] };
+  }),
+  removeSimVarianteFor: (parentId) => set((state) => ({
+    simAuftraege: state.simAuftraege.filter((a) => a.parentId !== parentId),
+  })),
   seedBeispielAuftraege: () => set((state) => {
     // Dynamic import nicht möglich in der Set-Funktion; wir lassen die
     // Beispielliste hier inline (klein, Demo-Zweck).

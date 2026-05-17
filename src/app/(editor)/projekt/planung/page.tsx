@@ -34,6 +34,8 @@ export default function PlanungPage() {
   const simAuftraege = useTopisStore((s) => s.simAuftraege);
   const removeSimAuftrag = useTopisStore((s) => s.removeSimAuftrag);
   const clearSimAuftraege = useTopisStore((s) => s.clearSimAuftraege);
+  const forkSimAuftragAsSim = useTopisStore((s) => s.forkSimAuftragAsSim);
+  const removeSimVarianteFor = useTopisStore((s) => s.removeSimVarianteFor);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
 
   // Stundensatz + Default-FFZ + Min/Colli-Fix als Parameter oben
@@ -46,6 +48,10 @@ export default function PlanungPage() {
       : 1.17;
   const [minFix, setMinFix] = useState(fixDefault);
   const [zeitraum, setZeitraum] = useState<string>('alle'); // 'alle' oder ISO-Woche
+  // IST aus Scandaten: standardmäßig ausgeblendet, damit die Tabelle nur
+  // zeigt was der Berater selbst angelegt hat. Anklicken um Vergleich
+  // mit historischen Daten zu sehen.
+  const [showIstScandaten, setShowIstScandaten] = useState(false);
 
   // IST-Aggregation aus Scandaten
   const istAgg = useMemo(
@@ -80,8 +86,11 @@ export default function PlanungPage() {
     [simAuftraege, objects, gaenge, ffzList, defaultFfzId, stundensatz, minFix]
   );
 
-  // Komplette IST-Liste = aggregierte Scandaten + simulierte Aufträge
-  const allIstZeilen = useMemo(() => [...simZeilen, ...istAgg.zeilen], [simZeilen, istAgg.zeilen]);
+  // Komplette IST-Liste: Sim-Aufträge immer, Scandaten nur wenn Toggle an.
+  const allIstZeilen = useMemo(
+    () => (showIstScandaten ? [...simZeilen, ...istAgg.zeilen] : simZeilen),
+    [simZeilen, istAgg.zeilen, showIstScandaten]
+  );
 
   // SOLL-Zeilen: Kopie vom IST, vom User editierbar
   const [sollOverrides, setSollOverrides] = useState<Map<string, Auftragszeile>>(new Map());
@@ -239,7 +248,18 @@ export default function PlanungPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {records.length > 0 && (
+            <label className="flex items-center gap-2 text-xs cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showIstScandaten}
+                onChange={(e) => setShowIstScandaten(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              IST aus Scandaten zeigen ({istAgg.zeilen.length})
+            </label>
+          )}
           <RelationZuordnungDialog />
           {simAuftraege.length > 0 && (
             <Button
