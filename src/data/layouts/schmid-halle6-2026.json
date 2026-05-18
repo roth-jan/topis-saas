@@ -1794,12 +1794,12 @@
     },
     {
       "type": "bereich",
-      "x": 12,
-      "y": 8,
-      "width": 5,
-      "height": 20,
+      "x": 14.0,
+      "y": 8.0,
+      "width": 5.0,
+      "height": 42.0,
       "name": "Langgut 6.1",
-      "color": "#bfdbfe",
+      "color": "#86efac",
       "tags": [
         "check-measurements"
       ],
@@ -1810,12 +1810,12 @@
     },
     {
       "type": "bereich",
-      "x": 25,
-      "y": 10,
-      "width": 20,
-      "height": 18,
+      "x": 2.0,
+      "y": 8.0,
+      "width": 5.0,
+      "height": 42.0,
       "name": "Pufferplatz SE",
-      "color": "#fecaca",
+      "color": "#fde047",
       "tags": [
         "check-measurements"
       ],
@@ -1826,12 +1826,12 @@
     },
     {
       "type": "bereich",
-      "x": 48,
-      "y": 8,
-      "width": 4,
-      "height": 20,
+      "x": 48.0,
+      "y": 8.0,
+      "width": 5.0,
+      "height": 42.0,
       "name": "Langgut 6.2",
-      "color": "#bfdbfe",
+      "color": "#86efac",
       "tags": [
         "check-measurements"
       ],
@@ -1842,12 +1842,12 @@
     },
     {
       "type": "bereich",
-      "x": 30,
-      "y": 34,
-      "width": 12,
-      "height": 12,
+      "x": 68.0,
+      "y": 22.0,
+      "width": 10.0,
+      "height": 12.0,
       "name": "AV / AD",
-      "color": "#fde68a",
+      "color": "#a5b4fc",
       "tags": [
         "check-measurements"
       ],
@@ -1858,12 +1858,12 @@
     },
     {
       "type": "bereich",
-      "x": 130,
-      "y": 16,
-      "width": 35,
-      "height": 6,
+      "x": 118.0,
+      "y": 8.0,
+      "width": 8.0,
+      "height": 42.0,
       "name": "Langgut 6.3",
-      "color": "#bfdbfe",
+      "color": "#86efac",
       "tags": [
         "check-measurements"
       ],
@@ -1874,12 +1874,12 @@
     },
     {
       "type": "bereich",
-      "x": 170,
-      "y": 8,
-      "width": 30,
-      "height": 20,
+      "x": 84.0,
+      "y": 22.0,
+      "width": 10.0,
+      "height": 12.0,
       "name": "AS 99",
-      "color": "#d8b4fe",
+      "color": "#fda4af",
       "tags": [
         "check-measurements"
       ],
@@ -2318,6 +2318,118 @@
       "breite": 3.0,
       "typ": "quergang",
       "farbe": "#22c55e"
+    },
+    {
+      "id": 7,
+      "name": "Quergang x=10",
+      "points": [
+        {
+          "x": 10.0,
+          "y": 1.5
+        },
+        {
+          "x": 10.0,
+          "y": 57.2
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": false
+    },
+    {
+      "id": 8,
+      "name": "Quergang x=32",
+      "points": [
+        {
+          "x": 32.0,
+          "y": 1.5
+        },
+        {
+          "x": 32.0,
+          "y": 57.2
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": false
+    },
+    {
+      "id": 9,
+      "name": "Quergang x=60",
+      "points": [
+        {
+          "x": 60.0,
+          "y": 1.5
+        },
+        {
+          "x": 60.0,
+          "y": 57.2
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": false
+    },
+    {
+      "id": 10,
+      "name": "Quergang x=105",
+      "points": [
+        {
+          "x": 105.0,
+          "y": 1.5
+        },
+        {
+          "x": 105.0,
+          "y": 57.2
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": false
+    },
+    {
+      "id": 11,
+      "name": "Quergang x=145",
+      "points": [
+        {
+          "x": 145.0,
+          "y": 1.5
+        },
+        {
+          "x": 145.0,
+          "y": 57.2
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": false
+    },
+    {
+      "id": 12,
+      "name": "Quergang x=170",
+      "points": [
+        {
+          "x": 170.0,
+          "y": 1.5
+        },
+        {
+          "x": 170.0,
+          "y": 57.2
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": false
+    },
+    {
+      "id": 13,
+      "name": "Kommissionier-Korridor",
+      "points": [
+        {
+          "x": 0.0,
+          "y": 42.0
+        },
+        {
+          "x": 210.0,
+          "y": 42.0
+        }
+      ],
+      "breite": 3.0,
+      "istHauptgang": true
     }
   ]
 }
