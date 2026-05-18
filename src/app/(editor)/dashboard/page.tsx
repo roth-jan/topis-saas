@@ -13,6 +13,7 @@ import { berechneBenchmark } from '@/lib/benchmarking';
 import { berechneFlaechenbedarf } from '@/lib/flaechenrechner';
 import { berechneGewichtetenVerteilweg } from '@/lib/verteilweg-rechner';
 import { simAuftraegeToZeilen } from '@/lib/auftragsplanung';
+import { useSimSettingsStore } from '@/lib/sim-settings-store';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Timer,
@@ -37,9 +38,9 @@ export default function DashboardPage() {
   const ffzList = useTopisStore((s) => s.ffz);
   const simAuftraege = useTopisStore((s) => s.simAuftraege);
 
-  // Sim-Standard-Werte für Σ-Berechnung im Dashboard (read-only)
-  const planSatz = 35;
-  const planMinFix = 1.17;
+  // Sim-Settings aus geteiltem Store — sync mit Planungs-Seite
+  const planSatz = useSimSettingsStore((s) => s.stundensatzEuro);
+  const planMinFix = useSimSettingsStore((s) => s.minProColliFix);
   const modell = useProzessmodellStore((s) => s.modell);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);

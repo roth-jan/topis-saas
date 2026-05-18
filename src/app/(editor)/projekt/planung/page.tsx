@@ -18,6 +18,7 @@ import {
 } from '@/lib/auftragsplanung';
 import { RelationZuordnungDialog } from '@/components/dialogs/RelationZuordnungDialog';
 import { TorComboBox } from '@/components/ui/tor-combobox';
+import { useSimSettingsStore } from '@/lib/sim-settings-store';
 
 const fmtEUR = (v: number) =>
   v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -38,15 +39,16 @@ export default function PlanungPage() {
   const removeSimVarianteFor = useTopisStore((s) => s.removeSimVarianteFor);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
 
-  // Stundensatz + Default-FFZ + Min/Colli-Fix als Parameter oben
-  const [stundensatz, setStundensatz] = useState(35);
-  const [defaultFfzId, setDefaultFfzId] = useState<number | null>(ffzList[0]?.id ?? null);
-  // Fixer Anteil aus dem kalibrierten Prozessmodell — Entlader+Scanner+Verlader ohne Weg
-  const fixDefault =
-    ergebnis && ergebnis.minProColli > 0
-      ? Math.max(0, ergebnis.minProColli - 0.75) // grober Abzug Verteiler-Anteil (0.75 bei AS)
-      : 1.17;
-  const [minFix, setMinFix] = useState(fixDefault);
+  // Stundensatz + Default-FFZ + Min/Colli-Fix kommen aus dem geteilten Settings-Store,
+  // damit Dashboard und Planung dieselben Zahlen zeigen.
+  const stundensatz = useSimSettingsStore((s) => s.stundensatzEuro);
+  const setStundensatz = useSimSettingsStore((s) => s.setStundensatz);
+  const minFix = useSimSettingsStore((s) => s.minProColliFix);
+  const setMinFix = useSimSettingsStore((s) => s.setMinFix);
+  const storeDefaultFfzId = useSimSettingsStore((s) => s.defaultFfzId);
+  const setStoreDefaultFfzId = useSimSettingsStore((s) => s.setDefaultFfzId);
+  const defaultFfzId = storeDefaultFfzId ?? ffzList[0]?.id ?? null;
+  const setDefaultFfzId = (id: number | null) => setStoreDefaultFfzId(id);
   const [zeitraum, setZeitraum] = useState<string>('alle'); // 'alle' oder ISO-Woche
   // IST aus Scandaten: standardmäßig ausgeblendet, damit die Tabelle nur
   // zeigt was der Berater selbst angelegt hat. Anklicken um Vergleich
