@@ -1082,7 +1082,77 @@ export function HallCanvas() {
         ? simVarianten.filter((a) => a.vonObjectId === focusedTorId || a.nachObjectId === focusedTorId)
         : [];
 
-      // 1a. IST-Linien (amber)
+      // Hilfsfunktion: zeichnet Pfeilspitze am Ende eines Liniensegments
+      const drawArrow = (toX: number, toY: number, fromX: number, fromY: number, color: string, size: number) => {
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(toX - size * Math.cos(angle - Math.PI / 6), toY - size * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(toX - size * Math.cos(angle + Math.PI / 6), toY - size * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+      };
+
+      // Hilfsfunktion: kompletter Auftragspfad (Tor-Mitte → Gang → Tor-Mitte) als durchgezogene
+      // Linie + Pfeilspitze am Ziel. Wenn A* fehlschlägt: gestrichelte direkte Linie als Warnsignal.
+      const drawAuftrag = (
+        von: typeof objects[number],
+        nach: typeof objects[number],
+        color: string,
+        widthPx: number,
+        arrowSize: number,
+        dashedFallback: boolean,
+      ) => {
+        const aCx = von.x + von.width / 2;
+        const aCy = von.y + von.height / 2;
+        const bCx = nach.x + nach.width / 2;
+        const bCy = nach.y + nach.height / 2;
+        const aPx = worldToScreen(aCx, aCy);
+        const bPx = worldToScreen(bCx, bCy);
+
+        let pathPoints: Array<{ x: number; y: number }> | null = null;
+        try {
+          const r = findPathBetweenObjects(von, nach, gaenge);
+          if (r && r.path.length >= 2) {
+            pathPoints = r.path.map((p) => worldToScreen(p.x, p.y));
+          }
+        } catch {
+          // skip
+        }
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = widthPx;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (pathPoints) {
+          // Tor → erster Wegpunkt → Pfad entlang Gang → letzter Wegpunkt → Tor (durchgezogen, ein Stück)
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(aPx.x, aPx.y);
+          ctx.lineTo(pathPoints[0].x, pathPoints[0].y);
+          for (let i = 1; i < pathPoints.length; i++) {
+            ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+          }
+          ctx.lineTo(bPx.x, bPx.y);
+          ctx.stroke();
+          // Pfeilspitze: aus dem letzten Pfadabschnitt
+          const lastWp = pathPoints[pathPoints.length - 1];
+          drawArrow(bPx.x, bPx.y, lastWp.x, lastWp.y, color, arrowSize);
+        } else if (dashedFallback) {
+          // A* hat versagt — direkter Strich mit gestrichelter Linie als Warnung
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.moveTo(aPx.x, aPx.y);
+          ctx.lineTo(bPx.x, bPx.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          drawArrow(bPx.x, bPx.y, aPx.x, aPx.y, color, arrowSize);
+        }
+      };
+
+      // 1a. IST-Linien — amber durchgezogen + Pfeilspitze am Ziel-Tor
       ctx.save();
       ctx.shadowColor = 'rgba(251,191,36,0.6)';
       ctx.shadowBlur = 6;
@@ -1090,120 +1160,22 @@ export function HallCanvas() {
         const von = objects.find((o) => o.id === a.vonObjectId);
         const nach = objects.find((o) => o.id === a.nachObjectId);
         if (!von || !nach) continue;
-        try {
-          const r = findPathBetweenObjects(von, nach, gaenge);
-          if (!r || r.path.length < 2) {
-            // Fallback: direkte Linie zwischen Tor-Mittelpunkten (klar erkennbar)
-            const fromP = worldToScreen(von.x + von.width / 2, von.y + von.height / 2);
-            const toP = worldToScreen(nach.x + nach.width / 2, nach.y + nach.height / 2);
-            ctx.strokeStyle = 'rgba(251,191,36,0.5)';
-            ctx.lineWidth = Math.max(1.5, 2 * zoom);
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(fromP.x, fromP.y);
-            ctx.lineTo(toP.x, toP.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            continue;
-          }
-          // Tor-Mittelpunkte + erstes/letztes Wegpunkt — Anbindung gestrichelt zeichnen
-          const aCx = von.x + von.width / 2;
-          const aCy = von.y + von.height / 2;
-          const bCx = nach.x + nach.width / 2;
-          const bCy = nach.y + nach.height / 2;
-          const aPx = worldToScreen(aCx, aCy);
-          const bPx = worldToScreen(bCx, bCy);
-          const firstWp = worldToScreen(r.path[0].x, r.path[0].y);
-          const lastWp = worldToScreen(r.path[r.path.length - 1].x, r.path[r.path.length - 1].y);
-
-          // 1) Anbindung Tor → Gang (gestrichelt)
-          ctx.strokeStyle = 'rgba(251,191,36,0.6)';
-          ctx.lineWidth = Math.max(1.5, 2 * zoom);
-          ctx.setLineDash([5, 4]);
-          ctx.beginPath();
-          ctx.moveTo(aPx.x, aPx.y);
-          ctx.lineTo(firstWp.x, firstWp.y);
-          ctx.moveTo(lastWp.x, lastWp.y);
-          ctx.lineTo(bPx.x, bPx.y);
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          // 2) Gang-Pfad (durchgezogen, dicker)
-          ctx.strokeStyle = 'rgba(251,191,36,0.95)';
-          ctx.lineWidth = Math.max(2, 3 * zoom);
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(firstWp.x, firstWp.y);
-          for (let i = 1; i < r.path.length; i++) {
-            const p = worldToScreen(r.path[i].x, r.path[i].y);
-            ctx.lineTo(p.x, p.y);
-          }
-          ctx.stroke();
-
-          // 3) Marker an Tor-Mittelpunkten
-          ctx.fillStyle = '#22c55e';
-          ctx.beginPath();
-          ctx.arc(aPx.x, aPx.y, 5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#06b6d4';
-          ctx.beginPath();
-          ctx.arc(bPx.x, bPx.y, 5, 0, Math.PI * 2);
-          ctx.fill();
-        } catch {
-          // skip
-        }
+        drawAuftrag(von, nach, 'rgba(251,191,36,0.95)', Math.max(2, 3 * zoom), Math.max(8, 10 * zoom), true);
       }
       ctx.shadowBlur = 0;
       ctx.restore();
 
-      // 1b. SIM-Linien (blau gestrichelt) — auch gefiltert
+      // 1b. SIM-Varianten — kräftiges Blau durchgezogen + Pfeilspitze
       if (simToRender.length > 0) {
         ctx.save();
-        ctx.shadowColor = 'rgba(59,130,246,0.6)';
+        ctx.shadowColor = 'rgba(37,99,235,0.6)';
         ctx.shadowBlur = 8;
-        ctx.setLineDash([8, 5]);
         for (const a of simToRender) {
           const von = objects.find((o) => o.id === a.vonObjectId);
           const nach = objects.find((o) => o.id === a.nachObjectId);
           if (!von || !nach) continue;
-          try {
-            const r = findPathBetweenObjects(von, nach, gaenge);
-            if (!r || r.path.length < 2) continue;
-            const aCx = von.x + von.width / 2;
-            const aCy = von.y + von.height / 2;
-            const bCx = nach.x + nach.width / 2;
-            const bCy = nach.y + nach.height / 2;
-            const aPx = worldToScreen(aCx, aCy);
-            const bPx = worldToScreen(bCx, bCy);
-            const firstWp = worldToScreen(r.path[0].x, r.path[0].y);
-            const lastWp = worldToScreen(r.path[r.path.length - 1].x, r.path[r.path.length - 1].y);
-
-            ctx.strokeStyle = 'rgba(59,130,246,0.95)';
-            ctx.lineWidth = Math.max(2, 2.5 * zoom);
-            ctx.lineCap = 'round';
-            // Komplett mit Anbindung Tor→Gang→Ziel
-            ctx.beginPath();
-            ctx.moveTo(aPx.x, aPx.y);
-            ctx.lineTo(firstWp.x, firstWp.y);
-            for (let i = 1; i < r.path.length; i++) {
-              const p = worldToScreen(r.path[i].x, r.path[i].y);
-              ctx.lineTo(p.x, p.y);
-            }
-            ctx.lineTo(bPx.x, bPx.y);
-            ctx.stroke();
-
-            // Blauer Pin auf dem neuen Ziel-Tor
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#3b82f6';
-            ctx.beginPath();
-            ctx.arc(bPx.x, bPx.y, 5, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.setLineDash([8, 5]);
-          } catch {
-            // skip
-          }
+          drawAuftrag(von, nach, 'rgba(37,99,235,0.95)', Math.max(2.5, 3.5 * zoom), Math.max(9, 11 * zoom), true);
         }
-        ctx.setLineDash([]);
         ctx.shadowBlur = 0;
         ctx.restore();
       }
@@ -2506,6 +2478,24 @@ export function HallCanvas() {
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
       />
+
+      {/* Legende — erscheint wenn Sim-Aufträge auf der Halle sind */}
+      {simAuftraege.length > 0 && (
+        <div className="absolute bottom-3 left-3 bg-black/70 text-white text-[11px] rounded-md px-3 py-2 space-y-1 border border-white/20 backdrop-blur-sm pointer-events-none">
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-6 h-0.5 bg-amber-400" />
+            <span>IST-Auftrag (heutiger Plan)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-6 h-0.5 bg-blue-500" />
+            <span>SIM-Variante (was-wäre-wenn)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded-full border-2 border-red-500" />
+            <span>belegtes Tor — Pfeil zeigt Ziel</span>
+          </div>
+        </div>
+      )}
       {/* Top Ruler */}
       <canvas
         ref={rulerTopRef}
