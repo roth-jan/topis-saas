@@ -17,6 +17,7 @@ import {
   type Auftragszeile,
 } from '@/lib/auftragsplanung';
 import { RelationZuordnungDialog } from '@/components/dialogs/RelationZuordnungDialog';
+import { TorComboBox } from '@/components/ui/tor-combobox';
 
 const fmtEUR = (v: number) =>
   v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
@@ -144,6 +145,25 @@ export default function PlanungPage() {
 
   const deltaKosten = sollMeta.gesamtKosten - allIstMeta.gesamtKosten;
   const deltaStunden = sollMeta.gesamtStunden - allIstMeta.gesamtStunden;
+
+  // Pro-Tor-Belegung (basiert auf den effektiven SOLL-Werten, also IST + Direkt-Override + SIM-Variante).
+  // Pro Tor das in einem Auftrag steckt: Σ Colli / Σ Stunden / Σ Kosten / Anzahl Aufträge.
+  const torBelegung = useMemo(() => {
+    type B = { torId: number; torName: string; colli: number; stunden: number; kosten: number; anzahl: number };
+    const map = new Map<number, B>();
+    for (const z of sollZeilen) {
+      const torId = z.torObjectId;
+      if (torId == null) continue;
+      const torName = z.torName;
+      const eintrag = map.get(torId) ?? { torId, torName, colli: 0, stunden: 0, kosten: 0, anzahl: 0 };
+      eintrag.colli += z.colli;
+      eintrag.stunden += z.gesamtStunden;
+      eintrag.kosten += z.kosten;
+      eintrag.anzahl += 1;
+      map.set(torId, eintrag);
+    }
+    return [...map.values()].sort((a, b) => b.colli - a.colli);
+  }, [sollZeilen]);
 
   function editZeile(id: string, edit: Partial<Pick<Auftragszeile, 'torObjectId' | 'bereichObjectId' | 'colli' | 'ffzId'>>) {
     const baseline = sollOverrides.get(id) ?? istAgg.zeilen.find((z) => z.id === id);
@@ -402,6 +422,52 @@ export default function PlanungPage() {
                 </CardContent>
               </Card>
 
+              {/* Tor-Belegung — pro Tor aggregiert */}
+              {torBelegung.length > 0 && (
+                <Card>
+                  <CardContent className="p-3">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Tor-Belegung ({torBelegung.length} Tore in Aufträgen)
+                      </h3>
+                      <span className="text-[10px] text-muted-foreground">sortiert nach Σ Colli</span>
+                    </div>
+                    <div className="max-h-[240px] overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/60 sticky top-0">
+                          <tr>
+                            <th className="text-left p-1.5 font-medium">Tor</th>
+                            <th className="text-right p-1.5 font-medium">Aufträge</th>
+                            <th className="text-right p-1.5 font-medium">Σ Colli</th>
+                            <th className="text-right p-1.5 font-medium">Σ Std</th>
+                            <th className="text-right p-1.5 font-medium">Σ Kosten</th>
+                            <th className="text-right p-1.5 font-medium">Anteil</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {torBelegung.map((t, idx) => {
+                            const anteil = sollMeta.gesamtKosten > 0 ? (t.kosten / sollMeta.gesamtKosten) * 100 : 0;
+                            const hot = idx < 3;
+                            return (
+                              <tr key={t.torId} className="border-t hover:bg-muted/30">
+                                <td className={`p-1.5 font-medium ${hot ? 'text-red-500' : ''}`}>
+                                  {hot && '🔥 '}{t.torName}
+                                </td>
+                                <td className="p-1.5 text-right tabular-nums">{t.anzahl}</td>
+                                <td className="p-1.5 text-right tabular-nums">{fmtNum(t.colli)}</td>
+                                <td className="p-1.5 text-right tabular-nums">{fmtNum(t.stunden, 1)}</td>
+                                <td className="p-1.5 text-right tabular-nums font-semibold">{fmtEUR(t.kosten)}</td>
+                                <td className="p-1.5 text-right tabular-nums text-muted-foreground">{anteil.toFixed(1)}%</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Auftrags-Tabelle */}
               <Card>
                 <CardContent className="p-0">
@@ -442,43 +508,23 @@ export default function PlanungPage() {
                                 {isSim && (
                                   <span className="inline-block text-[9px] uppercase tracking-wider text-blue-500 font-semibold mr-1">Sim</span>
                                 )}
-                                <Select
-                                  value={soll.torObjectId != null ? String(soll.torObjectId) : ''}
-                                  onValueChange={(v) =>
-                                    editZeile(ist.id, { torObjectId: v ? Number(v) : null })
-                                  }
-                                >
-                                  <SelectTrigger className="h-7 w-[140px] text-xs">
-                                    <SelectValue placeholder={soll.torName}>{soll.torName}</SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {torOptions.map((o) => (
-                                      <SelectItem key={o.id} value={String(o.id)} className="text-xs">
-                                        {o.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <TorComboBox
+                                  value={soll.torObjectId}
+                                  options={torOptions}
+                                  onChange={(id) => editZeile(ist.id, { torObjectId: id })}
+                                  placeholder={soll.torName}
+                                  width={140}
+                                />
                               </td>
-                              {/* Nach Bereich */}
+                              {/* Nach Bereich/Tor */}
                               <td className="p-1.5">
-                                <Select
-                                  value={soll.bereichObjectId != null ? String(soll.bereichObjectId) : ''}
-                                  onValueChange={(v) =>
-                                    editZeile(ist.id, { bereichObjectId: v ? Number(v) : null })
-                                  }
-                                >
-                                  <SelectTrigger className="h-7 w-[160px] text-xs">
-                                    <SelectValue placeholder={soll.bereichName}>{soll.bereichName}</SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {bereichOptions.map((o) => (
-                                      <SelectItem key={o.id} value={String(o.id)} className="text-xs">
-                                        {o.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                <TorComboBox
+                                  value={soll.bereichObjectId}
+                                  options={bereichOptions}
+                                  onChange={(id) => editZeile(ist.id, { bereichObjectId: id })}
+                                  placeholder={soll.bereichName}
+                                  width={160}
+                                />
                               </td>
                               {/* Colli */}
                               <td className="p-1.5">
@@ -527,34 +573,27 @@ export default function PlanungPage() {
                               {/* SIM-Ziel-Tor (nur für IST-Sim-Aufträge) */}
                               <td className="p-1.5 border-l">
                                 {isSim && ist.simAuftragId ? (
-                                  <select
-                                    className="h-7 w-[140px] text-xs bg-background border rounded px-1"
-                                    value={(() => {
-                                      const sim = simVarianteByParent.get(ist.simAuftragId!);
-                                      return sim?.bereichObjectId != null ? String(sim.bereichObjectId) : '';
-                                    })()}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      if (!val) removeSimVarianteFor(ist.simAuftragId!);
-                                      else forkSimAuftragAsSim(ist.simAuftragId!, Number(val));
-                                    }}
-                                  >
-                                    <option value="">— keine Sim —</option>
-                                    {(() => {
-                                      const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
-                                      const vonId = orig?.vonObjectId ?? -1;
-                                      const sued = torOptions.filter((t) => t.id !== vonId && t.type === 'tor' && (t.torNummer ?? 0) >= 1 && (t.torNummer ?? 0) <= 52);
-                                      const kopf = torOptions.filter((t) => t.id !== vonId && t.type === 'tor' && (t.torNummer ?? 0) >= 53 && (t.torNummer ?? 0) <= 60);
-                                      const nord = torOptions.filter((t) => t.id !== vonId && t.type === 'tor' && (t.torNummer ?? 0) >= 61);
-                                      return (
-                                        <>
-                                          {sued.length > 0 && <optgroup label={`Süd (${sued.length})`}>{sued.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
-                                          {kopf.length > 0 && <optgroup label={`Kopframpe (${kopf.length})`}>{kopf.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
-                                          {nord.length > 0 && <optgroup label={`Nord (${nord.length})`}>{nord.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
-                                        </>
-                                      );
-                                    })()}
-                                  </select>
+                                  (() => {
+                                    const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
+                                    const vonId = orig?.vonObjectId ?? -1;
+                                    const sim = simVarianteByParent.get(ist.simAuftragId!);
+                                    const simZielId = sim?.bereichObjectId ?? null;
+                                    const torChoices = torOptions.filter((t) => t.id !== vonId && t.type === 'tor');
+                                    return (
+                                      <TorComboBox
+                                        value={simZielId}
+                                        options={torChoices}
+                                        onChange={(id) => {
+                                          if (id == null) removeSimVarianteFor(ist.simAuftragId!);
+                                          else forkSimAuftragAsSim(ist.simAuftragId!, id);
+                                        }}
+                                        placeholder="Tor nr. tippen…"
+                                        width={140}
+                                        allowNone
+                                        noneLabel="— keine Sim —"
+                                      />
+                                    );
+                                  })()
                                 ) : (
                                   <span className="text-[11px] text-muted-foreground italic">–</span>
                                 )}
