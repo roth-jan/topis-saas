@@ -92,7 +92,6 @@ import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { PROJEKT_VORLAGEN, ladeProjektVorlage } from '@/lib/projekt-vorlagen';
-import { startTour } from '@/components/editor/GuidedTour';
 import {
   MousePointer2,
   Hand,
@@ -696,14 +695,9 @@ export function Toolbar() {
           <TooltipContent side="bottom">Wiederholen <kbd className="ml-1 text-[10px]">⇧⌘Z</kbd></TooltipContent>
         </Tooltip>
         <ThemeToggleSimple />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startTour()}>
-              <HelpCircle className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Geführte Tour</TooltipContent>
-        </Tooltip>
+        {/* Geführte Tour Trigger entfernt — die alten Schritte referenzieren
+            Elemente die in der neuen Workflow-Phasen-Toolbar nur in der jeweiligen
+            Phase rendern. driver.js-Overlay blockierte sonst alle Klicks. */}
       </div>
 
       {/* ============ ROW 2: PHASEN-SPEZIFISCH ============ */}

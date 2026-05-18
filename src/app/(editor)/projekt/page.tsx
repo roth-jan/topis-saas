@@ -11,7 +11,6 @@ import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
 import { AnalyticsPanel } from '@/components/panels/AnalyticsPanel';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { GuidedTour } from '@/components/editor/GuidedTour';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -61,8 +60,10 @@ export default function EditorPage() {
       {/* Command Palette (Cmd+K) */}
       <CommandPalette />
 
-      {/* Guided Tour (auto-start beim ersten Besuch) */}
-      <GuidedTour />
+      {/* Guided Tour komplett entfernt — alte Schritte verwiesen auf Elemente
+          die in der neuen Workflow-Phasen-Toolbar fehlen → driver.js-Overlay
+          blockierte alle Klicks. Bleibt als Code-Datei für späteren Wieder-
+          aufbau. */}
 
       {/* Top Toolbar — mit Schatten + dickerer Trennlinie, damit Canvas optisch klar darunter sitzt */}
       <div className="shadow-md shadow-black/20 border-b-2 border-border z-30 relative">
