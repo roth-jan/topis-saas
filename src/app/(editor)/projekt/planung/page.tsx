@@ -7,7 +7,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useTopisStore } from '@/lib/store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
@@ -292,8 +291,8 @@ export default function PlanungPage() {
       </div>
 
       {/* Inhalt */}
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="p-4 pb-24 space-y-3">
           {!hasData && (
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="py-4">
@@ -575,7 +574,7 @@ export default function PlanungPage() {
             </>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

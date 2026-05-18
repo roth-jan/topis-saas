@@ -13,7 +13,6 @@ import { berechneBenchmark } from '@/lib/benchmarking';
 import { berechneFlaechenbedarf } from '@/lib/flaechenrechner';
 import { berechneGewichtetenVerteilweg } from '@/lib/verteilweg-rechner';
 import { simAuftraegeToZeilen } from '@/lib/auftragsplanung';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -143,8 +142,8 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4 max-w-[1400px] mx-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="p-4 pb-24 space-y-4 max-w-[1400px] mx-auto">
           {!hasData && !ergebnis ? (
             <div className="text-center text-muted-foreground py-20">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-30" />
@@ -631,7 +630,7 @@ export default function DashboardPage() {
             </>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

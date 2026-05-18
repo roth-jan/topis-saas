@@ -11,7 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -130,8 +129,8 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
   }).length;
 
   const dialogContent = (
-    <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-      <DialogHeader>
+    <DialogContent className="max-w-3xl w-[min(900px,92vw)] h-[min(80vh,720px)] flex flex-col gap-3 p-4">
+      <DialogHeader className="shrink-0">
         <DialogTitle className="flex items-center gap-2">
           <Link2 className="h-4 w-4" />
           Relationen zu Bereichen zuordnen
@@ -144,7 +143,7 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
         </DialogDescription>
       </DialogHeader>
 
-      <div className="flex items-center gap-2 mt-2">
+      <div className="flex items-center gap-2 shrink-0">
         <div className="relative flex-1">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -160,7 +159,7 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 min-h-0 mt-2 border rounded-md">
+      <div className="flex-1 min-h-0 border rounded-md overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted sticky top-0">
             <tr>
@@ -209,13 +208,13 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
             )}
           </tbody>
         </table>
-      </ScrollArea>
+      </div>
 
-      <DialogFooter className="mt-2">
+      <DialogFooter className="shrink-0 border-t pt-3">
         <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
           Abbrechen
         </Button>
-        <Button size="sm" onClick={save} disabled={edits.size === 0}>
+        <Button size="sm" onClick={save}>
           {edits.size > 0 ? `${edits.size} Änderung${edits.size === 1 ? '' : 'en'} speichern` : 'Speichern'}
         </Button>
       </DialogFooter>
