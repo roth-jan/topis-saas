@@ -85,17 +85,44 @@ export default function PlanungPage() {
     [simAuftraege, objects, gaenge, ffzList, defaultFfzId, stundensatz, minFix]
   );
 
+  // simZeilen aufteilen in IST (ohne parentId) und SIM-Varianten (mit parentId).
+  // IST-Sim-Aufträge sind die per Klick/Seed angelegten "Plan-Aufträge".
+  // SIM-Varianten sind das Was-wäre-wenn-Fork eines IST-Auftrags.
+  const istSimZeilen = useMemo(
+    () => simZeilen.filter((z) => {
+      const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
+      return orig && !orig.parentId;
+    }),
+    [simZeilen, simAuftraege]
+  );
+  const simVarianteByParent = useMemo(() => {
+    const map = new Map<string, Auftragszeile>();
+    for (const z of simZeilen) {
+      const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
+      if (orig?.parentId) map.set(orig.parentId, z);
+    }
+    return map;
+  }, [simZeilen, simAuftraege]);
+
   // Komplette IST-Liste: Sim-Aufträge immer, Scandaten nur wenn Toggle an.
   const allIstZeilen = useMemo(
-    () => (showIstScandaten ? [...simZeilen, ...istAgg.zeilen] : simZeilen),
-    [simZeilen, istAgg.zeilen, showIstScandaten]
+    () => (showIstScandaten ? [...istSimZeilen, ...istAgg.zeilen] : istSimZeilen),
+    [istSimZeilen, istAgg.zeilen, showIstScandaten]
   );
 
-  // SOLL-Zeilen: Kopie vom IST, vom User editierbar
+  // SOLL-Zeilen: pro IST → sollOverride (manuell editiert) ODER SIM-Variante (Fork) ODER IST selbst
   const [sollOverrides, setSollOverrides] = useState<Map<string, Auftragszeile>>(new Map());
   const sollZeilen: Auftragszeile[] = useMemo(() => {
-    return allIstZeilen.map((z) => sollOverrides.get(z.id) ?? z);
-  }, [allIstZeilen, sollOverrides]);
+    return allIstZeilen.map((z) => {
+      if (sollOverrides.has(z.id)) return sollOverrides.get(z.id)!;
+      // Wenn die IST-Zeile aus einem Sim-Auftrag stammt: prüfen ob es eine SIM-Variante gibt
+      if (z.simAuftragId) {
+        const sim = simVarianteByParent.get(z.simAuftragId);
+        if (sim) return sim;
+      }
+      return z;
+    });
+  }, [allIstZeilen, sollOverrides, simVarianteByParent]);
 
   const sollMeta = useMemo(() => {
     const gColli = sollZeilen.reduce((s, z) => s + z.colli, 0);
@@ -335,44 +362,31 @@ export default function PlanungPage() {
               {/* Σ-Übersicht oben (sticky) */}
               <Card className="border-primary/30 bg-primary/5 sticky top-0 z-10">
                 <CardContent className="py-3">
-                  <div className="grid grid-cols-4 gap-4 text-sm">
+                  <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">Σ Colli</div>
-                      <div className="text-lg font-semibold">{fmtNum(allIstMeta.gesamtColli)}</div>
-                      {allIstMeta.simAnzahl > 0 && (
-                        <div className="text-[10px] text-amber-500">
-                          davon {fmtNum(allIstMeta.simColli)} aus {allIstMeta.simAnzahl} Sim
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">Σ Stunden</div>
-                      <div className="text-lg font-semibold">{fmtNum(allIstMeta.gesamtStunden, 1)}</div>
-                      {allIstMeta.simAnzahl > 0 && (
-                        <div className="text-[10px] text-amber-500">
-                          davon {fmtNum(allIstMeta.simStunden, 1)} h Sim
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">Σ Kosten</div>
+                      <div className="text-[11px] text-muted-foreground uppercase">IST Σ Kosten</div>
                       <div className="text-lg font-semibold">{fmtEUR(allIstMeta.gesamtKosten)}</div>
-                      {allIstMeta.simAnzahl > 0 && (
-                        <div className="text-[10px] text-amber-500">
-                          davon {fmtEUR(allIstMeta.simKosten)} Sim
-                        </div>
-                      )}
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtNum(allIstMeta.gesamtColli)} Colli · {fmtNum(allIstMeta.gesamtStunden, 1)} h
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[11px] text-muted-foreground uppercase">Δ SOLL</div>
+                      <div className="text-[11px] text-muted-foreground uppercase">SOLL/SIM Σ Kosten</div>
+                      <div className="text-lg font-semibold text-blue-600">{fmtEUR(sollMeta.gesamtKosten)}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {fmtNum(sollMeta.gesamtColli)} Colli · {fmtNum(sollMeta.gesamtStunden, 1)} h
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-muted-foreground uppercase">Δ SOLL vs IST</div>
                       <div className={`text-lg font-semibold ${
                         deltaKosten < 0 ? 'text-green-600' : deltaKosten > 0 ? 'text-red-500' : ''
                       }`}>
                         {deltaKosten < 0 ? '−' : deltaKosten > 0 ? '+' : '±'}
                         {fmtEUR(Math.abs(deltaKosten))}
-                        <span className="text-xs font-normal ml-1 text-muted-foreground">
-                          ({deltaStunden < 0 ? '−' : '+'}{fmtNum(Math.abs(deltaStunden), 1)} h)
-                        </span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {deltaStunden < 0 ? '−' : deltaStunden > 0 ? '+' : '±'}{fmtNum(Math.abs(deltaStunden), 1)} h
                       </div>
                     </div>
                   </div>
@@ -401,6 +415,7 @@ export default function PlanungPage() {
                           <th className="text-left p-2 font-medium" rowSpan={2}>FFZ</th>
                           <th className="text-right p-2 font-medium" rowSpan={2}>Weg (m)</th>
                           <th className="text-right p-2 font-medium" rowSpan={2}>Min/Colli</th>
+                          <th className="text-left p-2 font-medium border-l text-blue-600" rowSpan={2}>SIM-Ziel</th>
                           <th colSpan={2} className="text-center p-2 font-medium border-l">Σ Stunden</th>
                           <th colSpan={2} className="text-center p-2 font-medium border-l">Σ Kosten</th>
                           <th className="p-2 font-medium border-l" rowSpan={2}></th>
@@ -509,6 +524,41 @@ export default function PlanungPage() {
                               <td className="p-1.5 text-right tabular-nums">
                                 {soll.minProColli.toFixed(2)}
                               </td>
+                              {/* SIM-Ziel-Tor (nur für IST-Sim-Aufträge) */}
+                              <td className="p-1.5 border-l">
+                                {isSim && ist.simAuftragId ? (
+                                  <select
+                                    className="h-7 w-[140px] text-xs bg-background border rounded px-1"
+                                    value={(() => {
+                                      const sim = simVarianteByParent.get(ist.simAuftragId!);
+                                      return sim?.bereichObjectId != null ? String(sim.bereichObjectId) : '';
+                                    })()}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      if (!val) removeSimVarianteFor(ist.simAuftragId!);
+                                      else forkSimAuftragAsSim(ist.simAuftragId!, Number(val));
+                                    }}
+                                  >
+                                    <option value="">— keine Sim —</option>
+                                    {(() => {
+                                      const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
+                                      const vonId = orig?.vonObjectId ?? -1;
+                                      const sued = torOptions.filter((t) => t.id !== vonId && t.type === 'tor' && (t.torNummer ?? 0) >= 1 && (t.torNummer ?? 0) <= 52);
+                                      const kopf = torOptions.filter((t) => t.id !== vonId && t.type === 'tor' && (t.torNummer ?? 0) >= 53 && (t.torNummer ?? 0) <= 60);
+                                      const nord = torOptions.filter((t) => t.id !== vonId && t.type === 'tor' && (t.torNummer ?? 0) >= 61);
+                                      return (
+                                        <>
+                                          {sued.length > 0 && <optgroup label={`Süd (${sued.length})`}>{sued.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
+                                          {kopf.length > 0 && <optgroup label={`Kopframpe (${kopf.length})`}>{kopf.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
+                                          {nord.length > 0 && <optgroup label={`Nord (${nord.length})`}>{nord.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>}
+                                        </>
+                                      );
+                                    })()}
+                                  </select>
+                                ) : (
+                                  <span className="text-[11px] text-muted-foreground italic">–</span>
+                                )}
+                              </td>
                               {/* IST Std */}
                               <td className="p-1.5 text-right border-l tabular-nums text-muted-foreground">
                                 {fmtNum(ist.gesamtStunden, 1)}
@@ -560,6 +610,7 @@ export default function PlanungPage() {
                           <td className="p-2"></td>
                           <td className="p-2 text-right">{fmtNum(istAgg.meta.durchschnittWegM, 0)}</td>
                           <td className="p-2 text-right">Ø</td>
+                          <td className="p-2 border-l"></td>
                           <td className="p-2 text-right border-l tabular-nums">{fmtNum(allIstMeta.gesamtStunden, 1)}</td>
                           <td className="p-2 text-right tabular-nums">{fmtNum(sollMeta.gesamtStunden, 1)}</td>
                           <td className="p-2 text-right border-l tabular-nums">{fmtEUR(allIstMeta.gesamtKosten)}</td>

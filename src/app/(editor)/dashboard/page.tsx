@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect } from 'react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StundenChart } from '@/components/dashboard/StundenChart';
 import { AbteilungsChart } from '@/components/dashboard/AbteilungsChart';
@@ -14,8 +14,6 @@ import { berechneFlaechenbedarf } from '@/lib/flaechenrechner';
 import { berechneGewichtetenVerteilweg } from '@/lib/verteilweg-rechner';
 import { simAuftraegeToZeilen } from '@/lib/auftragsplanung';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Timer,
   Users,
@@ -38,12 +36,10 @@ export default function DashboardPage() {
   const gaenge = useTopisStore((s) => s.gaenge);
   const ffzList = useTopisStore((s) => s.ffz);
   const simAuftraege = useTopisStore((s) => s.simAuftraege);
-  const forkSimAuftragAsSim = useTopisStore((s) => s.forkSimAuftragAsSim);
-  const removeSimVarianteFor = useTopisStore((s) => s.removeSimVarianteFor);
 
-  // Planungs-Block: Stundensatz + FFZ + Min/Colli-Fix als Dashboard-Parameter
-  const [planSatz, setPlanSatz] = useState(35);
-  const [planMinFix, setPlanMinFix] = useState(1.17);
+  // Sim-Standard-Werte für Σ-Berechnung im Dashboard (read-only)
+  const planSatz = 35;
+  const planMinFix = 1.17;
   const modell = useProzessmodellStore((s) => s.modell);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const parameter = useProzessmodellStore((s) => s.parameter);
@@ -161,9 +157,9 @@ export default function DashboardPage() {
           ) : (
             <>
 
-              {/* ==================== Reihe 0: Planungs-Block (IST + SIM) ==================== */}
-              {(() => {
-                const allZeilen = simAuftraegeToZeilen({
+              {/* ==================== Sim-Hinweis (read-only) ==================== */}
+              {simAuftraege.length > 0 && (() => {
+                const simZeilen = simAuftraegeToZeilen({
                   simAuftraege,
                   objects,
                   gaenge,
@@ -172,210 +168,19 @@ export default function DashboardPage() {
                   stundensatzEuro: planSatz,
                   minProColliFix: planMinFix,
                 });
-                // Trennen: IST = ohne parentId, SIM = mit parentId
-                const istRaw = simAuftraege.filter((a) => !a.parentId);
-                const simByParent = new Map(simAuftraege.filter((a) => a.parentId).map((a) => [a.parentId!, a]));
-                const torObjects = objects.filter((o) => o.type === 'tor').sort((a, b) => (a.torNummer ?? 999) - (b.torNummer ?? 999));
-
-                const istZeilen = allZeilen.filter((z) => {
-                  const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
-                  return orig && !orig.parentId;
-                });
-                const simZeilen = allZeilen.filter((z) => {
-                  const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
-                  return orig && orig.parentId;
-                });
-                const simZeilenByParent = new Map(simZeilen.map((z) => {
-                  const orig = simAuftraege.find((a) => a.id === z.simAuftragId);
-                  return [orig?.parentId ?? '', z];
-                }));
-
-                const sumIstStd = istZeilen.reduce((s, z) => s + z.gesamtStunden, 0);
-                const sumIstKos = istZeilen.reduce((s, z) => s + z.kosten, 0);
-                // Effektive SIM-Summe: für jeden IST-Auftrag nimm SIM wenn vorhanden, sonst IST
-                let sumEffStd = 0, sumEffKos = 0;
-                for (const ist of istZeilen) {
-                  const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
-                  if (!orig) continue;
-                  const sim = simZeilenByParent.get(orig.id);
-                  if (sim) {
-                    sumEffStd += sim.gesamtStunden;
-                    sumEffKos += sim.kosten;
-                  } else {
-                    sumEffStd += ist.gesamtStunden;
-                    sumEffKos += ist.kosten;
-                  }
-                }
-                const deltaKos = sumEffKos - sumIstKos;
-                const deltaStd = sumEffStd - sumIstStd;
-                const simAnzahl = simZeilenByParent.size;
-
+                const sumKos = simZeilen.reduce((s, z) => s + z.kosten, 0);
+                const sumStd = simZeilen.reduce((s, z) => s + z.gesamtStunden, 0);
                 return (
-                  <Card className="border-blue-500/40 bg-blue-500/5">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-3">
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-                          Planung — IST ({istZeilen.length}) {simAnzahl > 0 ? `· SIM-Varianten (${simAnzahl})` : ''}
-                        </h3>
-                        <div className="flex items-end gap-3">
-                          <div className="flex flex-col gap-1">
-                            <Label htmlFor="plansatz" className="text-[10px]">Stundensatz</Label>
-                            <div className="flex items-center gap-1">
-                              <Input id="plansatz" type="number" value={planSatz}
-                                onChange={(e) => setPlanSatz(Number(e.target.value) || 0)}
-                                className="h-7 w-20 text-xs" min={0} step={0.5} />
-                              <span className="text-[10px] text-muted-foreground">€/h</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <Label htmlFor="planminfix" className="text-[10px]">Min/Colli fix</Label>
-                            <Input id="planminfix" type="number" value={planMinFix}
-                              onChange={(e) => setPlanMinFix(Number(e.target.value) || 0)}
-                              className="h-7 w-20 text-xs" min={0} step={0.01} />
-                          </div>
-                        </div>
+                  <Card className="border-blue-500/30 bg-blue-500/5">
+                    <CardContent className="py-3 flex items-center justify-between flex-wrap gap-2">
+                      <div className="text-sm">
+                        <strong className="text-blue-600">{simZeilen.length}</strong> Planungs-Aufträge aktiv —
+                        Σ <strong>{sumStd.toFixed(1)} h</strong> · <strong>{sumKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</strong>
+                        <span className="text-[11px] text-muted-foreground ml-2">(bei {planSatz} €/h, {planMinFix.toFixed(2)} Min/Colli fix)</span>
                       </div>
-
-                      {istZeilen.length === 0 ? (
-                        <div className="text-xs text-muted-foreground py-3 text-center">
-                          Noch keine IST-Aufträge. Zurück zum Editor → Phase „Planung" →
-                          „10 Beispiele laden" oder „Auftrag anlegen".
-                        </div>
-                      ) : (
-                        <>
-                          {/* Gesamtsummen oben: IST | SIM-effektiv | Δ */}
-                          <div className="grid grid-cols-3 gap-3 text-sm border-y border-blue-500/20 py-2">
-                            <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">IST Σ Kosten</div>
-                              <div className="text-xl font-bold">{sumIstKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
-                              <div className="text-[10px] text-muted-foreground">{sumIstStd.toFixed(1)} h</div>
-                            </div>
-                            <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">SIM Σ Kosten (effektiv)</div>
-                              <div className="text-xl font-bold text-blue-600">{sumEffKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</div>
-                              <div className="text-[10px] text-muted-foreground">{sumEffStd.toFixed(1)} h</div>
-                            </div>
-                            <div>
-                              <div className="text-[10px] text-muted-foreground uppercase">Δ SIM vs IST</div>
-                              <div className={`text-xl font-bold ${deltaKos < 0 ? 'text-green-600' : deltaKos > 0 ? 'text-red-500' : ''}`}>
-                                {deltaKos < 0 ? '−' : deltaKos > 0 ? '+' : '±'}
-                                {Math.abs(deltaKos).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
-                              </div>
-                              <div className="text-[10px] text-muted-foreground">
-                                {deltaStd < 0 ? '−' : '+'}{Math.abs(deltaStd).toFixed(1)} h
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Tabelle: pro IST eine Zeile + Sim-Auswahl rechts */}
-                          <div className="max-h-[400px] overflow-y-auto">
-                            <table className="w-full text-xs">
-                              <thead className="bg-blue-500/10 sticky top-0">
-                                <tr>
-                                  <th className="text-left p-1.5 font-medium">IST Von → Nach</th>
-                                  <th className="text-right p-1.5 font-medium">Colli</th>
-                                  <th className="text-right p-1.5 font-medium">IST Weg</th>
-                                  <th className="text-right p-1.5 font-medium">IST €</th>
-                                  <th className="p-1.5 font-medium">SIM Ziel-Tor</th>
-                                  <th className="text-right p-1.5 font-medium">SIM Weg</th>
-                                  <th className="text-right p-1.5 font-medium">SIM €</th>
-                                  <th className="text-right p-1.5 font-medium">Δ</th>
-                                  <th className="p-1.5 font-medium"></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {istZeilen.map((ist) => {
-                                  const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
-                                  if (!orig) return null;
-                                  const sim = simZeilenByParent.get(orig.id);
-                                  const rowDelta = sim ? sim.kosten - ist.kosten : 0;
-                                  return (
-                                    <tr key={ist.id} className="border-t border-blue-500/10 hover:bg-blue-500/5">
-                                      <td className="p-1.5 font-medium">{ist.torName} → {ist.bereichName}</td>
-                                      <td className="p-1.5 text-right tabular-nums">{ist.colli.toLocaleString('de-DE')}</td>
-                                      <td className="p-1.5 text-right tabular-nums">
-                                        {ist.warnung === 'weg-fehlt'
-                                          ? <span className="text-amber-500" title="A* fand keinen Gang-Pfad — Luftlinie als Schätzung">~{Math.round(ist.distanzM)}m</span>
-                                          : ist.warnung
-                                          ? <span className="text-amber-500">!</span>
-                                          : `${Math.round(ist.distanzM)}m`}
-                                      </td>
-                                      <td className="p-1.5 text-right tabular-nums">{ist.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</td>
-                                      <td className="p-1.5">
-                                        <select
-                                          className="h-7 w-[200px] text-xs bg-background border rounded px-1"
-                                          value={sim ? sim.bereichObjectId ?? '' : ''}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (!val) {
-                                              removeSimVarianteFor(orig.id);
-                                            } else {
-                                              forkSimAuftragAsSim(orig.id, Number(val));
-                                            }
-                                          }}
-                                        >
-                                          <option value="">— keine Simulation —</option>
-                                          {(() => {
-                                            const sued = torObjects.filter((t) => t.id !== orig.vonObjectId && (t.torNummer ?? 0) >= 1 && (t.torNummer ?? 0) <= 52);
-                                            const kopf = torObjects.filter((t) => t.id !== orig.vonObjectId && (t.torNummer ?? 0) >= 53 && (t.torNummer ?? 0) <= 60);
-                                            const nord = torObjects.filter((t) => t.id !== orig.vonObjectId && (t.torNummer ?? 0) >= 61);
-                                            return (
-                                              <>
-                                                {sued.length > 0 && (
-                                                  <optgroup label={`Süd (Tor 1–52, ${sued.length})`}>
-                                                    {sued.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                  </optgroup>
-                                                )}
-                                                {kopf.length > 0 && (
-                                                  <optgroup label={`Kopframpe (Tor 53–60, ${kopf.length})`}>
-                                                    {kopf.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                  </optgroup>
-                                                )}
-                                                {nord.length > 0 && (
-                                                  <optgroup label={`Nord (Tor 61–115, ${nord.length})`}>
-                                                    {nord.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                  </optgroup>
-                                                )}
-                                              </>
-                                            );
-                                          })()}
-                                        </select>
-                                      </td>
-                                      <td className="p-1.5 text-right tabular-nums">
-                                        {sim
-                                          ? (sim.warnung === 'weg-fehlt'
-                                              ? <span className="text-amber-500" title="A* fand keinen Gang-Pfad — Luftlinie">~{Math.round(sim.distanzM)}m</span>
-                                              : `${Math.round(sim.distanzM)}m`)
-                                          : '—'}
-                                      </td>
-                                      <td className="p-1.5 text-right tabular-nums text-blue-600 font-semibold">
-                                        {sim ? sim.kosten.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : '—'}
-                                      </td>
-                                      <td className={`p-1.5 text-right tabular-nums ${rowDelta < 0 ? 'text-green-600' : rowDelta > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                                        {sim ? `${rowDelta < 0 ? '−' : '+'}${Math.abs(rowDelta).toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}` : '—'}
-                                      </td>
-                                      <td className="p-1.5">
-                                        {sim && (
-                                          <button
-                                            type="button"
-                                            onClick={() => removeSimVarianteFor(orig.id)}
-                                            className="text-[10px] text-muted-foreground hover:text-foreground underline"
-                                          >
-                                            ×
-                                          </button>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">
-                            IST = wie heute geplant · SIM = was-wäre-wenn anderes Ziel-Tor · Linien auf der Halle: IST amber, SIM blau gestrichelt
-                          </div>
-                        </>
-                      )}
+                      <a href="/topis-saas/projekt/planung/" className="text-xs text-blue-600 hover:underline">
+                        → bearbeiten in der Planung
+                      </a>
                     </CardContent>
                   </Card>
                 );
