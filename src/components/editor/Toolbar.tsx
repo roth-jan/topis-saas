@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTopisStore, useTool, useZoom } from '@/lib/store';
+import type { Gang } from '@/types/topis';
 import { generateDemoRecordsFromLayout } from '@/lib/demo-records-generator';
 import { BereichOptimizerDialog } from '@/components/dialogs/BereichOptimizerDialog';
 import { Sparkles } from 'lucide-react';
@@ -71,6 +72,7 @@ import { Tool } from '@/types/topis';
 import { exportToJSON, importFromJSON, downloadFile, openFileDialog, downloadSVG } from '@/lib/export';
 import { generateGaenge, DEFAULT_GANG_SETTINGS } from '@/lib/gang-generator';
 import { generateWegflaecheNegativ } from '@/lib/wegflaeche-negativ';
+import { generateGaengeFromPathAreas } from '@/lib/gang-aus-patharea';
 import { ProjektVergleichDialog } from '@/components/dialogs/ProjektVergleichDialog';
 import { ThemeToggleSimple } from '@/components/theme-toggle';
 import { useTheme } from 'next-themes';
@@ -478,6 +480,23 @@ export function Toolbar() {
     } else {
       toast.info('Kein gespeichertes Projekt gefunden');
     }
+  };
+
+  // Auto-Gänge aus pathAreas (Lastenheft 3.1.4.2 "orientiert an Mitte des Wegs")
+  const handleGenerateGaengeAusPathAreas = () => {
+    const state = useTopisStore.getState();
+    const pas = state.pathAreas;
+    if (pas.length === 0) {
+      toast.error('Erst Wegflächen zeichnen — Auto-Gänge brauchen pathAreas als Quelle.');
+      return;
+    }
+    // Auto-Gänge identifizieren (Namens-Präfix "Auto:") und ersetzen
+    const userGaenge = state.gaenge.filter(g => !g.name.startsWith('Auto:'));
+    const generated = generateGaengeFromPathAreas(pas);
+    const startId = Math.max(0, ...state.gaenge.map(g => g.id)) + 1;
+    const neueGaenge = generated.map((g, i) => ({ ...g, id: startId + i } as Gang));
+    state.setGaenge([...userGaenge, ...neueGaenge]);
+    toast.success(`${neueGaenge.length} Auto-Gänge aus ${pas.length} Wegflächen abgeleitet (Mittellinien)`);
   };
 
   // Wegfläche Negativ-Modus (Lastenheft 3.1.4.1 Variante 1)
@@ -1176,6 +1195,15 @@ export function Toolbar() {
             title="Halle als Wegfläche, Bereiche/Regale/Hindernisse abziehen (Lastenheft 3.1.4.1 Variante 1)"
           >
             Negativ-Modus
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={handleGenerateGaengeAusPathAreas}
+            title="Lastenheft 3.1.4.2 'orientiert an Mitte des Wegs': pro Wegfläche eine Mittellinie als Gang ableiten"
+          >
+            Gänge aus Wegflächen
           </Button>
         </div>
         )}

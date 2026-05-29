@@ -5,7 +5,7 @@ import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } fr
 import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
 import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor } from '@/types/topis';
 import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
-import { findPathBetweenObjects, lineCrossesAnyWall, buildGangGraph } from '@/lib/pathfinding';
+import { findPathBetweenObjects, lineCrossesAnyWall, buildGangGraph, findPath } from '@/lib/pathfinding';
 import { findNearestAnchor } from '@/lib/path-anchor';
 import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResult } from '@/lib/gang-snap';
 import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
@@ -375,6 +375,34 @@ export function HallCanvas() {
           { duration: 5000 },
         );
         return;
+      }
+    } else if (waypoints.length >= 3 && gangGraph.nodes.length > 0) {
+      // Lastenheft 3.1.4.2 „orientiert an Mitte des Wegs": auch manuelle Pfade
+      // mit 3+ Stützstellen folgen der Mittellinie. Zwischen jedem Klick-Paar
+      // A*. Wenn ein Segment kein A*-Ergebnis liefert → Luftlinie als Fallback.
+      const stitched: { x: number; y: number; objectId: number | null }[] = [];
+      let anyRouted = false;
+      for (let i = 0; i + 1 < waypoints.length; i++) {
+        const a = waypoints[i];
+        const b = waypoints[i + 1];
+        const r = findPath(a.x, a.y, b.x, b.y, gangGraph, undefined, brandschutzWaende, pathAreas);
+        if (r && r.path.length >= 2) {
+          if (stitched.length === 0) {
+            r.path.forEach(p => stitched.push({ x: p.x, y: p.y, objectId: null }));
+          } else {
+            // erstes Element des nächsten Segments ist gleich dem letzten des vorherigen
+            r.path.slice(1).forEach(p => stitched.push({ x: p.x, y: p.y, objectId: null }));
+          }
+          anyRouted = true;
+        } else {
+          // Fallback Luftlinie für dieses Segment
+          if (stitched.length === 0) stitched.push({ ...a });
+          stitched.push({ ...b });
+        }
+      }
+      if (anyRouted) {
+        finalWaypoints = stitched;
+        routedOverGang = true;
       }
     }
 
