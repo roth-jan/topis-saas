@@ -26,6 +26,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggleSimple } from '@/components/theme-toggle';
 
 export default function DashboardPage() {
   const analyse = useBetriebsdatenStore((s) => s.analyse);
@@ -137,6 +138,9 @@ export default function DashboardPage() {
             {analyse.zeitraum.von} — {analyse.zeitraum.bis} | {analyse.arbeitstage} Arbeitstage
           </span>
         )}
+        <div className="ml-auto">
+          <ThemeToggleSimple />
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -367,11 +371,11 @@ export default function DashboardPage() {
                               <td className="p-1.5 text-right">
                                 <span
                                   className={`${
-                                    m.auslastung > 0.8
-                                      ? 'text-red-500'
-                                      : m.auslastung > 0.5
+                                    m.auslastung >= 0.8
+                                      ? 'text-green-500'
+                                      : m.auslastung >= 0.5
                                       ? 'text-yellow-500'
-                                      : 'text-green-500'
+                                      : 'text-red-500'
                                   }`}
                                 >
                                   {Math.round(m.auslastung * 100)}%
@@ -396,7 +400,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-4 gap-3">
                       <div className="space-y-1">
                         <div className="text-[11px] text-muted-foreground uppercase">pro Tag</div>
-                        <div className="text-2xl font-bold">{Math.round(aggregation.tag).toLocaleString('de-DE')}</div>
+                        <div className="text-2xl font-bold">{aggregation.tag.toLocaleString('de-DE', { maximumFractionDigits: 1 })}</div>
                         <div className="text-[11px] text-muted-foreground">Std</div>
                       </div>
                       <div className="space-y-1">

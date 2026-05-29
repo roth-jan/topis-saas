@@ -15,9 +15,14 @@ import {
   DEFAULT_HALL,
   DEFAULT_FFZ,
   OBJECT_DEFAULTS,
-  ProjektSnapshot
+  ProjektSnapshot,
+  MittlererWegRun,
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
+import { findPathBetweenObjects, buildGangGraph } from './pathfinding';
+
+// Modul-lokaler Debounce-Timer für Path-Auto-Recompute beim Object-Move
+let _recomputeTimer: number | null = null;
 
 // ==================== UNDO/REDO ====================
 const MAX_UNDO_STACK = 50;
@@ -101,6 +106,10 @@ interface TopisStore extends TopisState {
   deletePathArea: (id: number) => void;
   selectPathArea: (area: PathArea | null) => void;
 
+  // Mittlerer-Weg-Run Actions (Lastenheft 3.2.4)
+  saveMittlererWegRun: (run: Omit<MittlererWegRun, 'id'>) => void;
+  deleteMittlererWegRun: (id: number) => void;
+
   // Conveyor Actions
   addConveyor: (conveyor: Omit<Conveyor, 'id'>) => Conveyor;
   updateConveyor: (id: number, updates: Partial<Conveyor>) => void;
@@ -135,6 +144,8 @@ interface TopisStore extends TopisState {
   setFocusedTor: (id: number | null) => void;
   /** Schaltet den Übersichts-Modus (alle Wege gleichzeitig) ein/aus. */
   toggleShowAllSimRoutes: () => void;
+  /** Startet/stoppt die Stapler-Animation für einen Sim-Auftrag. */
+  setAnimationActive: (id: string | null) => void;
 
   // Project Actions
   saveVorher: (snapshot: ProjektSnapshot, screenshot: string) => void;
@@ -144,6 +155,10 @@ interface TopisStore extends TopisState {
   // Bulk Actions
   resetState: () => void;
   loadState: (state: Partial<TopisState>) => void;
+
+  // Path-Recompute (Lastenheft 3.1.4.2 — automatische Aktualisierung)
+  recomputeAllPaths: () => void;
+  scheduleRecomputeForObject: (objectId: number) => void;
 }
 
 const initialState: TopisState = {
@@ -164,6 +179,8 @@ const initialState: TopisState = {
   currentPath: null,
   pathAreas: [],
   pathAreaIdCounter: 1,
+  mittlereWegRuns: [],
+  mittlererWegRunIdCounter: 1,
   gaenge: [],
   showGaenge: true,
   selectedGang: null,
@@ -178,6 +195,7 @@ const initialState: TopisState = {
   simAuftragPending: null,
   focusedTorId: null,
   showAllSimRoutes: false,
+  animationActiveId: null,
   zoom: 1,
   pan: { x: 0, y: 0 },
   gridSize: 1,
@@ -263,9 +281,16 @@ export const useTopisStore = create<TopisStore>()(
   setActiveHall: (id) => set({ activeHallId: id }),
   updateHall: (id, updates) => {
     get().pushSnapshot();
-    set((state) => ({
-      halls: state.halls.map(h => h.id === id ? { ...h, ...updates } : h)
-    }));
+    set((state) => {
+      const halls = state.halls.map(h => h.id === id ? { ...h, ...updates } : h);
+      // Legacy state.hall mit aktiver Halle synchron halten (A2 28.05.):
+      // Sonst zeigt state.hall.width/height den initialen Default statt der
+      // geladenen Hallen-Größe — Drift zwischen Canvas-Anzeige und State.
+      const legacyHall = id === state.activeHallId
+        ? { ...state.hall, ...updates }
+        : state.hall;
+      return { halls, hall: legacyHall };
+    });
   },
 
   rotateHall90: () => {
@@ -314,12 +339,27 @@ export const useTopisStore = create<TopisStore>()(
         ? { ...state.selectedObject, ...updates }
         : state.selectedObject
     }));
+    // Lastenheft 3.1.4.2: bei Verschiebung von verknüpften Elementen Wege
+    // automatisch aktualisieren. Debounced damit Drag-Frames nicht spammen.
+    if (updates.x !== undefined || updates.y !== undefined || updates.width !== undefined || updates.height !== undefined) {
+      get().scheduleRecomputeForObject(id);
+    }
   },
   deleteObject: (id) => {
     get().pushSnapshot();
     set((state) => ({
       objects: state.objects.filter(o => o.id !== id),
-      selectedObject: state.selectedObject?.id === id ? null : state.selectedObject
+      selectedObject: state.selectedObject?.id === id ? null : state.selectedObject,
+      // Verwaiste Paths bekommen "weg-fehlt"-Marker via Name. Tatsächliches
+      // Löschen würde User-Arbeit zerstören — wir lassen die Path-Geometrie
+      // stehen, markieren sie aber als verwaist (Lastenheft sagt nichts zum
+      // Lösch-Verhalten, sichere Variante).
+      paths: state.paths.map(p => {
+        const verwaist = (p.startObjectId === id) || (p.endObjectId === id);
+        if (!verwaist) return p;
+        return { ...p, name: p.name.startsWith('⚠ ') ? p.name : `⚠ ${p.name}` };
+      }),
+      simAuftraege: state.simAuftraege.filter(a => a.vonObjectId !== id && a.nachObjectId !== id),
     }));
   },
   selectObject: (obj) => set({ selectedObject: obj, selectedPath: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null }),
@@ -399,27 +439,45 @@ export const useTopisStore = create<TopisStore>()(
   },
   selectPathArea: (area) => set({ selectedPathArea: area, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedGang: null }),
 
+  // Mittlerer-Weg-Run Actions (Lastenheft 3.2.4)
+  saveMittlererWegRun: (run) => {
+    get().pushSnapshot();
+    set((state) => ({
+      mittlereWegRuns: [...state.mittlereWegRuns, { ...run, id: state.mittlererWegRunIdCounter }],
+      mittlererWegRunIdCounter: state.mittlererWegRunIdCounter + 1,
+    }));
+  },
+  deleteMittlererWegRun: (id) => {
+    get().pushSnapshot();
+    set((state) => ({ mittlereWegRuns: state.mittlereWegRuns.filter(r => r.id !== id) }));
+  },
+
   // Gang Actions
-  setGaenge: (gaenge) => { get().pushSnapshot(); set({ gaenge }); },
+  setGaenge: (gaenge) => { get().pushSnapshot(); set({ gaenge }); get().scheduleRecomputeForObject(-1); },
   addGang: (gang) => {
     get().pushSnapshot();
     set((state) => ({ gaenge: [...state.gaenge, gang] }));
+    get().scheduleRecomputeForObject(-1);
   },
-  updateGang: (id, updates) => set((state) => {
-    const updatedGaenge = state.gaenge.map(g => g.id === id ? { ...g, ...updates } : g);
-    return {
-      gaenge: updatedGaenge,
-      selectedGang: state.selectedGang?.id === id
-        ? { ...state.selectedGang, ...updates }
-        : state.selectedGang
-    };
-  }),
+  updateGang: (id, updates) => {
+    set((state) => {
+      const updatedGaenge = state.gaenge.map(g => g.id === id ? { ...g, ...updates } : g);
+      return {
+        gaenge: updatedGaenge,
+        selectedGang: state.selectedGang?.id === id
+          ? { ...state.selectedGang, ...updates }
+          : state.selectedGang
+      };
+    });
+    get().scheduleRecomputeForObject(-1);
+  },
   deleteGang: (id) => {
     get().pushSnapshot();
     set((state) => ({
       gaenge: state.gaenge.filter(g => g.id !== id),
       selectedGang: state.selectedGang?.id === id ? null : state.selectedGang
     }));
+    get().scheduleRecomputeForObject(-1);
   },
   selectGang: (gang) => set({ selectedGang: gang, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedPathArea: null }),
   toggleShowGaenge: () => set((state) => ({ showGaenge: !state.showGaenge })),
@@ -508,6 +566,7 @@ export const useTopisStore = create<TopisStore>()(
   })),
   setFocusedTor: (id) => set({ focusedTorId: id }),
   toggleShowAllSimRoutes: () => set((state) => ({ showAllSimRoutes: !state.showAllSimRoutes })),
+  setAnimationActive: (id) => set({ animationActiveId: id }),
   seedBeispielAuftraege: () => set((state) => {
     // Dynamic import nicht möglich in der Set-Funktion; wir lassen die
     // Beispielliste hier inline (klein, Demo-Zweck).
@@ -589,7 +648,53 @@ export const useTopisStore = create<TopisStore>()(
 
   // Bulk Actions
   resetState: () => set({ ...initialState, undoStack: [], redoStack: [], originalLayout: null }),
-  loadState: (newState) => set((state) => ({ ...state, ...newState }))
+  loadState: (newState) => set((state) => ({ ...state, ...newState })),
+
+  /**
+   * Berechnet alle Paths mit gesetztem startObjectId/endObjectId neu — basierend
+   * auf den aktuellen Object-Positionen und dem Gang-Netz. Manuell gezeichnete
+   * Wege ohne Verknüpfung bleiben unverändert (Lastenheft 3.1.4.2: nur
+   * verknüpfte Wege werden aktualisiert).
+   */
+  recomputeAllPaths: () => {
+    const state = get();
+    const graph = buildGangGraph(state.gaenge);
+    const walls = state.objects.filter((o) => {
+      if (o.istUndurchlaessig === false) return false;
+      if (o.istUndurchlaessig === true) return true;
+      if (o.type === 'tuer') return true; // Tür-Region wird in lineCrossesAnyWall als Durchlass behandelt
+      return o.type === 'wand' || o.type === 'bereich' || o.type === 'regal' || o.type === 'hindernis';
+    });
+    const byId = new Map(state.objects.map((o) => [o.id, o]));
+    let changed = false;
+    const newPaths = state.paths.map((p) => {
+      if (p.startObjectId == null || p.endObjectId == null) return p;
+      const from = byId.get(p.startObjectId);
+      const to = byId.get(p.endObjectId);
+      if (!from || !to) return p; // verwaister Path — bleibt als „Geister"-Geometrie, später Cleanup
+      const r = findPathBetweenObjects(from, to, graph, undefined, walls, state.pathAreas);
+      if (!r) return p;
+      changed = true;
+      return {
+        ...p,
+        waypoints: r.path.map((pt) => ({ x: pt.x, y: pt.y, objectId: null })),
+        distance: r.distance,
+        time: r.time,
+      };
+    });
+    if (changed) set({ paths: newPaths });
+  },
+
+  scheduleRecomputeForObject: (_objectId: number) => {
+    // Debounce: erst nach 80 ms Maus-Ruhe recomputen (Drag-Frame-Stürme abfangen).
+    // _objectId aktuell nicht ausgewertet — alle Paths werden recomputed; das
+    // ist ok bei einer überschaubaren Path-Anzahl, könnte später indexiert werden.
+    if (_recomputeTimer != null) clearTimeout(_recomputeTimer);
+    _recomputeTimer = setTimeout(() => {
+      _recomputeTimer = null;
+      get().recomputeAllPaths();
+    }, 80) as unknown as number;
+  },
 }),
   {
     name: 'topis-layout',
@@ -604,17 +709,31 @@ export const useTopisStore = create<TopisStore>()(
       pathIdCounter: state.pathIdCounter,
       pathAreas: state.pathAreas,
       pathAreaIdCounter: state.pathAreaIdCounter,
+      mittlereWegRuns: state.mittlereWegRuns,
+      mittlererWegRunIdCounter: state.mittlererWegRunIdCounter,
       gaenge: state.gaenge,
       ffz: state.ffz,
       conveyors: state.conveyors,
       conveyorIdCounter: state.conveyorIdCounter,
       simAuftraege: state.simAuftraege,
+      focusedTorId: state.focusedTorId,
+      animationActiveId: state.animationActiveId,
     }),
   }
 ));
 
 // Selector hooks for performance
 export const useObjects = () => useTopisStore((state) => state.objects);
+// O(1)-Lookup-Index — wird bei jeder objects-Änderung neu erzeugt, ist aber
+// pro Render nur einmal in jedem Consumer nötig (statt 100x objects.find).
+const _objectIndexCache = { ref: null as TopisObject[] | null, map: new Map<number, TopisObject>() };
+export const useObjectIndex = (): Map<number, TopisObject> => useTopisStore((state) => {
+  if (_objectIndexCache.ref !== state.objects) {
+    _objectIndexCache.ref = state.objects;
+    _objectIndexCache.map = new Map(state.objects.map(o => [o.id, o]));
+  }
+  return _objectIndexCache.map;
+});
 export const useSelectedObject = () => useTopisStore((state) => state.selectedObject);
 export const useHalls = () => useTopisStore((state) => state.halls);
 export const useActiveHall = () => useTopisStore((state) =>

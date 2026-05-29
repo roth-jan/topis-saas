@@ -284,6 +284,7 @@ export function PropertiesPanel() {
   const updateObject = useTopisStore((s) => s.updateObject);
   const deleteObject = useTopisStore((s) => s.deleteObject);
   const selectObject = useTopisStore((s) => s.selectObject);
+  const addObject = useTopisStore((s) => s.addObject);
 
   const selectedPath = useTopisStore((s) => s.selectedPath);
 
@@ -305,13 +306,32 @@ export function PropertiesPanel() {
     );
   }
 
-  const handleChange = (field: string, value: string | number | string[] | Record<string, string> | undefined) => {
+  const handleChange = (field: string, value: string | number | string[] | Record<string, string> | { x: number; y: number } | undefined) => {
     updateObject(selectedObject.id, { [field]: value });
   };
 
   const handleDelete = () => {
     deleteObject(selectedObject.id);
     selectObject(null);
+  };
+
+  const handleDuplicate = () => {
+    const { id: _id, ...rest } = selectedObject;
+    void _id;
+    // Bei Toren: Kopie eine Tor-Breite weiter entlang der Wand (Nico 22.05.)
+    let dx = 2, dy = 2;
+    if (selectedObject.type === 'tor') {
+      const side = selectedObject.side;
+      if (side === 'north' || side === 'south') { dx = selectedObject.width; dy = 0; }
+      else if (side === 'east' || side === 'west') { dx = 0; dy = selectedObject.height; }
+    }
+    const kopie = addObject({
+      ...rest,
+      x: selectedObject.x + dx,
+      y: selectedObject.y + dy,
+      name: selectedObject.name ? `${selectedObject.name} (Kopie)` : 'Kopie',
+    });
+    selectObject(kopie);
   };
 
   return (
@@ -326,7 +346,7 @@ export function PropertiesPanel() {
             </Badge>
           </div>
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={handleDuplicate} title="Duplizieren (Cmd+D)">
               <Copy className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={handleDelete}>
@@ -427,6 +447,65 @@ export function PropertiesPanel() {
         </Card>
 
         {/* Type-specific properties */}
+        {(selectedObject.type === 'tor' || selectedObject.type === 'bereich' || selectedObject.type === 'stellplatz' || selectedObject.type === 'sperrplatz' || selectedObject.type === 'klaerplatz') && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Wegpunkt (Lastenheft 3.1.4.2)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="wegpunktRolle" className="text-xs">Rolle</Label>
+                <select
+                  id="wegpunktRolle"
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedObject.wegpunktRolle ?? 'beides'}
+                  onChange={(e) => handleChange('wegpunktRolle', e.target.value)}
+                >
+                  <option value="beides">Start &amp; Ende (Default)</option>
+                  <option value="start">nur Start</option>
+                  <option value="ende">nur Ende</option>
+                  <option value="keiner">keiner (vom Wege-Netz ausgeschlossen)</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Anker-X (0..1)</Label>
+                  <Input
+                    type="number"
+                    step={0.1}
+                    min={0}
+                    max={1}
+                    value={selectedObject.wegpunktOffset?.x ?? 0.5}
+                    onChange={(e) => {
+                      const x = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+                      const y = selectedObject.wegpunktOffset?.y ?? 0.5;
+                      handleChange('wegpunktOffset', { x, y });
+                    }}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Anker-Y (0..1)</Label>
+                  <Input
+                    type="number"
+                    step={0.1}
+                    min={0}
+                    max={1}
+                    value={selectedObject.wegpunktOffset?.y ?? 0.5}
+                    onChange={(e) => {
+                      const x = selectedObject.wegpunktOffset?.x ?? 0.5;
+                      const y = Math.max(0, Math.min(1, parseFloat(e.target.value) || 0));
+                      handleChange('wegpunktOffset', { x, y });
+                    }}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                0,0 = links-oben · 0,5;0,5 = Mitte (default) · 1,1 = rechts-unten. Beispiel: Nord-Tor mit Anker 0,5;1 startet/endet innen.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {selectedObject.type === 'stellplatz' && (
           <Card>
             <CardHeader className="py-3">

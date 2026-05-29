@@ -392,8 +392,8 @@ export function BetriebsdatenImportDialog() {
           Betriebsdaten
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl w-[min(900px,92vw)] h-[min(85vh,820px)] flex flex-col gap-3 p-4 overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
             Betriebsdaten importieren
@@ -404,7 +404,7 @@ export function BetriebsdatenImportDialog() {
         </DialogHeader>
 
         {/* Step Indicator */}
-        <div className="flex items-center gap-1 mb-2">
+        <div className="flex items-center gap-1 shrink-0">
           {stepLabels.map((label, i) => (
             <div key={i} className="flex items-center gap-1 flex-1">
               <div
@@ -426,6 +426,7 @@ export function BetriebsdatenImportDialog() {
           ))}
         </div>
 
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {/* ==================== STEP 1 ==================== */}
         {step === 1 && (
           <div className="space-y-4">
@@ -789,8 +790,10 @@ export function BetriebsdatenImportDialog() {
           </div>
         )}
 
+        </div>
+
         {/* Navigation */}
-        <div className="flex justify-between mt-4 pt-3 border-t">
+        <div className="flex justify-between shrink-0 pt-3 border-t">
           <Button
             variant="outline"
             size="sm"

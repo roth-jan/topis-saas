@@ -1,5 +1,6 @@
 import type { ProjektVorlage } from '@/types/projekt';
 import { PROJEKT_GERSTHOFEN_2026 } from './layouts/schmid-halle6-2026';
+import { DUMMY_TEST } from './layouts/dummy-test';
 import { useTopisStore } from '@/lib/store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
@@ -12,6 +13,7 @@ import { getTemplate, getTemplateParameter } from '@/lib/data/prozessmodell-temp
  */
 export const PROJEKT_VORLAGEN: ProjektVorlage[] = [
   PROJEKT_GERSTHOFEN_2026,
+  DUMMY_TEST,
 ];
 
 /**
@@ -47,6 +49,14 @@ export function ladeProjektVorlage(id: string): ProjektVorlage | undefined {
   vorlage.objects.forEach(obj => addObject(obj));
   if (vorlage.gaenge && vorlage.gaenge.length > 0) {
     setGaenge(vorlage.gaenge);
+  }
+  if (vorlage.pathAreas && vorlage.pathAreas.length > 0) {
+    const counter = useTopisStore.getState().pathAreaIdCounter;
+    const areas = vorlage.pathAreas.map((a, i) => ({ ...a, id: counter + i }));
+    useTopisStore.setState({
+      pathAreas: areas,
+      pathAreaIdCounter: counter + areas.length,
+    });
   }
 
   // 2. Prozessmodell laden + Parameter setzen

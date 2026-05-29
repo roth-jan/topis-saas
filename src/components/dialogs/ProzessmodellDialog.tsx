@@ -26,6 +26,7 @@ export function ProzessmodellDialog() {
   const parameter = useProzessmodellStore((s) => s.parameter);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
   const updateParameter = useProzessmodellStore((s) => s.updateParameter);
+  const updateSchritt = useProzessmodellStore((s) => s.updateSchritt);
   const berechne = useProzessmodellStore((s) => s.berechne);
   const ladeModell = useProzessmodellStore((s) => s.ladeModell);
 
@@ -96,8 +97,8 @@ export function ProzessmodellDialog() {
           Prozessmodell
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl w-[min(1024px,95vw)] h-[min(85vh,820px)] flex flex-col gap-3 p-4 overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Calculator className="h-5 w-5" />
             {modell.name}
@@ -106,7 +107,7 @@ export function ProzessmodellDialog() {
         </DialogHeader>
 
         {/* Modell-Auswahl + Excel Import */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2 shrink-0">
           {PROZESSMODELL_TEMPLATES.length > 1 && (
             <>
               <Label className="text-xs">Modell:</Label>
@@ -142,8 +143,8 @@ export function ProzessmodellDialog() {
           </Button>
         </div>
 
-        <Tabs defaultValue="ergebnis" className="mt-2">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs defaultValue="ergebnis" className="flex-1 min-h-0 flex flex-col gap-2">
+          <TabsList className="grid w-full grid-cols-3 shrink-0">
             <TabsTrigger value="ergebnis" className="gap-1 text-xs">
               <BarChart3 className="h-3.5 w-3.5" />
               Ergebnis
@@ -159,7 +160,7 @@ export function ProzessmodellDialog() {
           </TabsList>
 
           {/* ==================== Tab: Ergebnis ==================== */}
-          <TabsContent value="ergebnis" className="space-y-4">
+          <TabsContent value="ergebnis" className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 mt-0">
             {ergebnis ? (
               <>
                 {/* Min/Colli Gesamtkarte */}
@@ -254,7 +255,7 @@ export function ProzessmodellDialog() {
           </TabsContent>
 
           {/* ==================== Tab: Parameter ==================== */}
-          <TabsContent value="parameter" className="space-y-4">
+          <TabsContent value="parameter" className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 mt-0">
             {kategorien.map(({ key, label }) => {
               const params = parameter.filter((p) => p.kategorie === key);
               if (params.length === 0) return null;
@@ -265,31 +266,37 @@ export function ProzessmodellDialog() {
                   </Label>
                   <div className="space-y-1">
                     {params.map((p) => (
-                      <div key={p.id} className="flex items-center gap-2 text-sm">
-                        <span className="flex-1 truncate" title={p.beschreibung}>
+                      <div
+                        key={p.id}
+                        className="grid items-center gap-2 text-sm"
+                        style={{ gridTemplateColumns: 'minmax(0,1fr) 6rem 3rem 4rem' }}
+                      >
+                        <span className="truncate min-w-0" title={p.beschreibung}>
                           {p.name}
                         </span>
                         <Input
                           type="number"
                           value={p.aktuellerWert}
                           onChange={(e) => updateParameter(p.id, parseFloat(e.target.value) || 0)}
-                          className="w-24 h-7 text-xs text-right"
+                          className="w-full h-7 text-xs text-right"
                           step={p.einheit === '%' ? 1 : 0.1}
                         />
-                        <span className="text-xs text-muted-foreground w-12">{p.einheit}</span>
-                        {p.quelle !== 'eingabe' && (
-                          <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              p.quelle === 'layout'
-                                ? 'bg-blue-500/10 text-blue-500'
-                                : p.quelle === 'scandaten'
-                                ? 'bg-green-500/10 text-green-500'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {p.quelle}
-                          </span>
-                        )}
+                        <span className="text-xs text-muted-foreground truncate">{p.einheit}</span>
+                        <span className="text-[10px] text-right">
+                          {p.quelle !== 'eingabe' && (
+                            <span
+                              className={`px-1.5 py-0.5 rounded ${
+                                p.quelle === 'layout'
+                                  ? 'bg-blue-500/10 text-blue-500'
+                                  : p.quelle === 'scandaten'
+                                  ? 'bg-green-500/10 text-green-500'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              {p.quelle}
+                            </span>
+                          )}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -306,7 +313,7 @@ export function ProzessmodellDialog() {
           </TabsContent>
 
           {/* ==================== Tab: Schritte ==================== */}
-          <TabsContent value="schritte" className="space-y-2">
+          <TabsContent value="schritte" className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-2 mt-0">
             {modell.abteilungen.map((abtDef) => {
               const schritte = modell.schritte.filter((s) => s.abteilung === abtDef.id);
               const isExpanded = expandedAbt[abtDef.id];
@@ -368,9 +375,36 @@ export function ProzessmodellDialog() {
                               <td className="p-1.5 text-right">
                                 {s.wegM > 0 ? `${s.wegM.toFixed(0)}m` : '-'}
                               </td>
-                              <td className="p-1.5 text-right">{s.standardzeitSek.toFixed(1)}s</td>
-                              <td className="p-1.5 text-right">{(s.anteil * 100).toFixed(0)}%</td>
-                              <td className="p-1.5 text-right">{s.haeufigkeit}</td>
+                              <td className="p-1.5 text-right">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  className="w-16 rounded border bg-background px-1 py-0.5 text-right text-xs"
+                                  value={s.standardzeitSek}
+                                  onChange={(e) => updateSchritt(s.nr, { standardzeitSek: parseFloat(e.target.value) || 0 })}
+                                />
+                              </td>
+                              <td className="p-1.5 text-right">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="1"
+                                  className="w-14 rounded border bg-background px-1 py-0.5 text-right text-xs"
+                                  value={s.anteil}
+                                  onChange={(e) => updateSchritt(s.nr, { anteil: parseFloat(e.target.value) || 0 })}
+                                />
+                              </td>
+                              <td className="p-1.5 text-right">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  min="0"
+                                  className="w-14 rounded border bg-background px-1 py-0.5 text-right text-xs"
+                                  value={s.haeufigkeit}
+                                  onChange={(e) => updateSchritt(s.nr, { haeufigkeit: parseFloat(e.target.value) || 0 })}
+                                />
+                              </td>
                               <td className="p-1.5 pr-3 text-right font-medium">{erg.toFixed(1)}s</td>
                             </tr>
                           );

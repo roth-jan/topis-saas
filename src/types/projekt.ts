@@ -1,4 +1,4 @@
-import type { TopisObject, Gang } from './topis';
+import type { TopisObject, Gang, PathArea } from './topis';
 
 /**
  * ProjektVorlage: Bündelt Layout + Prozessmodell-Parameter + Referenzwerte
@@ -19,6 +19,9 @@ export interface ProjektVorlage {
 
   /** Gänge (Wege-Netz für FFZ) */
   gaenge?: Gang[];
+
+  /** Wegflächen (gefärbte Bereiche unter den Gängen) */
+  pathAreas?: Omit<PathArea, 'id'>[];
 
   /** Welches Prozessmodell-Template verwenden */
   prozessmodell: 'se_standard' | 'sa_standard';

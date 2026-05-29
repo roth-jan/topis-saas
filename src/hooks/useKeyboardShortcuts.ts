@@ -14,6 +14,37 @@ export function useKeyboardShortcuts() {
   const deleteObject = useTopisStore((s) => s.deleteObject);
   const selectedObject = useTopisStore((s) => s.selectedObject);
   const selectObject = useTopisStore((s) => s.selectObject);
+  const addObject = useTopisStore((s) => s.addObject);
+  const undo = useTopisStore((s) => s.undo);
+  const redo = useTopisStore((s) => s.redo);
+  const canUndo = useTopisStore((s) => s.canUndo);
+  const canRedo = useTopisStore((s) => s.canRedo);
+
+  function duplicateSelected() {
+    if (!selectedObject) {
+      toast.info('Kein Objekt ausgewählt');
+      return;
+    }
+    const { id: _id, ...rest } = selectedObject;
+    void _id;
+    // Bei Toren: Kopie genau eine Tor-Breite weiter — entlang der Wand, nicht
+    // diagonal (Nico 22.05.). Bei Bereichen/Wänden ein paar Meter Versatz damit
+    // sichtbar dass es eine Kopie ist.
+    let dx = 2, dy = 2;
+    if (selectedObject.type === 'tor') {
+      const side = selectedObject.side;
+      if (side === 'north' || side === 'south') {
+        dx = selectedObject.width;
+        dy = 0;
+      } else if (side === 'east' || side === 'west') {
+        dx = 0;
+        dy = selectedObject.height;
+      }
+    }
+    const kopie = addObject({ ...rest, x: selectedObject.x + dx, y: selectedObject.y + dy, name: selectedObject.name ? `${selectedObject.name} (Kopie)` : 'Kopie' });
+    selectObject(kopie);
+    toast.success('Objekt dupliziert');
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -86,17 +117,30 @@ export function useKeyboardShortcuts() {
       // Ctrl/Cmd shortcuts
       if (e.metaKey || e.ctrlKey) {
         switch (e.key.toLowerCase()) {
-          case 's':
+          case 'd':
+            // Bei Browser-Bookmark-Konflikt (Windows: Strg+D) trotzdem versuchen
+            // zu unterdrücken; alternativ greift Strg+Shift+D als Backup.
             e.preventDefault();
-            toast.info('Projekt gespeichert');
+            e.stopPropagation();
+            duplicateSelected();
             break;
           case 'z':
             e.preventDefault();
-            toast.info('Rückgängig');
+            e.stopPropagation();
+            if (e.shiftKey) {
+              // Strg+Shift+Z = Redo (alternative zu Strg+Y)
+              if (canRedo()) { redo(); toast.success('Wiederholt'); }
+              else toast.info('Nichts zum Wiederholen');
+            } else {
+              if (canUndo()) { undo(); toast.success('Rückgängig'); }
+              else toast.info('Nichts rückgängig zu machen');
+            }
             break;
           case 'y':
             e.preventDefault();
-            toast.info('Wiederholen');
+            e.stopPropagation();
+            if (canRedo()) { redo(); toast.success('Wiederholt'); }
+            else toast.info('Nichts zum Wiederholen');
             break;
           case 'a':
             e.preventDefault();
@@ -108,5 +152,5 @@ export function useKeyboardShortcuts() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setTool, toggleGrid, toggleSnap, setZoom, zoom, deleteObject, selectedObject, selectObject]);
+  }, [setTool, toggleGrid, toggleSnap, setZoom, zoom, deleteObject, selectedObject, selectObject, addObject, undo, redo, canUndo, canRedo]);
 }

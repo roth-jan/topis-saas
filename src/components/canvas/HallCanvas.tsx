@@ -5,7 +5,10 @@ import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } fr
 import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
 import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor } from '@/types/topis';
 import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
-import { findPathBetweenObjects } from '@/lib/pathfinding';
+import { findPathBetweenObjects, lineCrossesAnyWall, buildGangGraph } from '@/lib/pathfinding';
+import { findNearestAnchor } from '@/lib/path-anchor';
+import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResult } from '@/lib/gang-snap';
+import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
 import { toast } from 'sonner';
 
 export function HallCanvas() {
@@ -22,6 +25,24 @@ export function HallCanvas() {
   const tool = useTool();
   const gaenge = useTopisStore((s) => s.gaenge);
   const cockpitRoute = useTopisStore((s) => s.cockpitRoute);
+  // Brandschutzwände aus objects extrahieren - für A*-Wand-Blocker (Pfad darf nicht durch Wand)
+  // Undurchlässige Objekte (Stapler kann nicht durchfahren).
+  // Generisch: jeder Typ der typischerweise undurchlässig ist (wand, bereich, regal, hindernis)
+  // PLUS explizit per istUndurchlaessig-Flag markierte Objekte.
+  const brandschutzWaende = useMemo(
+    () => objects.filter(o => {
+      if (o.istUndurchlaessig === false) return false; // explizit ausgeschaltet
+      if (o.istUndurchlaessig === true) return true;   // explizit eingeschaltet
+      // Default-Verhalten je Typ. Türen sind NIE Blocker (Lastenheft 3.1.1.2)
+      // — sie werden zusätzlich an lineCrossesAnyWall mitgegeben um die
+      // Wand-Region als Durchlass zu öffnen.
+      if (o.type === 'tuer') return true;
+      return o.type === 'wand' || o.type === 'bereich' || o.type === 'regal' || o.type === 'hindernis';
+    }),
+    [objects]
+  );
+  // Gang-Graph einmal pro gaenge-Wechsel cachen statt 5x pro Render bauen.
+  const gangGraph = useMemo(() => buildGangGraph(gaenge), [gaenge]);
   const simAuftraege = useTopisStore((s) => s.simAuftraege);
   const simAuftragPending = useTopisStore((s) => s.simAuftragPending);
   const startSimAuftrag = useTopisStore((s) => s.startSimAuftrag);
@@ -30,6 +51,9 @@ export function HallCanvas() {
   const focusedTorId = useTopisStore((s) => s.focusedTorId);
   const showAllSimRoutes = useTopisStore((s) => s.showAllSimRoutes);
   const setFocusedTor = useTopisStore((s) => s.setFocusedTor);
+  const animationActiveId = useTopisStore((s) => s.animationActiveId);
+  const setAnimationActive = useTopisStore((s) => s.setAnimationActive);
+  const [animationProgress, setAnimationProgress] = useState(0);
   const showGaenge = useTopisStore((s) => s.showGaenge);
   const showGrid = useTopisStore((s) => s.showGrid);
   const selectedObject = useTopisStore((s) => s.selectedObject);
@@ -50,6 +74,7 @@ export function HallCanvas() {
   const updateObject = useTopisStore((s) => s.updateObject);
   const addObject = useTopisStore((s) => s.addObject);
   const addGang = useTopisStore((s) => s.addGang);
+  const updateGang = useTopisStore((s) => s.updateGang);
   const selectGang = useTopisStore((s) => s.selectGang);
   const selectedGang = useTopisStore((s) => s.selectedGang);
   const selectPathArea = useTopisStore((s) => s.selectPathArea);
@@ -61,6 +86,10 @@ export function HallCanvas() {
   const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
 
   const [isDragging, setIsDragging] = useState(false);
+  // Drag-Threshold: 3px Maus-Bewegung bevor Object-Move startet. Verhindert
+  // versehentliches Verschieben beim Klicken auf ein Element (Nico 22.05.).
+  const dragMouseStartRef = useRef<{ x: number; y: number } | null>(null);
+  const dragThresholdPassedRef = useRef(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragObject, setDragObject] = useState<TopisObject | null>(null);
   // Resize-State: an welcher Ecke des selektierten Objekts wird gezogen
@@ -70,6 +99,14 @@ export function HallCanvas() {
   // Gang drawing state
   const [gangDrawStart, setGangDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [gangMousePos, setGangMousePos] = useState<{ x: number; y: number } | null>(null);
+  // SimCity-Style Snap-Preview: aktueller Snap-Treffer beim Gang-Werkzeug
+  const [gangSnap, setGangSnap] = useState<SnapResult>({ snapped: false });
+  // Snap-Preview für andere Werkzeuge (Path, PathArea)
+  const [toolSnap, setToolSnap] = useState<SnapHit | null>(null);
+  // Drag-Handle für existierende Gang-Endpunkte
+  const [gangEndpointDrag, setGangEndpointDrag] = useState<{ gangId: number; pointIndex: 0 | 1 } | null>(null);
+  // Vorberechnete Graph-Knoten für die permanente Visualisierung
+  const gangGraphNodes = useMemo(() => gangGraph.nodes, [gangGraph]);
 
   // Path drawing state
   const [pathDrawing, setPathDrawing] = useState(false);
@@ -84,6 +121,49 @@ export function HallCanvas() {
   // Measure tool state
   const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
   const [measureEnd, setMeasureEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // Stapler-Animation: requestAnimationFrame-Loop läuft solange animationActiveId gesetzt ist.
+  // KONSTANTE Visual-Geschwindigkeit (40 m/s, ca. 12x Echtzeit) — kurze Pfade gehen schnell,
+  // lange Pfade dauern proportional länger. Mindest-Dauer 0,8 s damit Mini-Wege sichtbar bleiben.
+  useEffect(() => {
+    if (!animationActiveId) {
+      setAnimationProgress(0);
+      return;
+    }
+    // Pfad-Länge (in Meter) für diese Animation bestimmen
+    const a = simAuftraege.find((s) => s.id === animationActiveId);
+    const von = a && objects.find((o) => o.id === a.vonObjectId);
+    const nach = a && objects.find((o) => o.id === a.nachObjectId);
+    let totalMeters = 50;
+    if (a && von && nach) {
+      const aCx = von.x + von.width / 2;
+      const aCy = von.y + von.height / 2;
+      const bCx = nach.x + nach.width / 2;
+      const bCy = nach.y + nach.height / 2;
+      try {
+        const r = findPathBetweenObjects(von, nach, gangGraph, undefined, brandschutzWaende, pathAreas);
+        totalMeters = r ? r.distance : Math.sqrt((bCx - aCx) ** 2 + (bCy - aCy) ** 2);
+      } catch {
+        totalMeters = Math.sqrt((bCx - aCx) ** 2 + (bCy - aCy) ** 2);
+      }
+    }
+    const VISUAL_SPEED_M_S = 40;
+    const duration = Math.max(800, (totalMeters / VISUAL_SPEED_M_S) * 1000);
+
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      setAnimationProgress(p);
+      if (p < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        setTimeout(() => setAnimationActive(null), 400);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [animationActiveId, setAnimationActive, simAuftraege, objects, gaenge]);
 
   // Conveyor drawing state
   const [currentConveyor, setCurrentConveyor] = useState<{ points: { x: number; y: number }[] } | null>(null);
@@ -112,6 +192,21 @@ export function HallCanvas() {
     timestamp: number;
   } | null>(null);
 
+  // Touch-Geraet-Erkennung — einmal pro Mount auswerten, nicht pro Klick.
+  // Auf Touch-Geraeten (Tablet) erweitern wir die Klick-Toleranz fuer Tore,
+  // damit man mit dem Finger genauer trifft. Maus-User merken nichts.
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(pointer: coarse)');
+    setIsCoarsePointer(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsCoarsePointer(e.matches);
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', onChange);
+    };
+  }, []);
+
   // Selected waypoint index (for highlighting)
   const [selectedWaypointIndex, setSelectedWaypointIndex] = useState<number | null>(null);
 
@@ -136,11 +231,15 @@ export function HallCanvas() {
   // Find ALL objects at position, sorted smallest first
   const findAllObjectsAt = useCallback((wx: number, wy: number): TopisObject[] => {
     const tolerance = Math.max(0.5, 2 / zoom);
+    // Auf Touch-Geraeten: ~10px in Welt-Koordinaten extra Toleranz fuer Tore,
+    // damit Finger-Klicks sicher treffen. 10px / SCALE / zoom = 1/zoom Meter.
+    const torTouchExtra = isCoarsePointer ? 1 / Math.max(zoom, 0.1) : 0;
 
     const hits: TopisObject[] = [];
     for (const obj of objects) {
-      if (wx >= obj.x && wx <= obj.x + obj.width &&
-          wy >= obj.y && wy <= obj.y + obj.height) {
+      const extra = obj.type === 'tor' ? torTouchExtra : 0;
+      if (wx >= obj.x - extra && wx <= obj.x + obj.width + extra &&
+          wy >= obj.y - extra && wy <= obj.y + obj.height + extra) {
         hits.push(obj);
       }
     }
@@ -148,8 +247,10 @@ export function HallCanvas() {
     // Also check with tolerance for small nearby objects
     if (hits.length === 0) {
       for (const obj of objects) {
-        if (wx >= obj.x - tolerance && wx <= obj.x + obj.width + tolerance &&
-            wy >= obj.y - tolerance && wy <= obj.y + obj.height + tolerance) {
+        const extra = obj.type === 'tor' ? torTouchExtra : 0;
+        const tol = tolerance + extra;
+        if (wx >= obj.x - tol && wx <= obj.x + obj.width + tol &&
+            wy >= obj.y - tol && wy <= obj.y + obj.height + tol) {
           hits.push(obj);
         }
       }
@@ -158,7 +259,7 @@ export function HallCanvas() {
     // Sort by area: smallest first
     hits.sort((a, b) => (a.width * a.height) - (b.width * b.height));
     return hits;
-  }, [objects, zoom]);
+  }, [objects, zoom, isCoarsePointer]);
 
   // Find object at position with click-cycling support
   const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
@@ -182,28 +283,15 @@ export function HallCanvas() {
     return hits[0];
   }, [findAllObjectsAt, clickCycle]);
 
-  // Find nearest object within tolerance (for path endpoint linking)
-  const findNearestObject = useCallback((wx: number, wy: number, tolerance: number = 3): TopisObject | null => {
-    let nearest: TopisObject | null = null;
-    let minDist = tolerance;
-
-    for (const obj of objects) {
-      // Check distance to object center
-      const centerX = obj.x + obj.width / 2;
-      const centerY = obj.y + obj.height / 2;
-      const dist = Math.sqrt(Math.pow(wx - centerX, 2) + Math.pow(wy - centerY, 2));
-
-      // Also check if point is inside or very close to object bounds
-      const insideOrNear =
-        wx >= obj.x - tolerance && wx <= obj.x + obj.width + tolerance &&
-        wy >= obj.y - tolerance && wy <= obj.y + obj.height + tolerance;
-
-      if (insideOrNear && dist < minDist) {
-        minDist = dist;
-        nearest = obj;
-      }
-    }
-    return nearest;
+  // Find nearest valid anchor (Tor/Bereich/Stellplatz/Sonderplatz/Messpunkt),
+  // optional gefiltert nach Wegpunkt-Rolle.
+  const findNearestObject = useCallback((
+    wx: number,
+    wy: number,
+    tolerance: number = 3,
+    rolle: 'start' | 'ende' | 'beides' = 'beides',
+  ): TopisObject | null => {
+    return findNearestAnchor(objects, wx, wy, tolerance, rolle);
   }, [objects]);
 
   // Find gang at position (point-to-line-segment distance with breite tolerance)
@@ -260,24 +348,42 @@ export function HallCanvas() {
     return null;
   }, [conveyors, zoom]);
 
-  // Save path with automatic object linking
+  // Save path with automatic object linking.
+  // Wenn der User nur 2 Punkte klickt und beide auf einem Anker landen (Tor/Bereich/Stellplatz),
+  // wird automatisch über das Gang-Netzwerk (A*) geroutet, statt eine Luftlinie zu ziehen.
+  // Mehr als 2 Klicks → manueller Pfad bleibt wie geklickt.
   const savePathWithLinks = useCallback((waypoints: { x: number; y: number; objectId: number | null }[], color: string = '#f59e0b') => {
     if (waypoints.length < 2) return;
 
     const firstPoint = waypoints[0];
     const lastPoint = waypoints[waypoints.length - 1];
 
-    // Find objects at start and end
-    const startObj = findNearestObject(firstPoint.x, firstPoint.y, 5);
-    const endObj = findNearestObject(lastPoint.x, lastPoint.y, 5);
+    const startObj = findNearestObject(firstPoint.x, firstPoint.y, 5, 'start');
+    const endObj = findNearestObject(lastPoint.x, lastPoint.y, 5, 'ende');
 
-    // Generate name based on linked objects
+    let finalWaypoints = waypoints;
+    let routedOverGang = false;
+
+    if (waypoints.length === 2 && startObj && endObj && startObj.id !== endObj.id) {
+      const routed = findPathBetweenObjects(startObj, endObj, gangGraph, undefined, brandschutzWaende, pathAreas);
+      if (routed && routed.path.length >= 2) {
+        finalWaypoints = routed.path.map(p => ({ x: p.x, y: p.y, objectId: null }));
+        routedOverGang = true;
+      } else {
+        toast.error(
+          `Kein durchgehender Weg von ${startObj.name} nach ${endObj.name} gefunden. Prüfe Wegflächen / Wände / Gang-Netz.`,
+          { duration: 5000 },
+        );
+        return;
+      }
+    }
+
     let name: string;
     if (startObj && endObj) {
       name = `${startObj.name} → ${endObj.name}`;
     } else if (startObj) {
       name = `${startObj.name} → ...`;
-    } else if (endObj) {
+      } else if (endObj) {
       name = `... → ${endObj.name}`;
     } else {
       name = `Weg ${paths.length + 1}`;
@@ -285,21 +391,22 @@ export function HallCanvas() {
 
     addPath({
       name,
-      waypoints,
+      waypoints: finalWaypoints,
       color,
       startObjectId: startObj?.id,
       startObjectName: startObj?.name,
       endObjectId: endObj?.id,
-      endObjectName: endObj?.name
+      endObjectName: endObj?.name,
     });
 
-    // Show detailed toast
-    if (startObj || endObj) {
+    if (routedOverGang) {
+      toast.success(`Weg über Gänge berechnet: ${name}`);
+    } else if (startObj || endObj) {
       toast.success(`Weg gespeichert: ${name}`);
     } else {
       toast.success('Weg gespeichert');
     }
-  }, [addPath, findNearestObject, paths.length]);
+  }, [addPath, findNearestObject, paths.length, gangGraph, brandschutzWaende]);
 
   // Find waypoint at position (returns path and waypoint index)
   const findWaypointAt = useCallback((wx: number, wy: number): { path: typeof paths[0]; waypointIndex: number } | null => {
@@ -472,29 +579,89 @@ export function HallCanvas() {
       gaenge.forEach(gang => {
         if (gang.points.length < 2) return;
 
-        const start = worldToScreen(gang.points[0].x, gang.points[0].y);
-        const end = worldToScreen(gang.points[1].x, gang.points[1].y);
+        // ECKIG: alle Polyline-Punkte rendern, lineCap='butt' (gerade Enden), lineJoin='miter' (eckige Ecken)
+        const screenPoints = gang.points.map(p => worldToScreen(p.x, p.y));
         const breite = gang.breite * SCALE * zoom;
         const isSelectedGangItem = selectedGang?.id === gang.id;
+
+        // Punkt-Gang: wenn Gang sehr kurz (<3m), als ausgefülltes Quadrat rendern
+        const p1w = gang.points[0]; const p2w = gang.points[gang.points.length - 1];
+        const lenM = Math.sqrt((p2w.x - p1w.x) ** 2 + (p2w.y - p1w.y) ** 2);
+        if (gang.points.length === 2 && lenM < 3) {
+          ctx.save();
+          ctx.fillStyle = gang.farbe || 'rgba(100, 200, 100, 0.6)';
+          const cx = (screenPoints[0].x + screenPoints[1].x) / 2;
+          const cy = (screenPoints[0].y + screenPoints[1].y) / 2;
+          const s = breite;
+          ctx.fillRect(cx - s/2, cy - s/2, s, s);
+          if (isSelectedGangItem) {
+            ctx.strokeStyle = '#00bcd4';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(cx - s/2 - 2, cy - s/2 - 2, s + 4, s + 4);
+          }
+          ctx.restore();
+          return;
+        }
 
         ctx.save();
         // Selection glow
         if (isSelectedGangItem) {
           ctx.strokeStyle = '#00bcd4';
           ctx.lineWidth = breite + 4;
-          ctx.lineCap = 'round';
+          ctx.lineCap = 'butt';
+          ctx.lineJoin = 'miter';
           ctx.beginPath();
-          ctx.moveTo(start.x, start.y);
-          ctx.lineTo(end.x, end.y);
+          ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+          for (let i = 1; i < screenPoints.length; i++) {
+            ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
+          }
           ctx.stroke();
         }
-        ctx.strokeStyle = gang.farbe || 'rgba(100, 200, 100, 0.6)';
-        ctx.lineWidth = breite;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
+        // Straßen-Look: 3 Layer pro Gang
+        // 1) Schwarze Außenlinie (Fahrbahn-Rand): leicht breiter
+        // 2) Asphalt-Fläche (Gang-Farbe als Untergrund)
+        // 3) Gestrichelte Mittellinie (weiß)
+        const buildPath = () => {
+          ctx.beginPath();
+          ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+          for (let i = 1; i < screenPoints.length; i++) {
+            ctx.lineTo(screenPoints[i].x, screenPoints[i].y);
+          }
+        };
+        // 1) Schwarzer Rand
+        ctx.strokeStyle = '#0a0a0a';
+        ctx.lineWidth = breite + 2;
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+        buildPath();
         ctx.stroke();
+        // 2) Asphalt
+        ctx.strokeStyle = gang.farbe || '#3a3a3a';
+        ctx.lineWidth = breite;
+        buildPath();
+        ctx.stroke();
+        // 3) Gestrichelte Mittellinie — nur wenn Gang breit genug (>= 6px on screen)
+        if (breite >= 6) {
+          ctx.strokeStyle = '#fbbf24'; // amber/gelb wie echte Straßenmarkierung
+          ctx.lineWidth = Math.max(1, breite * 0.08);
+          ctx.setLineDash([Math.max(6, breite * 0.6), Math.max(6, breite * 0.6)]);
+          buildPath();
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        // Drag-Handles an den Endpunkten des selected Gangs
+        if (isSelectedGangItem && tool === 'select') {
+          ctx.save();
+          ctx.fillStyle = '#00bcd4';
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 2;
+          [0, gang.points.length - 1].forEach((pi) => {
+            const sp = screenPoints[pi];
+            ctx.fillRect(sp.x - 6, sp.y - 6, 12, 12);
+            ctx.strokeRect(sp.x - 6, sp.y - 6, 12, 12);
+          });
+          ctx.restore();
+        }
         ctx.restore();
       });
     }
@@ -837,18 +1004,64 @@ export function HallCanvas() {
         ctx.textBaseline = 'middle';
 
         if (obj.type === 'tor') {
-          // Tor-Label: nur Nummer, kompakt. Sektion erst ab hohem Zoom dazu.
-          const nr = obj.torNummer ?? obj.name.replace(/^Tor\s+/i, '');
+          // Tor-Label: wenn der Name vom Default-Schema "Tor N" abweicht (User hat
+          // umbenannt), den vollen Namen zeigen — sonst nur die Nummer.
+          const isDefaultName = obj.name && /^Tor\s+\d+/i.test(obj.name);
+          const label = isDefaultName
+            ? String(obj.torNummer ?? obj.name.replace(/^Tor\s+/i, ''))
+            : (obj.name || String(obj.torNummer ?? ''));
           const sektion = obj.meta?.sektion;
+          const tour = obj.meta?.tour;
           if (zoom >= 0.7 && sektion) {
             ctx.font = `bold ${Math.max(8, 9 * zoom)}px Inter, sans-serif`;
-            ctx.fillText(`${nr}`, pos.x + w / 2, pos.y + h / 2 - 3);
+            ctx.fillText(label, pos.x + w / 2, pos.y + h / 2 - 3);
             ctx.font = `${Math.max(6, 7 * zoom)}px Inter, sans-serif`;
             ctx.fillStyle = 'rgba(255,255,255,0.75)';
             ctx.fillText(sektion.substring(0, 10), pos.x + w / 2, pos.y + h / 2 + 6);
           } else {
             ctx.font = `bold ${Math.max(8, 10 * zoom)}px Inter, sans-serif`;
-            ctx.fillText(`${nr}`, pos.x + w / 2, pos.y + h / 2);
+            ctx.fillText(label, pos.x + w / 2, pos.y + h / 2);
+          }
+          // Tour-Label aus Optimizer-Anwenden: deutlich sichtbar IN der Halle direkt
+          // hinter dem Tor (also Richtung Hallen-Mitte).
+          if (tour) {
+            const tourShort = tour.length > 12 ? tour.substring(0, 12) + '…' : tour;
+            ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
+            ctx.textBaseline = 'middle';
+            // Position: 8 m in die Halle hinein (je nach Seite)
+            const inset = 8 * SCALE * zoom;
+            const cx = pos.x + w / 2;
+            const cy = pos.y + h / 2;
+            const side = obj.side;
+            let lx = cx;
+            let ly = cy;
+            if (side === 'north') ly = cy + inset;
+            else if (side === 'south') ly = cy - inset;
+            else if (side === 'east') lx = cx - inset;
+            else if (side === 'west') lx = cx + inset;
+            // Pillenförmiger Hintergrund
+            const padX = 6, padY = 3;
+            const textW = ctx.measureText(tourShort).width;
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.95)'; // amber-500
+            const boxX = lx - textW / 2 - padX;
+            const boxY = ly - 8 - padY;
+            const boxW = textW + padX * 2;
+            const boxH = 16 + padY * 2;
+            ctx.beginPath();
+            const radius = boxH / 2;
+            ctx.moveTo(boxX + radius, boxY);
+            ctx.lineTo(boxX + boxW - radius, boxY);
+            ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + radius, radius);
+            ctx.lineTo(boxX + boxW, boxY + boxH - radius);
+            ctx.arcTo(boxX + boxW, boxY + boxH, boxX + boxW - radius, boxY + boxH, radius);
+            ctx.lineTo(boxX + radius, boxY + boxH);
+            ctx.arcTo(boxX, boxY + boxH, boxX, boxY + boxH - radius, radius);
+            ctx.lineTo(boxX, boxY + radius);
+            ctx.arcTo(boxX, boxY, boxX + radius, boxY, radius);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillText(tourShort, lx, ly);
           }
         } else if (obj.type === 'bereich') {
           // Bereich-Label: Text-to-Fit (Schriftgröße aus min(w,h)) + Auto-Rotation
@@ -915,13 +1128,16 @@ export function HallCanvas() {
           ctx.beginPath();
           ctx.arc(cx, cy, r, 0, Math.PI * 2);
           ctx.fill();
-          // Value label oberhalb
+          // Value label oberhalb — schwarzer Outline für Kontrast auf Heatmap-Farben (A4 28.05.)
           if (zoom > 0.3) {
             const label = formatMetrikWert(wert, heatmapConfig.modus);
-            ctx.fillStyle = '#fff';
             ctx.font = `bold ${Math.max(11, 13 * zoom)}px Inter, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+            ctx.strokeText(label, cx, cy - baseR - 8);
+            ctx.fillStyle = '#fff';
             ctx.fillText(label, cx, cy - baseR - 8);
           }
         } else {
@@ -929,11 +1145,16 @@ export function HallCanvas() {
           ctx.fillRect(pos.x, pos.y, w, h);
           if (zoom > 0.4) {
             const label = formatMetrikWert(wert, heatmapConfig.modus);
-            ctx.fillStyle = 'rgba(255,255,255,0.95)';
             ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(label, pos.x + w / 2, pos.y + h / 2 + (zoom > 0.5 ? 12 * zoom : 0));
+            const tx = pos.x + w / 2;
+            const ty = pos.y + h / 2 + (zoom > 0.5 ? 12 * zoom : 0);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+            ctx.strokeText(label, tx, ty);
+            ctx.fillStyle = 'rgba(255,255,255,0.98)';
+            ctx.fillText(label, tx, ty);
           }
         }
         ctx.restore();
@@ -947,7 +1168,7 @@ export function HallCanvas() {
       const b = objects.find((o) => o.id === cockpitRoute.endId);
       if (a && b && gaenge.length > 0) {
         try {
-          const result = findPathBetweenObjects(a, b, gaenge);
+          const result = findPathBetweenObjects(a, b, gangGraph, undefined, brandschutzWaende, pathAreas);
           if (result && result.path.length >= 2) {
             ctx.save();
 
@@ -1113,7 +1334,7 @@ export function HallCanvas() {
 
         let pathPoints: Array<{ x: number; y: number }> | null = null;
         try {
-          const r = findPathBetweenObjects(von, nach, gaenge);
+          const r = findPathBetweenObjects(von, nach, gangGraph, undefined, brandschutzWaende, pathAreas);
           if (r && r.path.length >= 2) {
             pathPoints = r.path.map((p) => worldToScreen(p.x, p.y));
           }
@@ -1178,6 +1399,76 @@ export function HallCanvas() {
         }
         ctx.shadowBlur = 0;
         ctx.restore();
+      }
+
+      // 1c. Stapler-Animation: Sprite an interpolierter Position auf dem Pfad
+      if (animationActiveId) {
+        const a = simAuftraege.find((s) => s.id === animationActiveId);
+        const von = a && objects.find((o) => o.id === a.vonObjectId);
+        const nach = a && objects.find((o) => o.id === a.nachObjectId);
+        if (a && von && nach) {
+          const aCx = von.x + von.width / 2;
+          const aCy = von.y + von.height / 2;
+          const bCx = nach.x + nach.width / 2;
+          const bCy = nach.y + nach.height / 2;
+          let waypoints: Array<{ x: number; y: number }> = [{ x: aCx, y: aCy }];
+          try {
+            const r = findPathBetweenObjects(von, nach, gangGraph, undefined, brandschutzWaende, pathAreas);
+            if (r && r.path.length >= 1) {
+              for (const p of r.path) waypoints.push({ x: p.x, y: p.y });
+            }
+          } catch {}
+          waypoints.push({ x: bCx, y: bCy });
+          // Gesamtlänge berechnen, dann progress als Bruchteil der Länge
+          let total = 0;
+          const segs: number[] = [];
+          for (let i = 0; i + 1 < waypoints.length; i++) {
+            const dx = waypoints[i + 1].x - waypoints[i].x;
+            const dy = waypoints[i + 1].y - waypoints[i].y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            segs.push(d);
+            total += d;
+          }
+          const target = animationProgress * total;
+          let acc = 0;
+          let px = waypoints[0].x;
+          let py = waypoints[0].y;
+          for (let i = 0; i < segs.length; i++) {
+            if (acc + segs[i] >= target) {
+              const t = segs[i] === 0 ? 0 : (target - acc) / segs[i];
+              px = waypoints[i].x + (waypoints[i + 1].x - waypoints[i].x) * t;
+              py = waypoints[i].y + (waypoints[i + 1].y - waypoints[i].y) * t;
+              break;
+            }
+            acc += segs[i];
+            px = waypoints[i + 1].x;
+            py = waypoints[i + 1].y;
+          }
+          const sp = worldToScreen(px, py);
+          // Stapler-Kreis mit Glow + Speed-Trail
+          ctx.save();
+          ctx.shadowColor = 'rgba(37,99,235,0.95)';
+          ctx.shadowBlur = 18;
+          ctx.fillStyle = 'rgba(37,99,235,1)';
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, Math.max(8, 10 * zoom), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.max(11, 12 * zoom)}px Inter, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🚛', sp.x, sp.y);
+          // Progress-Balken über dem Stapler
+          const barW = Math.max(40, 60 * zoom);
+          const barH = 4;
+          const barY = sp.y - Math.max(14, 16 * zoom);
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fillRect(sp.x - barW / 2, barY, barW, barH);
+          ctx.fillStyle = 'rgba(37,99,235,1)';
+          ctx.fillRect(sp.x - barW / 2, barY, barW * animationProgress, barH);
+          ctx.restore();
+        }
       }
 
       // 2. Belegungs-Marker auf jedem beteiligten Tor (rot, Intensität nach Anzahl)
@@ -1278,7 +1569,8 @@ export function HallCanvas() {
       ctx.save();
       ctx.strokeStyle = 'rgba(100, 200, 100, 0.8)';
       ctx.lineWidth = previewWidth;
-      ctx.lineCap = 'round';
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
       ctx.setLineDash([10, 10]);
       ctx.beginPath();
       ctx.moveTo(start.x, start.y);
@@ -1286,18 +1578,14 @@ export function HallCanvas() {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Draw start point indicator
+      // Draw start point indicator — eckig (Quadrat) statt rund
       ctx.fillStyle = '#64c864';
-      ctx.beginPath();
-      ctx.arc(start.x, start.y, 6, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(start.x - 6, start.y - 6, 12, 12);
 
-      // Draw end point indicator
+      // Draw end point indicator — eckig (Quadrat) statt rund
       ctx.strokeStyle = '#64c864';
       ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(end.x, end.y, 6, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.strokeRect(end.x - 6, end.y - 6, 12, 12);
 
       // Show distance label
       const dist = Math.sqrt(
@@ -1308,51 +1596,136 @@ export function HallCanvas() {
       ctx.font = '12px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(`${dist.toFixed(1)}m`, (start.x + end.x) / 2, (start.y + end.y) / 2 - 15);
+      ctx.restore();
+    }
+
+    // Snap-Indikator beim Gang-Werkzeug (SimCity-Style Magnet-Preview)
+    if (tool === 'gang' && gangSnap.snapped) {
+      const sp = worldToScreen(gangSnap.x, gangSnap.y);
+      ctx.save();
+      const colors: Record<typeof gangSnap.type, string> = {
+        endpoint: '#22c55e',     // grün — Endpunkt
+        intersection: '#fbbf24', // amber — Kreuzung
+        perpendicular: '#06b6d4',// cyan — senkrechte Anbindung
+      };
+      const col = colors[gangSnap.type];
+      ctx.strokeStyle = col;
+      ctx.fillStyle = col + '40';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = col;
+      const label = gangSnap.type === 'endpoint' ? 'ENDPUNKT'
+        : gangSnap.type === 'intersection' ? 'KREUZUNG'
+        : 'SENKRECHT';
+      ctx.fillText(label, sp.x + 14, sp.y - 8);
+      ctx.restore();
+    }
+
+    // Snap-Indikator für Path/PathArea-Werkzeug (generalisiert)
+    if (toolSnap) {
+      const sp = worldToScreen(toolSnap.x, toolSnap.y);
+      const col = SNAP_COLORS[toolSnap.source];
+      ctx.save();
+      ctx.strokeStyle = col;
+      ctx.fillStyle = col + '40';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = col;
+      ctx.fillText(toolSnap.label, sp.x + 14, sp.y - 8);
+      ctx.restore();
+    }
+
+    // Permanente Gang-Graph-Knoten zeigen (Endpunkte + Kreuzungen) — nur wenn
+    // showGaenge aktiv ist. So sieht man wo der Graph verbunden ist.
+    if (showGaenge && gangGraphNodes.length > 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.9)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.lineWidth = 1;
+      for (const n of gangGraphNodes) {
+        const np = worldToScreen(n.x, n.y);
+        ctx.beginPath();
+        ctx.arc(np.x, np.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
 
+  // Latest-draw-ref: der ResizeObserver-useEffect haengt nur an [hall?.id],
+  // captured also eine stale draw-Closure. Wenn der User eine Sidebar ein-/
+  // ausklappt, leert canvas.width=... den Canvas, und die stale draw-Closure
+  // zeichnet mit veraltetem pan/zoom/state — die Halle ist kurz nicht
+  // sichtbar bis irgendein Click/Pan einen Re-Render mit aktueller draw
+  // ausloest. drawRef wird per useEffect immer auf die neueste draw-Funktion
+  // aktualisiert, so dass handleResize per drawRef.current die aktuelle
+  // Version aufrufen kann.
+  // (Alex P. Bug "SIDEBARS resize now delay the graphic visibility. On
+  // clicking the canvas area the graphic appears instantly".)
+  const drawRef = useRef(draw);
+  useEffect(() => { drawRef.current = draw; }, [draw]);
+
   // Resize handler: reagiert auf Container-Größe (nicht nur window!),
   // damit das Canvas korrekt mit-skaliert wenn Side-Panels collapsed/expanded
   // werden — sonst stretcht CSS den Pixel-Inhalt (Halle wirkt verzerrt+größer).
+  //
+  // WICHTIG: Pan + Zoom werden beim Resize NICHT angefasst — nur die Canvas-
+  // Pixel-Dimensionen werden auf die neue Container-Groesse gezogen. Wenn der
+  // User vorher gepant/gezoomt hat, bleibt diese Sicht erhalten.
+  // (Alex P. Bug: "Sidebar-Toggle resettet die Grafik in obere linke Ecke" —
+  // Ursache war stale pan-Closure plus halbierter Delta-Shift, der bei jedem
+  // Toggle die Halle ein Stueck nach links/oben gezogen hat.)
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-
-    let prevW = canvas.width;
-    let prevH = canvas.height;
 
     const handleResize = () => {
       const newW = container.clientWidth;
       const newH = container.clientHeight;
       if (newW === canvas.width && newH === canvas.height) return;
 
-      // Halle in der Mitte behalten: Pan um halbe Delta-Breite/Höhe verschieben
-      const dx = (newW - prevW) / 2;
-      const dy = (newH - prevH) / 2;
-
+      // Nur Pixel-Dimensionen aktualisieren — pan/zoom bleiben wie sie sind.
+      // Setzen von canvas.width/height leert den Canvas → sofort neu zeichnen,
+      // sonst bleibt die Halle bis zum naechsten React-Tick unsichtbar
+      // (Sidebar-Toggle-Delay, Alex P.).
       canvas.width = newW;
       canvas.height = newH;
-      prevW = newW;
-      prevH = newH;
-
-      if (initializedRef.current) {
-        setPan({ x: pan.x + dx, y: pan.y + dy });
-      }
-      draw();
+      // drawRef.current statt der closure-stale `draw` aus dem outer scope —
+      // dieser useEffect haengt nur an `[hall?.id]`, hat also draw vom letzten
+      // Hall-Wechsel. Per ref bekommen wir die aktuelle draw-Funktion.
+      // requestAnimationFrame stellt sicher, dass die Layout-Aenderung (durch
+      // den Resize) abgeschlossen ist bevor wir zeichnen.
+      requestAnimationFrame(() => drawRef.current());
     };
 
-    // Initial setup + centering
+    // Initial setup + einmaliges Zentrieren (nur beim ersten Mount).
     if (!initializedRef.current && hall) {
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
-      prevW = canvas.width;
-      prevH = canvas.height;
 
       const hallW = hall.width * SCALE * zoom;
       const hallH = hall.height * SCALE * zoom;
@@ -1558,75 +1931,151 @@ export function HallCanvas() {
     const world = screenToWorld(x, y);
 
     if (tool === 'gang') {
-      // Gang drawing mode
-      if (!gangDrawStart) {
-        // First click - set start point
-        setGangDrawStart({ x: Math.round(world.x), y: Math.round(world.y) });
-        setGangMousePos({ x: Math.round(world.x), y: Math.round(world.y) });
-      } else {
-        // Second click - create the gang
-        const endPoint = { x: Math.round(world.x), y: Math.round(world.y) };
-        const dist = Math.sqrt(
-          Math.pow(endPoint.x - gangDrawStart.x, 2) +
-          Math.pow(endPoint.y - gangDrawStart.y, 2)
-        );
+      // Snap zuerst auflösen — wenn Cursor auf einem Anker (Endpunkt/Schnitt/
+      // Senkrechte) liegt, übernimmt der Snap die Welt-Position.
+      const snapHit = findGangSnap(world.x, world.y, gaenge, 2);
+      const clickWorld = snapHit.snapped
+        ? { x: snapHit.x, y: snapHit.y }
+        : { x: Math.round(world.x), y: Math.round(world.y) };
 
-        if (dist > 1) {
-          // Only create gang if distance is significant
+      if (!gangDrawStart) {
+        setGangDrawStart(clickWorld);
+        setGangMousePos(clickWorld);
+        if (snapHit.snapped) {
+          toast.info(`Start auf existierendem Gang (${snapHit.type})`);
+        }
+      } else {
+        const endPoint = clickWorld;
+        // Auto-Extend: wenn End-Klick KNAPP an einem anderen Gang vorbei (nicht
+        // schon vom Snap erfasst), Endpunkt auf die Linie projizieren.
+        const extended = snapHit.snapped
+          ? { x: endPoint.x, y: endPoint.y, extended: false }
+          : extendEndpointToNearbyGang(endPoint, gaenge, 2);
+        const finalEndCandidate = extended.extended
+          ? { x: extended.x, y: extended.y }
+          : endPoint;
+
+        const dist = Math.sqrt(
+          Math.pow(finalEndCandidate.x - gangDrawStart.x, 2) +
+          Math.pow(finalEndCandidate.y - gangDrawStart.y, 2)
+        );
+        const isPunkt = dist < 1;
+        const finalEnd = isPunkt
+          ? { x: gangDrawStart.x + 1, y: gangDrawStart.y }
+          : finalEndCandidate;
+
+        const blockers = objects.filter(o => {
+          if (o.istUndurchlaessig === false) return false;
+          if (o.istUndurchlaessig === true) return true;
+          return o.type === 'wand' || o.type === 'bereich' || o.type === 'regal' || o.type === 'hindernis';
+        });
+        const blockedBy = !isPunkt ? blockers.find(o =>
+          lineCrossesAnyWall(gangDrawStart.x, gangDrawStart.y, finalEnd.x, finalEnd.y, [o])
+        ) : null;
+        if (blockedBy) {
+          toast.error(`Gang kreuzt "${blockedBy.name}" — bitte außen herum zeichnen.`);
+        } else {
           const newGang: Gang = {
             id: Date.now(),
-            name: `Gang ${gaenge.length + 1}`,
-            points: [gangDrawStart, endPoint],
-            breite: 3, // Default 3m width
+            name: isPunkt ? `Punkt ${gaenge.length + 1}` : `Gang ${gaenge.length + 1}`,
+            points: [gangDrawStart, finalEnd],
+            breite: 3,
             typ: 'quergang',
-            farbe: 'rgba(100, 200, 100, 0.6)'
+            farbe: 'rgba(100, 200, 100, 0.6)',
           };
           addGang(newGang);
-          toast.success(`Gang erstellt (${dist.toFixed(1)}m)`);
+          if (extended.extended) {
+            toast.success(`Gang erstellt (${dist.toFixed(1)} m) — Endpunkt automatisch auf existierenden Gang erweitert.`);
+          } else {
+            toast.success(isPunkt ? 'Punkt-Knoten gesetzt' : `Gang erstellt (${dist.toFixed(1)}m)`);
+          }
+          // Insel-Warnung
+          if (!isPunkt && gaenge.length > 0 && isGangIsolated(newGang, gaenge)) {
+            toast.warning('Neuer Gang ist nicht mit dem existierenden Netz verbunden (Insel) — A* kann ihn nicht erreichen.', { duration: 5000 });
+          }
         }
 
-        // Reset drawing state
         setGangDrawStart(null);
         setGangMousePos(null);
+        setGangSnap({ snapped: false });
       }
       return;
     }
 
-    // Path drawing - SimCity/Anno style: click-drag-release for each segment
+    // Path drawing — reiner Klick-Modus: jeder Klick fügt einen Wegpunkt hinzu.
+    // Wenn der Klick auf einem Objekt liegt, übernimmt savePathWithLinks später
+    // beim Doppelklick die Anker-Verknüpfung. Lastenheft 3.1.4.2: Wege dürfen
+    // nicht durch Wände — wir warnen beim Setzen wenn das Segment eine Wand
+    // kreuzt (Tür-Region ist erlaubt, siehe lineCrossesAnyWall).
     if (tool === 'path') {
-      const snapPos = { x: Math.round(world.x), y: Math.round(world.y) };
-      setPathDrawing(true);
-      setPathMousePos(snapPos);
+      // Snap-Override: bei aktivem Snap-Treffer Klick-Position übernehmen
+      const snapHit = findSnap({
+        wx: world.x, wy: world.y, tolerance: 2,
+        gaenge, paths, objects,
+        sources: ['gang-endpoint', 'gang-intersection', 'object-anchor', 'path-waypoint'],
+      });
+      const snapPos = snapHit
+        ? { x: snapHit.x, y: snapHit.y, objectId: null }
+        : { x: Math.round(world.x), y: Math.round(world.y), objectId: null };
 
-      // Case 1: No current path - start fresh
-      if (!currentPath || currentPath.waypoints.length === 0) {
-        setPathDragStart(snapPos);
+      // Bug C (28.05.): Lastenheft 3.1.4.2 — wenn Wegflächen definiert sind,
+      // muss der Klickpunkt innerhalb mindestens einer pathArea liegen.
+      const pointInsidePathArea = (x: number, y: number) =>
+        pathAreas.some(a =>
+          a.x != null && a.y != null && a.width != null && a.height != null &&
+          x >= a.x && x <= a.x + a.width && y >= a.y && y <= a.y + a.height
+        );
+      if (pathAreas.length > 0 && !pointInsidePathArea(snapPos.x, snapPos.y)) {
+        toast.warning('Wegpunkt liegt außerhalb der definierten Wegflächen (Lastenheft 3.1.4.2).');
         return;
       }
 
-      // Case 2: Current path exists - check if continuing from last point
-      const lastPoint = currentPath.waypoints[currentPath.waypoints.length - 1];
-      const distToLast = Math.sqrt(
-        Math.pow(snapPos.x - lastPoint.x, 2) + Math.pow(snapPos.y - lastPoint.y, 2)
-      );
-
-      if (distToLast < 3) {
-        // Continue from last point
-        setPathDragStart({ x: lastPoint.x, y: lastPoint.y });
+      setPathMousePos(snapPos);
+      setPathDrawing(true);
+      if (!currentPath || currentPath.waypoints.length === 0) {
+        setCurrentPath({ waypoints: [snapPos] });
+        toast.info('Klicke ein Ziel-Tor oder einen Bereich — A* routet automatisch über die Gänge. Mehrere Klicks = manueller Pfad. Enter speichert, ESC bricht ab.', { duration: 4500 });
       } else {
-        // Clicking elsewhere - save current path if valid, start new
-        if (currentPath.waypoints.length >= 2) {
-          savePathWithLinks(currentPath.waypoints);
+        const last = currentPath.waypoints[currentPath.waypoints.length - 1];
+        const distLast = Math.hypot(snapPos.x - last.x, snapPos.y - last.y);
+        if (distLast < 0.5) return;
+
+        // NEU 28.05.: Wenn Start- und Endpunkt beide auf einem Anker (Tor/Bereich/
+        // Stellplatz) liegen UND der User nur 2 Klicks gemacht hat, ist eindeutig
+        // „verbinde diese beiden" gemeint. Wir rufen direkt savePathWithLinks auf,
+        // ohne den Luftlinien-Wand-Check — A* findet eine Route über die Gänge.
+        if (currentPath.waypoints.length === 1) {
+          const startAnchor = findNearestObject(last.x, last.y, 5, 'start');
+          const endAnchor = findNearestObject(snapPos.x, snapPos.y, 5, 'ende');
+          if (startAnchor && endAnchor && startAnchor.id !== endAnchor.id) {
+            savePathWithLinks([last, snapPos]);
+            setCurrentPath(null);
+            setPathDrawing(false);
+            setPathDragStart(null);
+            setPathMousePos(null);
+            return;
+          }
         }
-        setCurrentPath(null);
-        setPathDragStart(snapPos);
+
+        if (lineCrossesAnyWall(last.x, last.y, snapPos.x, snapPos.y, brandschutzWaende)) {
+          toast.warning('Segment kreuzt Wand/Bereich. Wegpunkt setzen abgelehnt — klicke einen Punkt der nicht durch Hindernisse führt, oder nutze eine Tür.');
+          return;
+        }
+        setCurrentPath({ waypoints: [...currentPath.waypoints, snapPos] });
       }
       return;
     }
 
     // PathArea drawing - drag to create rectangle
     if (tool === 'pathArea') {
-      const snapPos = { x: Math.round(world.x), y: Math.round(world.y) };
+      const snapHit = findSnap({
+        wx: world.x, wy: world.y, tolerance: 2,
+        pathAreas, gaenge, hall: hall ? { width: hall.width, height: hall.height } : undefined,
+        sources: ['patharea-corner', 'gang-endpoint', 'hall-corner'],
+      });
+      const snapPos = snapHit
+        ? { x: snapHit.x, y: snapHit.y }
+        : { x: Math.round(world.x), y: Math.round(world.y) };
       setPathAreaStart(snapPos);
       setPathAreaMousePos(snapPos);
       return;
@@ -1706,6 +2155,21 @@ export function HallCanvas() {
     }
 
     if (tool === 'select') {
+      // Gang-Endpunkt-Drag (vor allem anderen): wenn ein Gang selektiert ist
+      // und der Klick auf einem Endpunkt-Handle landet → Drag starten.
+      if (selectedGang) {
+        const HANDLE_TOL = 10;
+        const last = selectedGang.points.length - 1;
+        for (const pi of [0, last] as const) {
+          const pt = selectedGang.points[pi];
+          const sp = worldToScreen(pt.x, pt.y);
+          if (Math.abs(x - sp.x) <= HANDLE_TOL && Math.abs(y - sp.y) <= HANDLE_TOL) {
+            setGangEndpointDrag({ gangId: selectedGang.id, pointIndex: pi === 0 ? 0 : 1 });
+            return;
+          }
+        }
+      }
+
       // ZUERST: Resize-Handle des aktuell selektierten Objekts prüfen.
       // Handles sind 8px Cyan-Quadrate an den 4 Ecken (im Screen-Space).
       // Wir prüfen in Screen-Koordinaten mit Toleranz, damit's auch bei
@@ -1751,6 +2215,8 @@ export function HallCanvas() {
         setDragObject(obj);
         setDragStart({ x: world.x - obj.x, y: world.y - obj.y });
         setIsDragging(true);
+        dragMouseStartRef.current = { x: e.clientX, y: e.clientY };
+        dragThresholdPassedRef.current = false;
         return;
       }
 
@@ -1872,7 +2338,16 @@ export function HallCanvas() {
         width: objWidth,
         height: objHeight,
         name: `${defaults.name} ${count}`,
-        side: torSide
+        side: torSide,
+        // Tore brauchen messpunkt-Tag + MP-Code, sonst greift der Demo-Generator
+        // (filter: tags=messpunkt && meta.code) nicht.
+        ...(objectType === 'tor'
+          ? {
+              torNummer: count,
+              tags: ['messpunkt'],
+              meta: { code: `MP${count}` },
+            }
+          : {}),
       });
 
       // For Tor: automatically create Entladebereich behind it
@@ -1935,23 +2410,68 @@ export function HallCanvas() {
     const y = e.clientY - rect.top;
     const world = screenToWorld(x, y);
 
-    // Update gang preview position
-    if (tool === 'gang' && gangDrawStart) {
-      setGangMousePos({ x: Math.round(world.x), y: Math.round(world.y) });
+    // Gang-Endpunkt-Drag mit Snap auf andere Gänge
+    if (gangEndpointDrag && tool === 'select') {
+      const otherGaenge = gaenge.filter(g => g.id !== gangEndpointDrag.gangId);
+      const snap = findGangSnap(world.x, world.y, otherGaenge, 2);
+      setGangSnap(snap);
+      const newPos = snap.snapped
+        ? { x: snap.x, y: snap.y }
+        : { x: Math.round(world.x), y: Math.round(world.y) };
+      const g = gaenge.find(g => g.id === gangEndpointDrag.gangId);
+      if (g) {
+        const newPoints = g.points.slice();
+        newPoints[gangEndpointDrag.pointIndex === 0 ? 0 : newPoints.length - 1] = newPos;
+        updateGang(g.id, { points: newPoints });
+      }
       return;
     }
 
-    // Update path preview position
-    if (tool === 'path' && pathDrawing) {
-      setPathMousePos({ x: Math.round(world.x), y: Math.round(world.y) });
+    // Update gang preview position + Snap-Preview
+    if (tool === 'gang') {
+      const snap = findGangSnap(world.x, world.y, gaenge, 2);
+      setGangSnap(snap);
+      if (gangDrawStart) {
+        const pos = snap.snapped
+          ? { x: snap.x, y: snap.y }
+          : { x: Math.round(world.x), y: Math.round(world.y) };
+        setGangMousePos(pos);
+        return;
+      }
+    }
+
+    // Update path preview position + Snap auf Tor-Anker, Gang-Knoten, Path-Waypoints
+    if (tool === 'path') {
+      const snap = findSnap({
+        wx: world.x, wy: world.y, tolerance: 2,
+        gaenge, paths, objects,
+        sources: ['gang-endpoint', 'gang-intersection', 'object-anchor', 'path-waypoint'],
+      });
+      setToolSnap(snap);
+      if (pathDrawing) {
+        const pos = snap ? { x: snap.x, y: snap.y } : { x: Math.round(world.x), y: Math.round(world.y) };
+        setPathMousePos(pos);
+      }
       return;
     }
 
-    // Update pathArea preview position
-    if (tool === 'pathArea' && pathAreaStart) {
-      setPathAreaMousePos({ x: Math.round(world.x), y: Math.round(world.y) });
+    // Update pathArea preview position + Snap auf andere pathArea-Ecken, Gang-Endpunkte, Halle-Ecken
+    if (tool === 'pathArea') {
+      const snap = findSnap({
+        wx: world.x, wy: world.y, tolerance: 2,
+        pathAreas, gaenge, hall: hall ? { width: hall.width, height: hall.height } : undefined,
+        sources: ['patharea-corner', 'gang-endpoint', 'hall-corner'],
+      });
+      setToolSnap(snap);
+      if (pathAreaStart) {
+        const pos = snap ? { x: snap.x, y: snap.y } : { x: Math.round(world.x), y: Math.round(world.y) };
+        setPathAreaMousePos(pos);
+      }
       return;
     }
+
+    // andere Werkzeuge: Snap-Preview ausblenden
+    if (toolSnap) setToolSnap(null);
 
     // Update measure end position
     if (tool === 'measure' && measureStart) {
@@ -2020,9 +2540,28 @@ export function HallCanvas() {
 
       updateObject(selectedObject.id, { x: newX, y: newY, width: newW, height: newH });
     } else if (tool === 'select' && dragObject) {
-      // Snap to 0.1m grid (not 1m) for precise repositioning
-      let newX = Math.round((world.x - dragStart.x) * 10) / 10;
-      let newY = Math.round((world.y - dragStart.y) * 10) / 10;
+      // Drag-Threshold: erst nach 3 px Maus-Bewegung als Verschieben werten
+      // (verhindert versehentliches Verschieben beim Klicken — Nico 22.05.).
+      if (!dragThresholdPassedRef.current && dragMouseStartRef.current) {
+        const dx = e.clientX - dragMouseStartRef.current.x;
+        const dy = e.clientY - dragMouseStartRef.current.y;
+        if (Math.hypot(dx, dy) < 3) return;
+        dragThresholdPassedRef.current = true;
+      }
+      // Snap: bei Toren auf die Tor-Breite (z.B. 3.75m), sonst auf 0.1m
+      const snap = dragObject.type === 'tor' ? dragObject.width : 0.1;
+      let newX = Math.round((world.x - dragStart.x) / snap) * snap;
+      let newY = Math.round((world.y - dragStart.y) / snap) * snap;
+      // Bei horizontalen Tor-Reihen (Nord/Süd) y nicht snappen — y bleibt
+      // an der Wand, nur x rastet auf die Tor-Breite.
+      if (dragObject.type === 'tor') {
+        const side = dragObject.side;
+        if (side === 'north' || side === 'south') {
+          newY = Math.round((world.y - dragStart.y) * 10) / 10;
+        } else if (side === 'east' || side === 'west') {
+          newX = Math.round((world.x - dragStart.x) * 10) / 10;
+        }
+      }
 
       // Clamp position within hall bounds
       if (hall) {
@@ -2035,48 +2574,23 @@ export function HallCanvas() {
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Gang-Endpunkt-Drag beenden
+    if (gangEndpointDrag) {
+      setGangEndpointDrag(null);
+      setGangSnap({ snapped: false });
+      toast.success('Gang-Endpunkt verschoben');
+      return;
+    }
+
     const rect = canvasRef.current?.getBoundingClientRect();
     if (rect) {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
       const world = screenToWorld(x, y);
 
-      // Path drawing - SimCity style: add segment on mouse up
-      if (tool === 'path' && pathDrawing && pathDragStart) {
-        const endPoint = { x: Math.round(world.x), y: Math.round(world.y), objectId: null };
-        const dist = Math.sqrt(
-          Math.pow(endPoint.x - pathDragStart.x, 2) +
-          Math.pow(endPoint.y - pathDragStart.y, 2)
-        );
-
-        // Only add segment if we moved more than 1m
-        if (dist > 1) {
-          const startPoint = { x: pathDragStart.x, y: pathDragStart.y, objectId: null };
-
-          if (currentPath && currentPath.waypoints.length > 0) {
-            // Check if start point is already the last point in path
-            const lastPoint = currentPath.waypoints[currentPath.waypoints.length - 1];
-            const isConnected = lastPoint.x === pathDragStart.x && lastPoint.y === pathDragStart.y;
-
-            if (isConnected) {
-              // Just add end point (continuing path)
-              setCurrentPath({
-                waypoints: [...currentPath.waypoints, endPoint]
-              });
-            } else {
-              // Add both points (shouldn't happen normally)
-              setCurrentPath({
-                waypoints: [...currentPath.waypoints, startPoint, endPoint]
-              });
-            }
-          } else {
-            // First segment - create new path with both points
-            setCurrentPath({
-              waypoints: [startPoint, endPoint]
-            });
-          }
-          toast.success(`Segment: ${dist.toFixed(1)}m`);
-        }
+      // Path-Drawing: nichts auf MouseUp — Klick-Modus läuft komplett über MouseDown.
+      if (tool === 'path' && pathDrawing) {
+        // no-op; Punkte werden in handleMouseDown gesetzt
         setPathDrawing(false);
         setPathDragStart(null);
         return;
@@ -2092,6 +2606,17 @@ export function HallCanvas() {
         const height = y2 - y1;
 
         if (width > 1 && height > 1) {
+          // Lastenheft 3.1.4.1: pathArea darf nicht über belegte Bereiche/Regale/Hindernisse gehen
+          const blockers = objects.filter(o => ['bereich', 'regal', 'hindernis', 'wand'].includes(o.type));
+          const ueberschneidet = blockers.find(b =>
+            !(x2 <= b.x || b.x + b.width <= x1 || y2 <= b.y || b.y + b.height <= y1)
+          );
+          if (ueberschneidet) {
+            toast.warning(
+              `Wegfläche überschneidet "${ueberschneidet.name}" (${ueberschneidet.type}) — Lastenheft 3.1.4.1 verbietet Wegflächen über belegten Elementen. Trotzdem angelegt.`,
+              { duration: 5000 },
+            );
+          }
           addPathArea({
             name: `Wegbereich ${pathAreas.length + 1}`,
             x: x1,
@@ -2100,7 +2625,9 @@ export function HallCanvas() {
             height: height,
             color: 'rgba(100, 150, 255, 0.2)'
           });
-          toast.success(`Wegbereich erstellt (${width.toFixed(0)}m × ${height.toFixed(0)}m)`);
+          if (!ueberschneidet) {
+            toast.success(`Wegbereich erstellt (${width.toFixed(0)}m × ${height.toFixed(0)}m)`);
+          }
         }
         setPathAreaStart(null);
         setPathAreaMousePos(null);
@@ -2193,6 +2720,187 @@ export function HallCanvas() {
     return () => canvas.removeEventListener('wheel', nativeWheelHandler);
   }, [zoom, pan, setZoom, setPan]);
 
+  // ------------------------------------------------------------------
+  // Touch-Events (Tablet-Support)
+  // Ein-Finger = Pan (oder Tap → Selection). Zwei-Finger = Pinch-Zoom
+  // um den Mittelpunkt zwischen den Fingern. Maus-Handler bleiben
+  // unverändert; Touch läuft als nativer Listener mit passive:false
+  // damit preventDefault() zuverlässig Scroll/Doppeltap-Zoom verhindert.
+  // Refs (nicht useState) → keine Re-Renders pro touchmove-Frame.
+  // ------------------------------------------------------------------
+  const touchPanRef = useRef<{ x: number; y: number } | null>(null);
+  const touchPinchRef = useRef<{ distance: number; centerX: number; centerY: number } | null>(null);
+  const touchTapRef = useRef<{ x: number; y: number; time: number; moved: boolean } | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const TAP_MAX_MOVE = 8;     // Pixel – darüber gilt's als Drag
+    const TAP_MAX_DURATION = 350; // ms
+
+    const getCanvasPoint = (clientX: number, clientY: number) => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        const p = getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
+        touchPanRef.current = p;
+        touchTapRef.current = { x: p.x, y: p.y, time: Date.now(), moved: false };
+        touchPinchRef.current = null;
+      } else if (e.touches.length === 2) {
+        const p1 = getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
+        const p2 = getCanvasPoint(e.touches[1].clientX, e.touches[1].clientY);
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        touchPinchRef.current = {
+          distance: Math.sqrt(dx * dx + dy * dy),
+          centerX: (p1.x + p2.x) / 2,
+          centerY: (p1.y + p2.y) / 2,
+        };
+        // Zweiter Finger landet → kein Pan, kein Tap mehr
+        touchPanRef.current = null;
+        touchTapRef.current = null;
+        e.preventDefault();
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      // Standard-Verhalten (Scroll, Pinch-Page-Zoom) auf dem Canvas unterdrücken
+      e.preventDefault();
+
+      if (e.touches.length === 2 && touchPinchRef.current) {
+        const p1 = getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
+        const p2 = getCanvasPoint(e.touches[1].clientX, e.touches[1].clientY);
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const newDistance = Math.sqrt(dx * dx + dy * dy);
+        const oldPinch = touchPinchRef.current;
+        if (newDistance > 0 && oldPinch.distance > 0) {
+          const scale = newDistance / oldPinch.distance;
+          const newZoom = Math.max(0.1, Math.min(5, zoom * scale));
+          if (newZoom !== zoom) {
+            const zoomRatio = newZoom / zoom;
+            // Anker = aktueller Mittelpunkt zwischen den Fingern
+            const anchorX = (p1.x + p2.x) / 2;
+            const anchorY = (p1.y + p2.y) / 2;
+            const newPanX = anchorX - (anchorX - pan.x) * zoomRatio;
+            const newPanY = anchorY - (anchorY - pan.y) * zoomRatio;
+            setZoom(newZoom);
+            setPan({ x: newPanX, y: newPanY });
+          }
+        }
+        touchPinchRef.current = {
+          distance: newDistance,
+          centerX: (p1.x + p2.x) / 2,
+          centerY: (p1.y + p2.y) / 2,
+        };
+        return;
+      }
+
+      if (e.touches.length === 1 && touchPanRef.current) {
+        const p = getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
+        const dx = p.x - touchPanRef.current.x;
+        const dy = p.y - touchPanRef.current.y;
+        if (touchTapRef.current) {
+          const totalDx = p.x - touchTapRef.current.x;
+          const totalDy = p.y - touchTapRef.current.y;
+          if (Math.abs(totalDx) > TAP_MAX_MOVE || Math.abs(totalDy) > TAP_MAX_MOVE) {
+            touchTapRef.current.moved = true;
+          }
+        }
+        if (dx !== 0 || dy !== 0) {
+          setPan({ x: pan.x + dx, y: pan.y + dy });
+        }
+        touchPanRef.current = p;
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      // Tap-Detection: 1-Finger ohne nennenswerte Bewegung + kurze Dauer
+      const tap = touchTapRef.current;
+      if (
+        tap &&
+        !tap.moved &&
+        e.touches.length === 0 &&
+        Date.now() - tap.time <= TAP_MAX_DURATION
+      ) {
+        // Selection nur im 'select'-Tool, wie die Maus
+        if (tool === 'select') {
+          const world = screenToWorld(tap.x, tap.y);
+          const obj = findObjectAt(world.x, world.y);
+          if (obj) {
+            selectObject(obj);
+          } else {
+            // Auch Gänge/Paths/Bereiche treffen, wie beim Mouse-Click
+            const wp = findWaypointAt(world.x, world.y);
+            if (wp) {
+              selectPath(wp.path);
+            } else {
+              const pathHit = findPathAt(world.x, world.y);
+              if (pathHit) {
+                selectPath(pathHit);
+              } else {
+                const gangHit = findGangAt(world.x, world.y);
+                if (gangHit) {
+                  selectGang(gangHit);
+                } else {
+                  const areaHit = findPathAreaAt(world.x, world.y);
+                  if (areaHit) {
+                    selectPathArea(areaHit);
+                  } else {
+                    const convHit = findConveyorAt(world.x, world.y);
+                    if (convHit) {
+                      selectConveyor(convHit);
+                    } else {
+                      selectObject(null);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Wenn jetzt nur noch 1 Finger übrig ist (z.B. nach 2-Finger-Pinch
+      // hebt einer ab) → Pan-Anker neu setzen, Pinch beenden
+      if (e.touches.length === 1) {
+        const p = getCanvasPoint(e.touches[0].clientX, e.touches[0].clientY);
+        touchPanRef.current = p;
+        touchPinchRef.current = null;
+        touchTapRef.current = null;
+      } else if (e.touches.length === 0) {
+        touchPanRef.current = null;
+        touchPinchRef.current = null;
+        touchTapRef.current = null;
+      }
+    };
+
+    const onTouchCancel = () => {
+      touchPanRef.current = null;
+      touchPinchRef.current = null;
+      touchTapRef.current = null;
+    };
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', onTouchCancel, { passive: false });
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+      canvas.removeEventListener('touchcancel', onTouchCancel);
+    };
+  }, [
+    zoom, pan, setZoom, setPan, tool, screenToWorld,
+    findObjectAt, findGangAt, findPathAt, findPathAreaAt, findConveyorAt, findWaypointAt,
+    selectObject, selectPath, selectGang, selectPathArea, selectConveyor,
+  ]);
+
   // Handle keyboard events for drawing cancellation and deletion
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2200,6 +2908,7 @@ export function HallCanvas() {
         if (gangDrawStart) {
           setGangDrawStart(null);
           setGangMousePos(null);
+          setGangSnap({ snapped: false });
           toast.info('Gang-Zeichnen abgebrochen');
         }
         if (currentPath) {
@@ -2293,13 +3002,17 @@ export function HallCanvas() {
   }, [tool]);
 
   // Double-click to finish path or conveyor
-  const handleDoubleClick = () => {
+  // Save-Trigger für Pfad/Förderband — von Enter-Taste aufgerufen, NICHT mehr
+  // von Doppelklick. Bug B (28.05.): Doppelklick triggerte zwischen 2 schnellen
+  // Klicks → Save mit n-1 Waypoints. Enter ist deterministisch.
+  const savePendingDrawing = useCallback(() => {
     if (tool === 'path' && currentPath && currentPath.waypoints.length >= 2) {
       savePathWithLinks(currentPath.waypoints);
       setCurrentPath(null);
       setPathDrawing(false);
       setPathDragStart(null);
       setPathMousePos(null);
+      return true;
     }
     if (tool === 'conveyor' && currentConveyor && currentConveyor.points.length >= 2) {
       addConveyor({
@@ -2311,8 +3024,38 @@ export function HallCanvas() {
       setCurrentConveyor(null);
       setConveyorMousePos(null);
       toast.success('Förderband gespeichert');
+      return true;
     }
-  };
+    return false;
+  }, [tool, currentPath, currentConveyor, conveyors.length, savePathWithLinks, addConveyor]);
+
+  // Enter speichert, ESC bricht ab. Ersetzt das frühere Doppelklick-Save.
+  useEffect(() => {
+    if (tool !== 'path' && tool !== 'conveyor') return;
+    const handleKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) return;
+      if (e.key === 'Enter') {
+        if (savePendingDrawing()) e.preventDefault();
+      } else if (e.key === 'Escape') {
+        if (tool === 'path' && currentPath) {
+          e.preventDefault();
+          setCurrentPath(null);
+          setPathDrawing(false);
+          setPathDragStart(null);
+          setPathMousePos(null);
+          toast.info('Pfad-Zeichnen abgebrochen');
+        } else if (tool === 'conveyor' && currentConveyor) {
+          e.preventDefault();
+          setCurrentConveyor(null);
+          setConveyorMousePos(null);
+          toast.info('Förderband-Zeichnen abgebrochen');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [tool, currentPath, currentConveyor, savePendingDrawing]);
 
   // Cursor based on tool
   const getCursor = () => {
@@ -2470,13 +3213,12 @@ export function HallCanvas() {
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        style={{ cursor: getCursor() }}
+        style={{ cursor: getCursor(), touchAction: 'none' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleClick}
       />
 
       {/* Legende — erscheint wenn Sim-Aufträge auf der Halle sind */}
@@ -2521,9 +3263,9 @@ export function HallCanvas() {
       {tool === 'path' && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 border rounded-lg px-4 py-2 text-sm shadow-lg">
           {currentPath && currentPath.waypoints.length >= 2 ? (
-            <span>Vom Endpunkt weiterziehen | <kbd className="px-1 bg-muted rounded">Doppelklick</kbd> Speichern | <kbd className="px-1 bg-muted rounded">Rechtsklick</kbd> Fertig</span>
+            <span>Weiteren Punkt klicken | <kbd className="px-1 bg-muted rounded">Doppelklick</kbd> Speichern | <kbd className="px-1 bg-muted rounded">Esc</kbd> Abbrechen</span>
           ) : (
-            <span>Klicken & Ziehen für Weg-Segment (wie SimCity)</span>
+            <span>Start-Punkt klicken (am besten auf einem Tor oder Bereich)</span>
           )}
         </div>
       )}

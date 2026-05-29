@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useTopisStore, useTool, useZoom } from '@/lib/store';
+import { generateDemoRecordsFromLayout } from '@/lib/demo-records-generator';
+import { BereichOptimizerDialog } from '@/components/dialogs/BereichOptimizerDialog';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +70,7 @@ import { Input } from '@/components/ui/input';
 import { Tool } from '@/types/topis';
 import { exportToJSON, importFromJSON, downloadFile, openFileDialog, downloadSVG } from '@/lib/export';
 import { generateGaenge, DEFAULT_GANG_SETTINGS } from '@/lib/gang-generator';
+import { generateWegflaecheNegativ } from '@/lib/wegflaeche-negativ';
 import { ProjektVergleichDialog } from '@/components/dialogs/ProjektVergleichDialog';
 import { ThemeToggleSimple } from '@/components/theme-toggle';
 import { useTheme } from 'next-themes';
@@ -281,110 +285,56 @@ export function Toolbar() {
   const setRelationZuordnungenStore = useBetriebsdatenStore((s) => s.setRelationZuordnungen);
   const objectsForDemo = useTopisStore((s) => s.objects);
 
-  // Generischer Demo-Daten-Loader für Monats-CSVs aus public/demo-data/
-  const handleLoadMonth = async (slug: string, label: string) => {
+  // Generiert Demo-Records aus dem aktuell geladenen Layout — keine CSV-Fetches,
+  // keine hardcodierten Sektion-Mappings. Tor → Bereich kommt aus der Geometrie.
+  const handleGenerateMonth = (datumStart: string, tage: number, label: string) => {
     try {
-      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/topis-saas';
-      const url = `${basePath}/demo-data/${slug}.csv`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-
-      const lines = text.split(/\r?\n/).filter((l) => l.trim());
-      if (lines.length < 2) {
-        toast.error('CSV ist leer');
-        return;
-      }
-      const headers = lines[0].split(';').map((h) => h.trim().toLowerCase());
-      const colMp = headers.indexOf('messpunkt');
-      const colMpName = headers.indexOf('messpunktname');
-      const colDate = headers.indexOf('scandatum');
-      const colTime = headers.indexOf('scanzeit');
-      const colTour = headers.indexOf('tour');
-      const colDispo = headers.indexOf('dispogebiet');
-      const colSendungen = headers.indexOf('sendungen');
-      const colColli = headers.indexOf('colli');
-      const colGewicht = headers.indexOf('gewicht');
-
-      // MP-Custom-Objekte finden
-      const mpObjects = objectsForDemo.filter(
-        (o) => o.tags?.includes('messpunkt') && o.meta?.code
-      );
+      // Akzeptiere jedes Tor — falls tags/meta.code fehlen (selbst gebaute Halle),
+      // wird MP{torNummer||id} on-the-fly als Schlüssel verwendet.
+      const mpObjects = objectsForDemo.filter((o) => o.type === 'tor');
       if (mpObjects.length === 0) {
-        toast.error('Keine Messpunkte im Layout — bitte zuerst AS-Vorlage laden');
+        toast.error('Keine Tore im Layout — bitte zuerst Tore platzieren oder eine Halle laden');
+        return;
+      }
+      const codeFor = (o: typeof mpObjects[number]) =>
+        (o.meta as { code?: string } | undefined)?.code
+        || (o.torNummer != null ? `MP${o.torNummer}` : `MP${o.id}`);
+
+      const colliProTag = useProzessmodellStore.getState().parameter.find(
+        (p) => p.id === 'colliProTag'
+      )?.aktuellerWert ?? 3970;
+
+      const result = generateDemoRecordsFromLayout({
+        objects: objectsForDemo,
+        tage,
+        colliProTag,
+        datumStart,
+      });
+
+      if (result.records.length === 0) {
+        toast.error('Keine Records generiert (Wochenenden? Tor-Count = 0?)');
         return;
       }
 
-      // Zweistufige Aggregation:
-      // 1) pro MP-Code für die Heatmap-Analyse (wie bisher)
-      // 2) pro (MP × Relation × Tag × Stunde) als kompakte Records — passt in
-      //    localStorage. 219k Rohzeilen würden ~55 MB JSON, das überschreitet
-      //    das Browser-Limit (~5-10 MB) → silent-fail in der Persistenz.
+      // Aggregate pro MP-Code für Heatmap-Metriken
       type Bucket = { sendungen: number; colli: number; gewicht: number; count: number };
       const grouped = new Map<string, Bucket>();
-      const tage = new Set<string>();
-      let totalSendungen = 0, totalColli = 0, totalGewicht = 0;
       const dispoSet = new Set<string>();
-
-      // Bucket-Key: mpCode|dispogebiet|datum|stunde
-      type AggKey = string;
-      const recordsBuckets = new Map<AggKey, import('@/types/scandaten').ScandatenRecord>();
-      let nextRecordId = 1;
-
-      for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(';');
-        const mpRaw = parts[colMp]?.trim() || '';
-        const mpCode = mpRaw.match(/MP[0-9]+[a-z]*/i)?.[0];
-        if (!mpCode) continue;
-        const s = parseInt(parts[colSendungen]) || 0;
-        const c = parseInt(parts[colColli]) || 0;
-        const g = parseFloat(parts[colGewicht]) || 0;
-        const d = parts[colDate]?.trim() || '';
-        const z = colTime >= 0 ? (parts[colTime]?.trim() || '') : '';
-        const tour = colTour >= 0 ? (parts[colTour]?.trim() || '') : '';
-        const dispo = colDispo >= 0 ? (parts[colDispo]?.trim() || '') : '';
-        if (d) tage.add(d.substring(0, 10));
-        if (dispo) dispoSet.add(dispo);
-        totalSendungen += s; totalColli += c; totalGewicht += g;
-
-        // MP-Bucket
-        const b = grouped.get(mpCode) || { sendungen: 0, colli: 0, gewicht: 0, count: 0 };
-        b.sendungen += s; b.colli += c; b.gewicht += g; b.count += 1;
-        grouped.set(mpCode, b);
-
-        // Kompakter Record-Bucket pro (MP × Relation × Tag).
-        // Stunde wird nicht persistiert — Stunden-Aggregation berechnet der
-        // Store separat live aus diesem Aggregat.
-        const aggKey = `${mpCode}|${dispo}|${d}`;
-        const existing = recordsBuckets.get(aggKey);
-        if (existing) {
-          existing.colli += c;
-          existing.sendungen += s;
-          existing.gewicht += g;
-        } else {
-          recordsBuckets.set(aggKey, {
-            id: nextRecordId++,
-            scandatum: d,
-            scanzeit: '',
-            timestamp: 0,
-            stellplatz: mpCode,
-            messpunkt: parseInt(mpRaw) || 0,
-            messpunktName: colMpName >= 0 ? (parts[colMpName]?.trim() || mpCode) : mpCode,
-            tour: '',
-            dispogebiet: dispo,
-            ausgangsrelation: dispo,
-            sendungen: s,
-            colli: c,
-            gewicht: g,
-          });
-        }
+      let totalSendungen = 0, totalColli = 0, totalGewicht = 0;
+      for (const r of result.records) {
+        totalSendungen += r.sendungen;
+        totalColli += r.colli;
+        totalGewicht += r.gewicht;
+        if (r.dispogebiet) dispoSet.add(r.dispogebiet);
+        const b = grouped.get(r.stellplatz) || { sendungen: 0, colli: 0, gewicht: 0, count: 0 };
+        b.sendungen += r.sendungen; b.colli += r.colli; b.gewicht += r.gewicht; b.count += 1;
+        grouped.set(r.stellplatz, b);
       }
-      const records = [...recordsBuckets.values()];
 
-      const arbeitstage = Math.max(tage.size, 1);
+      const arbeitstage = Math.max(result.arbeitstage, 1);
       const metriken: ObjektMetrik[] = [];
       grouped.forEach((b, mpKey) => {
-        const mpObj = mpObjects.find((o) => o.meta?.code === mpKey);
+        const mpObj = mpObjects.find((o) => codeFor(o) === mpKey);
         if (!mpObj) return;
         metriken.push({
           objectId: mpObj.id,
@@ -398,9 +348,8 @@ export function Toolbar() {
         });
       });
 
-      const sortedTage = [...tage].sort();
       setAnalyseStore({
-        zeitraum: { von: sortedTage[0] || '', bis: sortedTage[sortedTage.length - 1] || '' },
+        zeitraum: { von: result.von, bis: result.bis },
         arbeitstage,
         gesamtSendungen: totalSendungen,
         gesamtColli: totalColli,
@@ -409,13 +358,11 @@ export function Toolbar() {
       });
       setHeatmapConfigStore({ aktiv: true, modus: 'colli' });
 
-      // Für die Planungs-Seite: Records, Tor-Zuordnung (MP-Code → MP-Objekt),
-      // Relation-Zuordnung (dispogebiet → bisher unmapped, Berater kann später drinhängen)
-      importScandatenRecords(records);
+      importScandatenRecords(result.records);
 
       const torZuordnungen: import('@/types/scandaten').TorZuordnung[] = [];
       grouped.forEach((_b, mpCode) => {
-        const obj = mpObjects.find((o) => o.meta?.code === mpCode);
+        const obj = mpObjects.find((o) => codeFor(o) === mpCode);
         if (obj) {
           torZuordnungen.push({
             stellplatzKey: mpCode,
@@ -427,13 +374,10 @@ export function Toolbar() {
       });
       setTorZuordnungenStore(torZuordnungen);
 
-      // Bereich-Auto-Match: dispogebiet-Text mit Bereich-Objektnamen (Substring, case-insensitiv)
       const bereiche = objectsForDemo.filter((o) => o.type === 'bereich' && o.name);
       const relationZuordnungen: import('@/types/scandaten').RelationZuordnung[] = [...dispoSet].map((dispo) => {
         const lower = dispo.toLowerCase();
-        const match = bereiche.find((b) =>
-          (b.name || '').toLowerCase().includes(lower) || lower.includes((b.name || '').toLowerCase())
-        );
+        const match = bereiche.find((b) => (b.name || '').toLowerCase() === lower);
         return {
           relationKey: dispo,
           objectId: match?.id ?? null,
@@ -442,16 +386,12 @@ export function Toolbar() {
       });
       setRelationZuordnungenStore(relationZuordnungen);
 
-      if (metriken.length === 0) {
-        toast.error(`Keine MP-Matches: gefunden ${[...grouped.keys()].join(',')}, im Layout ${mpObjects.map(m => m.meta?.code).join(',')}`);
-      } else {
-        toast.success(
-          `${label}: ${(lines.length - 1).toLocaleString('de-DE')} Zeilen, ${arbeitstage} Tage, ${metriken.length} Messpunkte gemappt`,
-          { duration: 5000 }
-        );
-      }
+      toast.success(
+        `${label}: ${arbeitstage} Werktage, ${metriken.length} Tore, ${totalColli.toLocaleString('de-DE')} Colli gesamt`,
+        { duration: 5000 }
+      );
     } catch (err) {
-      toast.error('Demo-Daten konnten nicht geladen werden: ' + (err as Error).message);
+      toast.error('Demo-Daten konnten nicht generiert werden: ' + (err as Error).message);
     }
   };
   const prozessErgebnis = useProzessmodellStore((s) => s.ergebnis);
@@ -459,6 +399,8 @@ export function Toolbar() {
   const { theme, setTheme } = useTheme();
   const [showRulers, setShowRulers] = useState(true);
   const [showMeasurements, setShowMeasurements] = useState(true);
+
+  const [showBereichOptimizer, setShowBereichOptimizer] = useState(false);
 
   // Workflow-Phasen — gliedert die Toolbar nach Beratungs-Story
   type Phase = 'daten' | 'layout' | 'wege' | 'auswertung' | 'planung' | 'vergleich' | 'cockpit';
@@ -475,10 +417,11 @@ export function Toolbar() {
 
   // Export handlers
   const handleExportJSON = () => {
-    const state = { halls, activeHallId, objects, paths, pathAreas, gaenge, ffz, conveyors };
+    const simAuftraege = useTopisStore.getState().simAuftraege;
+    const state = { halls, activeHallId, objects, paths, pathAreas, gaenge, ffz, conveyors, simAuftraege };
     const json = exportToJSON(state, 'TOPIS Projekt');
     downloadFile(json, 'projekt.topis', 'application/json');
-    toast.success('Projekt als JSON exportiert');
+    toast.success(`Projekt exportiert (${simAuftraege.length} Aufträge inkludiert)`);
   };
 
   const handleExportSVG = () => {
@@ -516,7 +459,8 @@ export function Toolbar() {
   };
 
   const handleSave = () => {
-    const state = { halls, activeHallId, objects, paths, pathAreas, gaenge, ffz, conveyors };
+    const simAuftraege = useTopisStore.getState().simAuftraege;
+    const state = { halls, activeHallId, objects, paths, pathAreas, gaenge, ffz, conveyors, simAuftraege };
     const json = exportToJSON(state, 'TOPIS Projekt');
     // Store in localStorage
     localStorage.setItem('topis-project', json);
@@ -534,6 +478,23 @@ export function Toolbar() {
     } else {
       toast.info('Kein gespeichertes Projekt gefunden');
     }
+  };
+
+  // Wegfläche Negativ-Modus (Lastenheft 3.1.4.1 Variante 1)
+  const handleGenerateWegflaecheNegativ = () => {
+    if (!activeHall) {
+      toast.error('Keine Halle aktiv');
+      return;
+    }
+    const existing = useTopisStore.getState().pathAreas;
+    if (existing.length > 0) {
+      if (!confirm(`${existing.length} Wegflächen existieren. Durch Negativ-Mode ersetzen?`)) return;
+      // Delete existing pathAreas first
+      for (const a of existing) useTopisStore.getState().deletePathArea(a.id);
+    }
+    const generated = generateWegflaecheNegativ(activeHall.width, activeHall.height, objects, 0);
+    for (const a of generated) useTopisStore.getState().addPathArea(a);
+    toast.success(`${generated.length} Wegflächen aus Halle minus Hindernisse generiert`);
   };
 
   // Gang-Generator
@@ -618,54 +579,47 @@ export function Toolbar() {
           <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center font-bold text-primary-foreground text-sm">
             T
           </div>
-          <span className="font-semibold hidden sm:inline">TOPIS</span>
-          <Badge variant="outline" className="text-[10px] hidden md:inline-flex">SaaS</Badge>
+          <span className="font-semibold hidden xl:inline">TOPIS</span>
+          <Badge variant="outline" className="text-[10px] hidden 2xl:inline-flex">SaaS</Badge>
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 
-        {/* Phasen-Tabs */}
-        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto">
-          {phases.map((p) => (
-            <Tooltip key={p.id}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={phase === p.id ? 'default' : 'ghost'}
-                  size="sm"
-                  className="h-8 px-3 text-sm font-medium shrink-0"
-                  onClick={() => setPhase(p.id)}
-                >
-                  {p.label}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{p.hint}</TooltipContent>
-            </Tooltip>
-          ))}
+        {/* Phasen-Tabs — bei schmalem Viewport kompakter, damit unter 1280px keine
+            horizontale Scrollbar entsteht (Alex 21.05.). */}
+        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto min-w-0">
+          {phases.map((p) => {
+            // "Planung" und "Dashboard" sind eigene Seiten — Phase-Tab muss
+            // dorthin navigieren, sonst wirken die alten globalen Buttons als
+            // Duplikate (Alex 22.05.).
+            const externalHref =
+              p.id === 'planung' ? '/topis-saas/projekt/planung/'
+              : p.id === 'cockpit' ? '/topis-saas/dashboard/'
+              : null;
+            const btn = (
+              <Button
+                variant={phase === p.id ? 'default' : 'ghost'}
+                size="sm"
+                className="h-8 px-2 xl:px-3 text-xs xl:text-sm font-medium shrink-0"
+                onClick={() => !externalHref && setPhase(p.id)}
+              >
+                {p.label}
+              </Button>
+            );
+            return (
+              <Tooltip key={p.id}>
+                <TooltipTrigger asChild>
+                  {externalHref ? <a href={externalHref} className="shrink-0">{btn}</a> : btn}
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{p.hint}</TooltipContent>
+              </Tooltip>
+            );
+          })}
         </div>
 
-        {/* Globale Aktionen rechts */}
-        <a href="/topis-saas/projekt/planung" className="shrink-0 hidden md:inline-block">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                <FileText className="h-3.5 w-3.5" />
-                Planung
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Auftrags-Planungsseite öffnen (Kosten + Wege spielen)</TooltipContent>
-          </Tooltip>
-        </a>
-        <a href="/topis-saas/dashboard" className="shrink-0 hidden md:inline-block">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Dashboard
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Dashboard öffnen (Σ-Sicht, KPIs)</TooltipContent>
-          </Tooltip>
-        </a>
+        {/* Globale Aktionen rechts — Planung/Dashboard sind bereits als
+            Phasen-Tabs in der gleichen Toolbar-Zeile, hier nochmal als Button
+            wäre doppelt (Alex 22.05.). */}
         <Button
           variant="outline"
           size="sm"
@@ -741,14 +695,14 @@ export function Toolbar() {
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Volumen-Daten laden (Scans)</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleLoadMonth('as-jan2026-scans', 'Januar 2026')}>
+            <DropdownMenuLabel>Volumen-Daten generieren (aus Layout)</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleGenerateMonth('2026-01-01', 31, 'Januar 2026')}>
               <Database className="mr-2 h-4 w-4" />
-              AS Januar 2026
+              Beispiel-Volumen Januar 2026
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleLoadMonth('as-feb2026-scans', 'Februar 2026')}>
+            <DropdownMenuItem onClick={() => handleGenerateMonth('2026-02-01', 28, 'Februar 2026')}>
               <Database className="mr-2 h-4 w-4" />
-              AS Februar 2026
+              Beispiel-Volumen Februar 2026
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => {
               // Eigene CSV via Dialog
@@ -977,10 +931,11 @@ export function Toolbar() {
                 Gebäudeelemente
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {objectTypes.filter(o => ['rampe', 'leveller', 'pfosten', 'treppe', 'hindernis'].includes(o.id)).map((obj) => (
+                {objectTypes.filter(o => ['wand', 'tuer', 'rampe', 'leveller', 'pfosten', 'treppe', 'hindernis'].includes(o.id)).map((obj) => (
                   <DropdownMenuItem key={obj.id} onClick={() => setTool(obj.id as Tool)}>
                     {obj.icon}
-                    <span className="ml-2">{obj.label}</span>
+                    <span className="ml-2">{obj.label === 'Wand' ? 'Wand (z.B. Brandschutz)' : obj.label}</span>
+                    {obj.shortcut && <DropdownMenuShortcut>{obj.shortcut}</DropdownMenuShortcut>}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
@@ -1111,6 +1066,8 @@ export function Toolbar() {
                     size="icon"
                     className="h-8 w-8"
                     onClick={() => setTool(tool.id)}
+                    title={`${tool.label} (${tool.shortcut})`}
+                    aria-label={tool.label}
                   >
                     {tool.icon}
                   </Button>
@@ -1211,6 +1168,15 @@ export function Toolbar() {
             <Truck className="h-3.5 w-3.5" />
             Gang-Generator
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 text-xs"
+            onClick={handleGenerateWegflaecheNegativ}
+            title="Halle als Wegfläche, Bereiche/Regale/Hindernisse abziehen (Lastenheft 3.1.4.1 Variante 1)"
+          >
+            Negativ-Modus
+          </Button>
         </div>
         )}
 
@@ -1223,6 +1189,10 @@ export function Toolbar() {
           <span id="tour-benchmark"><BenchmarkDialog /></span>
           <span id="tour-istsoll"><IstSollDialog /></span>
           <span id="tour-torbelegung"><TorbelegungDialog /></span>
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowBereichOptimizer(true)}>
+            <Sparkles className="h-3.5 w-3.5" />
+            Optimieren
+          </Button>
           {betriebsAnalyse && (
             <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={handleExportReport}>
               <FileText className="h-3.5 w-3.5" />
@@ -1336,20 +1306,12 @@ export function Toolbar() {
         {/* ============ DASHBOARD ============ */}
         {(phase === 'cockpit') && (
         <div className="flex items-center gap-2">
-          <a href="/topis-saas/dashboard">
-            <Button variant="default" size="sm" className="gap-1.5 text-xs">
-              <BarChart3 className="h-4 w-4" />
-              Dashboard öffnen (Tages-Werkzeug)
-            </Button>
-          </a>
-          <a href="/topis-saas/projekt/planung">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-              <FileText className="h-4 w-4" />
-              Auftrags-Planung
-            </Button>
-          </a>
+          {/* Dashboard- und Planung-Buttons sind bereits global in Row 1 (immer
+              sichtbar) — hier nicht nochmal rendern. Alex P. UC 6: "I do not
+              understand why these buttons appear twice". */}
           <span className="text-[11px] text-muted-foreground ml-1">
-            Halle und Volumen-Daten lädst du oben in Phase „Daten"
+            Dashboard und Auftrags-Planung oben rechts in der Kopfzeile. Halle
+            und Volumen-Daten lädst du in Phase „Daten".
           </span>
         </div>
         )}
@@ -1389,6 +1351,7 @@ export function Toolbar() {
 
       </div>
       </div>
+      <BereichOptimizerDialog open={showBereichOptimizer} onOpenChange={setShowBereichOptimizer} />
     </TooltipProvider>
   );
 }

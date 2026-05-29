@@ -88,20 +88,20 @@ export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord
 
 /**
  * Generiert Demo-Records für AS Gersthofen (5 Tage, realistisches Profil).
- * 85 Tore, ~15.000 Colli/Tag, 18 Relationen, Hotspot auf Tore 10-30.
- * Erzeugt bewusst rote Ampeln für überzeugenden Demo-Effekt.
+ * 115 Tore, ~3.970 Colli/Tag (real-Wert Ø Nov25-Feb26 laut Tim Winkler), 18 Relationen.
+ * Hotspot auf Tore 10-30 Süd und Tore 65-85 Nord.
  */
 export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: Eckdaten } {
-  const TORE = 85;
-  const COLLI_PRO_TAG = 15000;
+  const TORE = 115;
+  const COLLI_PRO_TAG = 3970;  // Tim Winkler 19.05.2026: real Ø Nov 2025 - Feb 2026
   const TAGE = 5;
 
   const eckdaten: Eckdaten = {
     tore: TORE,
     colliProTag: COLLI_PRO_TAG,
-    flaecheQm: 6334,
+    flaecheQm: 12470,  // 215 × 58 m mit Anbau
     fte: 55,
-    hallenName: 'AS Gersthofen (Demo)',
+    hallenName: 'AS Gersthofen Halle 6 (mit Anbau)',
     prozessTyp: 'se',
   };
 

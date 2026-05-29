@@ -36,6 +36,12 @@ interface ProzessmodellState {
   /** FFZ-Eintrag entfernen */
   removeFFZMixEintrag: (index: number) => void;
   ladeModell: (modell: ProzessmodellConfig, parameter: ProzessParameter[]) => void;
+  /** Einzelnen Prozess-Schritt updaten (Standardzeit, Anteil, Häufigkeit, Hilfsmittel, etc.). */
+  updateSchritt: (nr: number, patch: Partial<import('@/types/prozessmodell').Prozessschritt>) => void;
+  /** Schritt hinzufügen */
+  addSchritt: (schritt: import('@/types/prozessmodell').Prozessschritt) => void;
+  /** Schritt entfernen */
+  removeSchritt: (nr: number) => void;
   berechne: () => void;
   reset: () => void;
 }
@@ -97,6 +103,31 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
 
   removeFFZMixEintrag: (index) => {
     set((state) => ({ ffzMix: state.ffzMix.filter((_, i) => i !== index) }));
+    get().berechne();
+  },
+
+  updateSchritt: (nr, patch) => {
+    set((state) => {
+      if (!state.modell) return {};
+      const schritte = state.modell.schritte.map((s) => s.nr === nr ? { ...s, ...patch } : s);
+      return { modell: { ...state.modell, schritte } };
+    });
+    get().berechne();
+  },
+
+  addSchritt: (schritt) => {
+    set((state) => {
+      if (!state.modell) return {};
+      return { modell: { ...state.modell, schritte: [...state.modell.schritte, schritt] } };
+    });
+    get().berechne();
+  },
+
+  removeSchritt: (nr) => {
+    set((state) => {
+      if (!state.modell) return {};
+      return { modell: { ...state.modell, schritte: state.modell.schritte.filter((s) => s.nr !== nr) } };
+    });
     get().berechne();
   },
 

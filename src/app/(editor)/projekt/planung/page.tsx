@@ -19,11 +19,18 @@ import {
 import { RelationZuordnungDialog } from '@/components/dialogs/RelationZuordnungDialog';
 import { TorComboBox } from '@/components/ui/tor-combobox';
 import { useSimSettingsStore } from '@/lib/sim-settings-store';
+import { ThemeToggleSimple } from '@/components/theme-toggle';
 
 const fmtEUR = (v: number) =>
   v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
 const fmtNum = (v: number, d = 0) =>
   v.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+// Σ Weg-Meter wird oft 4-/5-stellig — ab > 999 m als km formatieren, sonst
+// quetscht die Zahl die Spalte und wird unleserlich.
+const fmtMeterOrKm = (m: number): string => {
+  if (m > 999) return `${(m / 1000).toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} km`;
+  return `${fmtNum(m, 0)} m`;
+};
 
 export default function PlanungPage() {
   const records = useBetriebsdatenStore((s) => s.scandatenRecords);
@@ -37,6 +44,9 @@ export default function PlanungPage() {
   const clearSimAuftraege = useTopisStore((s) => s.clearSimAuftraege);
   const forkSimAuftragAsSim = useTopisStore((s) => s.forkSimAuftragAsSim);
   const removeSimVarianteFor = useTopisStore((s) => s.removeSimVarianteFor);
+  const setAnimationActive = useTopisStore((s) => s.setAnimationActive);
+  const animationActiveId = useTopisStore((s) => s.animationActiveId);
+  const setFocusedTor = useTopisStore((s) => s.setFocusedTor);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
 
   // Stundensatz + Default-FFZ + Min/Colli-Fix kommen aus dem geteilten Settings-Store,
@@ -130,20 +140,42 @@ export default function PlanungPage() {
   const sollMeta = useMemo(() => {
     const gColli = sollZeilen.reduce((s, z) => s + z.colli, 0);
     const gStd = sollZeilen.reduce((s, z) => s + z.gesamtStunden, 0);
-    const gKos = sollZeilen.reduce((s, z) => s + z.kosten, 0);
-    return { gesamtColli: gColli, gesamtStunden: gStd, gesamtKosten: gKos };
+    const gKos = sollZeilen.reduce((s, z) => s + Math.round(z.kosten), 0);
+    // Σ Weg-Meter: nur Zeilen ohne Warnung (sonst ist distanzM 0 oder Luftlinie).
+    // Single-Weg pro Auftrag — der Doppelweg wird intern in der Zeit-Berechnung
+    // genutzt, aber im UI ist die Spalte als "Weg (m)" pro Auftrag deklariert.
+    const gWegM = sollZeilen.reduce((s, z) => (z.warnung ? s : s + z.distanzM), 0);
+    // Ø Min/Colli gewichtet nach Colli — ungewichtet wäre verzerrt durch
+    // Mini-Aufträge mit nur 1 Colli aber langem Weg.
+    const wMinColli = gColli > 0
+      ? sollZeilen.reduce((s, z) => s + z.minProColli * z.colli, 0) / gColli
+      : 0;
+    return { gesamtColli: gColli, gesamtStunden: gStd, gesamtKosten: gKos, gesamtWegM: gWegM, avgMinProColli: wMinColli };
   }, [sollZeilen]);
 
-  // Komplette IST-Meta inkl. Sim-Aufträge
-  const allIstMeta = useMemo(() => ({
-    gesamtColli: allIstZeilen.reduce((s, z) => s + z.colli, 0),
-    gesamtStunden: allIstZeilen.reduce((s, z) => s + z.gesamtStunden, 0),
-    gesamtKosten: allIstZeilen.reduce((s, z) => s + z.kosten, 0),
-    simAnzahl: simZeilen.length,
-    simKosten: simZeilen.reduce((s, z) => s + z.kosten, 0),
-    simStunden: simZeilen.reduce((s, z) => s + z.gesamtStunden, 0),
-    simColli: simZeilen.reduce((s, z) => s + z.colli, 0),
-  }), [allIstZeilen, simZeilen]);
+  // Komplette IST-Meta inkl. Sim-Aufträge.
+  // Σ Kosten muss konsistent mit der Anzeige sein — fmtEUR rundet jede Zelle
+  // auf ganze Euro, also summieren wir die ebenfalls gerundeten Werte, damit
+  // eine händische Excel-Nachrechnung (sum der angezeigten Werte) mit dem
+  // Footer übereinstimmt (Alex 22.05., 1.395 € Diff).
+  const allIstMeta = useMemo(() => {
+    const gColli = allIstZeilen.reduce((s, z) => s + z.colli, 0);
+    const gWegM = allIstZeilen.reduce((s, z) => (z.warnung ? s : s + z.distanzM), 0);
+    const wMinColli = gColli > 0
+      ? allIstZeilen.reduce((s, z) => s + z.minProColli * z.colli, 0) / gColli
+      : 0;
+    return {
+      gesamtColli: gColli,
+      gesamtStunden: allIstZeilen.reduce((s, z) => s + z.gesamtStunden, 0),
+      gesamtKosten: allIstZeilen.reduce((s, z) => s + Math.round(z.kosten), 0),
+      gesamtWegM: gWegM,
+      avgMinProColli: wMinColli,
+      simAnzahl: simZeilen.length,
+      simKosten: simZeilen.reduce((s, z) => s + Math.round(z.kosten), 0),
+      simStunden: simZeilen.reduce((s, z) => s + z.gesamtStunden, 0),
+      simColli: simZeilen.reduce((s, z) => s + z.colli, 0),
+    };
+  }, [allIstZeilen, simZeilen]);
 
   const deltaKosten = sollMeta.gesamtKosten - allIstMeta.gesamtKosten;
   const deltaStunden = sollMeta.gesamtStunden - allIstMeta.gesamtStunden;
@@ -168,7 +200,14 @@ export default function PlanungPage() {
   }, [sollZeilen]);
 
   function editZeile(id: string, edit: Partial<Pick<Auftragszeile, 'torObjectId' | 'bereichObjectId' | 'colli' | 'ffzId'>>) {
-    const baseline = sollOverrides.get(id) ?? istAgg.zeilen.find((z) => z.id === id);
+    // baseline kann aus dreierlei Quellen kommen:
+    // 1. sollOverrides (bereits manuell editiert)
+    // 2. istAgg.zeilen (aus Scandaten aggregiert)
+    // 3. allIstZeilen (enthält auch Sim-Aufträge — die fehlten vorher!)
+    const baseline =
+      sollOverrides.get(id) ??
+      istAgg.zeilen.find((z) => z.id === id) ??
+      allIstZeilen.find((z) => z.id === id);
     if (!baseline) return;
     const neu = applyZeilenEdit(baseline, edit, { objects, gaenge, ffzList, stundensatzEuro: stundensatz });
     setSollOverrides((prev) => {
@@ -200,15 +239,33 @@ export default function PlanungPage() {
   );
   // Ziel-Optionen für Sim-Aufträge: Tore (Cross-Docking) + Bereiche.
   // Tore vorne, sortiert nach Nummer; Bereiche danach alphabetisch.
+  // WICHTIG: Bereiche OHNE name nicht rausfiltern — sonst wirkt die Combobox
+  // inkonsistent (manche Optionen "fehlen plötzlich"). Stattdessen Fallback-Name.
   const bereichOptions = useMemo(() => {
     const tore = objects
       .filter((o) => o.type === 'tor')
       .sort((a, b) => (a.torNummer ?? 999) - (b.torNummer ?? 999));
     const bereiche = objects
-      .filter((o) => o.type === 'bereich' && o.name)
+      .filter((o) => o.type === 'bereich')
+      .map((o) => (o.name ? o : { ...o, name: `Bereich #${o.id}` }))
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     return [...tore, ...bereiche];
   }, [objects]);
+
+  // Warnungs-Text für das "!" in der Weg-Spalte. "!" bleibt absichtlich
+  // "!", denn 0 wäre semantisch falsch (es gibt KEINEN Weg, nicht "0 Meter Weg").
+  function warnungText(w: Auftragszeile['warnung']): string {
+    switch (w) {
+      case 'weg-fehlt':
+        return 'Pfad nicht gefunden — Gang-Netzwerk prüfen, kein Weg zwischen Tor und Bereich.';
+      case 'tor-nicht-gemappt':
+        return 'Tor nicht im Layout zugeordnet — Messpunkt → Tor-Mapping ergänzen.';
+      case 'bereich-nicht-gemappt':
+        return 'Bereich nicht im Layout zugeordnet — Relation → Bereich-Mapping ergänzen.';
+      default:
+        return 'Hinweis: Datenproblem in dieser Zeile.';
+    }
+  }
 
   // "Daten da" = entweder echte Scandaten oder per Hand angelegte Sim-Aufträge.
   // Ohne beides hat die Tabelle nichts zu zeigen — sonst arbeitet sie.
@@ -233,6 +290,9 @@ export default function PlanungPage() {
         <span className="text-xs text-muted-foreground">
           IST aus Scandaten · SOLL-Spalte editierbar · Σ unten
         </span>
+        <div className="ml-auto">
+          <ThemeToggleSimple />
+        </div>
       </div>
 
       {/* Parameter-Leiste */}
@@ -381,8 +441,11 @@ export default function PlanungPage() {
 
           {hasData && (
             <>
-              {/* Σ-Übersicht oben (sticky) */}
-              <Card className="border-primary/30 bg-primary/5 sticky top-0 z-10">
+              {/* Σ-Übersicht oben — NICHT sticky, sonst kollidiert sie mit dem
+                  sticky thead der Auftrags-Tabelle (gleiches Scroll-Eltern-
+                  Element). Beim Scrollen runter zeigt der sticky tfoot die
+                  gleichen Σ-Werte. */}
+              <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="py-3">
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
@@ -473,9 +536,14 @@ export default function PlanungPage() {
               {/* Auftrags-Tabelle */}
               <Card>
                 <CardContent className="p-0">
+                  {/* min-w nötig: ohne explizite Mindestbreite quetscht
+                      sich die Tabelle und Spalten (insbesondere Colli +
+                      Σ Kosten ganz rechts) werden abgeschnitten oder
+                      unleserlich. Mit min-w erzwingen wir horizontalen
+                      Scroll statt unleserlicher Quetschung. */}
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted/60 sticky top-0">
+                    <table className="w-full text-xs min-w-[1180px]">
+                      <thead className="bg-muted/60 sticky top-0 z-10">
                         <tr>
                           <th className="text-left p-2 font-medium" rowSpan={2}>Von Tor</th>
                           <th className="text-left p-2 font-medium" rowSpan={2}>Nach Bereich</th>
@@ -528,7 +596,8 @@ export default function PlanungPage() {
                                   width={160}
                                 />
                               </td>
-                              {/* Colli */}
+                              {/* Colli — pr-6, sonst überlappen die nativen
+                                  Spinner-Pfeile (Firefox) die letzte Ziffer. */}
                               <td className="p-1.5">
                                 <Input
                                   type="number"
@@ -536,7 +605,7 @@ export default function PlanungPage() {
                                   onChange={(e) =>
                                     editZeile(ist.id, { colli: Math.max(0, Number(e.target.value) || 0) })
                                   }
-                                  className="h-7 w-20 text-right text-xs"
+                                  className="h-7 w-20 text-right pr-6 text-xs"
                                   min={0}
                                 />
                               </td>
@@ -560,10 +629,18 @@ export default function PlanungPage() {
                                   </SelectContent>
                                 </Select>
                               </td>
-                              {/* Weg */}
+                              {/* Weg — bei Warnung absichtlich "!" statt 0,
+                                  weil 0 (= "kein Weg nötig") semantisch falsch
+                                  wäre. Der Tooltip erklärt den genauen Grund. */}
                               <td className="p-1.5 text-right">
                                 {soll.warnung ? (
-                                  <span className="text-amber-500" title={soll.warnung}>!</span>
+                                  <span
+                                    className="text-amber-500 font-bold cursor-help"
+                                    title={warnungText(soll.warnung)}
+                                    aria-label={warnungText(soll.warnung)}
+                                  >
+                                    !
+                                  </span>
                                 ) : (
                                   fmtNum(soll.distanzM, 0)
                                 )}
@@ -572,8 +649,18 @@ export default function PlanungPage() {
                               <td className="p-1.5 text-right tabular-nums">
                                 {soll.minProColli.toFixed(2)}
                               </td>
-                              {/* SIM-Ziel-Tor (nur für IST-Sim-Aufträge) */}
-                              <td className="p-1.5 border-l">
+                              {/* SIM-Ziel-Tor (nur für IST-Sim-Aufträge). Wenn
+                                  keine SIM gesetzt: leerer Placeholder mit
+                                  klarem Text + Tooltip, damit Alex versteht
+                                  was die Spalte tut. */}
+                              <td
+                                className="p-1.5 border-l"
+                                title={
+                                  isSim && ist.simAuftragId
+                                    ? 'Keine Simulation für diesen Auftrag — Tor wählen für Was-wäre-wenn-Vergleich'
+                                    : 'Nur für Sim-Aufträge verfügbar — IST-Zeilen aus Scandaten haben kein Sim-Ziel'
+                                }
+                              >
                                 {isSim && ist.simAuftragId ? (
                                   (() => {
                                     const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
@@ -589,15 +676,15 @@ export default function PlanungPage() {
                                           if (id == null) removeSimVarianteFor(ist.simAuftragId!);
                                           else forkSimAuftragAsSim(ist.simAuftragId!, id);
                                         }}
-                                        placeholder="Tor nr. tippen…"
+                                        placeholder="— kein SIM —"
                                         width={140}
                                         allowNone
-                                        noneLabel="— keine Sim —"
+                                        noneLabel="— kein SIM —"
                                       />
                                     );
                                   })()
                                 ) : (
-                                  <span className="text-[11px] text-muted-foreground italic">–</span>
+                                  <span className="text-[11px] text-muted-foreground italic">— kein SIM —</span>
                                 )}
                               </td>
                               {/* IST Std */}
@@ -616,46 +703,124 @@ export default function PlanungPage() {
                               <td className={`p-1.5 text-right tabular-nums ${edited ? 'font-semibold' : ''}`}>
                                 {fmtEUR(soll.kosten)}
                               </td>
-                              {/* Reset / Sim-Löschen */}
+                              {/* Reset / Sim-Löschen + Stapler abfahren */}
                               <td className="p-1.5 border-l">
-                                {isSim && ist.simAuftragId ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => removeSimAuftrag(ist.simAuftragId!)}
-                                    className="text-[11px] text-red-500 hover:text-red-700 underline"
-                                    title="Sim-Auftrag löschen"
-                                  >
-                                    löschen
-                                  </button>
-                                ) : (
-                                  edited && (
-                                    <button
-                                      type="button"
-                                      onClick={() => resetZeile(ist.id)}
-                                      className="text-[11px] text-muted-foreground hover:text-foreground underline"
-                                      title="Zeile auf IST zurücksetzen"
-                                    >
-                                      reset
-                                    </button>
-                                  )
-                                )}
+                                <div className="flex flex-col gap-1 items-start">
+                                  {isSim && ist.simAuftragId ? (
+                                    <>
+                                      {(() => {
+                                        const orig = simAuftraege.find((a) => a.id === ist.simAuftragId);
+                                        const sim = simVarianteByParent.get(ist.simAuftragId!);
+                                        const simOrig = sim
+                                          ? simAuftraege.find((a) => a.parentId === ist.simAuftragId!)
+                                          : null;
+                                        // Stapler-Animation läuft im Canvas auf /projekt/ — Animation-State
+                                        // + Tor-Fokus persistieren wir und navigieren dann dorthin, sonst
+                                        // sieht der User die Animation nicht (sie spielt im Hintergrund).
+                                        const startStapler = (id: string, fokusTorId: number) => {
+                                          setFocusedTor(fokusTorId);
+                                          setAnimationActive(id);
+                                          requestAnimationFrame(() => {
+                                            window.location.href = '/topis-saas/projekt/';
+                                          });
+                                        };
+                                        return (
+                                          <div className="flex gap-1">
+                                            {orig && (
+                                              <button
+                                                type="button"
+                                                onClick={() => startStapler(orig.id, orig.vonObjectId)}
+                                                className={`touch-tap-md text-[10px] px-1.5 py-0.5 rounded border border-amber-500/40 text-amber-600 hover:bg-amber-500/10 ${animationActiveId === orig.id ? 'bg-amber-500/20' : ''}`}
+                                                title="IST-Stapler abfahren (öffnet Canvas)"
+                                              >
+                                                ▶ IST
+                                              </button>
+                                            )}
+                                            {simOrig && (
+                                              <button
+                                                type="button"
+                                                onClick={() => startStapler(simOrig.id, simOrig.vonObjectId)}
+                                                className={`touch-tap-md text-[10px] px-1.5 py-0.5 rounded border border-blue-500/40 text-blue-600 hover:bg-blue-500/10 ${animationActiveId === simOrig.id ? 'bg-blue-500/20' : ''}`}
+                                                title="SIM-Stapler abfahren (öffnet Canvas)"
+                                              >
+                                                ▶ SIM
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                      <button
+                                        type="button"
+                                        onClick={() => removeSimAuftrag(ist.simAuftragId!)}
+                                        className="touch-tap-sm text-[11px] text-red-500 hover:text-red-700 underline inline-flex items-center"
+                                        title="Sim-Auftrag löschen"
+                                      >
+                                        löschen
+                                      </button>
+                                    </>
+                                  ) : (
+                                    edited && (
+                                      <button
+                                        type="button"
+                                        onClick={() => resetZeile(ist.id)}
+                                        className="touch-tap-sm text-[11px] text-muted-foreground hover:text-foreground underline inline-flex items-center"
+                                        title="Zeile auf IST zurücksetzen"
+                                      >
+                                        reset
+                                      </button>
+                                    )
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
                         })}
                       </tbody>
+                      {/* tfoot — Spalten MÜSSEN 1:1 zum thead passen, sonst
+                          rutschen die Werte in die falsche Spalte. Reihenfolge:
+                          Von Tor (1) · Nach Bereich (2) · Colli (3) · FFZ (4)
+                          · Weg m (5) · Min/Colli (6) · SIM-Ziel (7) ·
+                          IST Std (8) · SOLL Std (9) · IST Kosten (10) ·
+                          SOLL Kosten (11) · Aktionen (12) = 12 Spalten. */}
                       <tfoot className="bg-muted/60 sticky bottom-0">
                         <tr className="border-t-2 font-semibold">
-                          <td className="p-2" colSpan={2}>Σ</td>
-                          <td className="p-2 text-right">{fmtNum(allIstMeta.gesamtColli)}</td>
+                          {/* 1+2: Label */}
+                          <td className="p-2" colSpan={2}>Σ Gesamt</td>
+                          {/* 3: Σ Colli — explizit gelabelt, weil Alex sonst
+                              die Zahl nicht zuordnen konnte. */}
+                          <td className="p-2 text-right tabular-nums" title="Σ Colli">
+                            <span className="text-[10px] text-muted-foreground mr-1">Σ</span>
+                            {fmtNum(allIstMeta.gesamtColli)}
+                          </td>
+                          {/* 4: FFZ — keine Summe sinnvoll */}
                           <td className="p-2"></td>
-                          <td className="p-2 text-right">{fmtNum(istAgg.meta.durchschnittWegM, 0)}</td>
-                          <td className="p-2 text-right">Ø</td>
+                          {/* 5: Σ Weg-Meter — formatiert als km wenn > 999 m.
+                              Nur Auftragszeilen ohne Warnung fließen ein. */}
+                          <td
+                            className="p-2 text-right tabular-nums"
+                            title="Σ Weg-Meter aller Auftragszeilen (Einfachweg, ohne Zeilen mit Warnung)"
+                          >
+                            <span className="text-[10px] text-muted-foreground mr-1">Σ</span>
+                            {fmtMeterOrKm(sollMeta.gesamtWegM)}
+                          </td>
+                          {/* 6: Ø Min/Colli (gewichtet) — Summe wäre sinnlos,
+                              weil es eine Rate ist. Tooltip erklärt das. */}
+                          <td
+                            className="p-2 text-right tabular-nums"
+                            title="Ø Min pro Colli, gewichtet nach Colli-Anzahl"
+                          >
+                            <span className="text-[10px] text-muted-foreground mr-1">Ø</span>
+                            {sollMeta.avgMinProColli.toFixed(2)}
+                          </td>
+                          {/* 7: SIM-Ziel — leer */}
                           <td className="p-2 border-l"></td>
+                          {/* 8+9: Σ Stunden IST/SOLL */}
                           <td className="p-2 text-right border-l tabular-nums">{fmtNum(allIstMeta.gesamtStunden, 1)}</td>
                           <td className="p-2 text-right tabular-nums">{fmtNum(sollMeta.gesamtStunden, 1)}</td>
+                          {/* 10+11: Σ Kosten IST/SOLL */}
                           <td className="p-2 text-right border-l tabular-nums">{fmtEUR(allIstMeta.gesamtKosten)}</td>
                           <td className="p-2 text-right tabular-nums">{fmtEUR(sollMeta.gesamtKosten)}</td>
+                          {/* 12: Aktionen — leer */}
                           <td className="p-2 border-l"></td>
                         </tr>
                       </tfoot>

@@ -1,9 +1,10 @@
-import { TopisState, Hall, TopisObject, Path, PathArea, Gang, FFZ, Conveyor } from '@/types/topis';
+import { TopisState, Hall, TopisObject, Path, PathArea, Gang, FFZ, Conveyor, SimAuftrag } from '@/types/topis';
 
 // Project export format
 export interface TopisProject {
   version: string;
   name: string;
+  unit?: string;
   createdAt: string;
   modifiedAt: string;
   data: {
@@ -15,11 +16,13 @@ export interface TopisProject {
     gaenge: Gang[];
     ffz: FFZ[];
     conveyors: Conveyor[];
+    simAuftraege?: SimAuftrag[];
   };
   meta: {
     objectCount: number;
     pathCount: number;
     gangCount: number;
+    auftragCount?: number;
   };
 }
 
@@ -30,6 +33,7 @@ export function exportToJSON(state: Partial<TopisState>, projectName: string = '
   const project: TopisProject = {
     version: '1.0.0',
     name: projectName,
+    unit: 'm',
     createdAt: new Date().toISOString(),
     modifiedAt: new Date().toISOString(),
     data: {
@@ -41,11 +45,13 @@ export function exportToJSON(state: Partial<TopisState>, projectName: string = '
       gaenge: state.gaenge || [],
       ffz: state.ffz || [],
       conveyors: state.conveyors || [],
+      simAuftraege: state.simAuftraege || [],
     },
     meta: {
       objectCount: state.objects?.length || 0,
       pathCount: state.paths?.length || 0,
       gangCount: state.gaenge?.length || 0,
+      auftragCount: state.simAuftraege?.length || 0,
     }
   };
 
@@ -79,6 +85,7 @@ export function importFromJSON(jsonString: string): Partial<TopisState> | null {
       gaenge: project.data.gaenge || [],
       ffz: project.data.ffz || [],
       conveyors: project.data.conveyors || [],
+      simAuftraege: project.data.simAuftraege || [],
       // Reset counters based on imported data
       objectIdCounter: Math.max(...(project.data.objects?.map(o => o.id) || [0])) + 1,
       pathIdCounter: Math.max(...(project.data.paths?.map(p => p.id) || [0])) + 1,

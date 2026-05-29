@@ -84,6 +84,8 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
     return edits.has(zuord.relationKey) ? edits.get(zuord.relationKey)! : zuord.objectId;
   }
 
+  const [autoMatchResult, setAutoMatchResult] = useState<{ matched: number; total: number } | null>(null);
+
   function autoMatch() {
     const next = new Map<string, number | null>();
     let matched = 0;
@@ -99,10 +101,26 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
       }
     }
     setEdits(next);
-    toast.success(`${matched} von ${relationZuordnungen.length} Relationen automatisch gemappt`);
+    setAutoMatchResult({ matched, total: relationZuordnungen.length });
+    if (matched === 0) {
+      toast.warning(`Auto-Match: 0 Treffer von ${relationZuordnungen.length} Relationen`);
+    } else {
+      toast.success(`${matched} von ${relationZuordnungen.length} Relationen automatisch gemappt`);
+    }
   }
 
   function save() {
+    // Wenn Alex auf Save klickt ohne dass etwas zu speichern wäre, gab es
+    // vorher keine Reaktion. Jetzt: explizite Bestätigung dass nichts zu
+    // tun war.
+    if (edits.size === 0) {
+      const mapped = relationZuordnungen.filter((z) => z.objectId != null).length;
+      toast.info(
+        `Keine Änderungen zu speichern. Aktuell ${mapped} von ${relationZuordnungen.length} Relationen verknüpft.`
+      );
+      setOpen(false);
+      return;
+    }
     const updated = relationZuordnungen.map((z) => {
       if (!edits.has(z.relationKey)) return z;
       const newObjectId = edits.get(z.relationKey)!;
@@ -159,6 +177,28 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
         </Button>
       </div>
 
+      {autoMatchResult && (
+        <div className={`shrink-0 rounded-md border px-3 py-2 text-xs ${
+          autoMatchResult.matched === 0
+            ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+            : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+        }`}>
+          {autoMatchResult.matched === 0 ? (
+            <>
+              <strong>Keine Substring-Treffer.</strong> {autoMatchResult.total} Relationen ohne automatisches
+              Match — Bereich-Namen im Layout passen nicht zu den Dispogebiet-Namen. Manuell pro Zeile
+              zuordnen, oder die Bereich-Namen in der Halle anpassen (z.B. „Tour Wuppertal" → so dass
+              ein passender Bereich existiert).
+            </>
+          ) : (
+            <>
+              <strong>{autoMatchResult.matched} von {autoMatchResult.total}</strong> Relationen automatisch
+              vorbelegt — gelb markierte Zeilen unten sind die Änderungen. <strong>Speichern-Klick übernimmt sie</strong>.
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 min-h-0 border rounded-md overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted sticky top-0">
@@ -171,20 +211,26 @@ export function RelationZuordnungDialog({ open, onOpenChange }: { open?: boolean
             {filtered.map((z) => {
               const currentId = getCurrentObjectId(z);
               const isEdited = edits.has(z.relationKey);
+              const isUnmapped = currentId == null;
               return (
                 <tr key={z.relationKey} className={`border-t ${isEdited ? 'bg-amber-500/5' : ''}`}>
                   <td className="p-2 font-medium">{z.relationKey}</td>
                   <td className="p-2">
+                    {/* Wenn currentId null → expliziter „nicht zugeordnet"-
+                        Placeholder, sonst sah die Zelle leer aus (Alex-
+                        Beschwerde 19.05.). */}
                     <Select
                       value={currentId != null ? String(currentId) : '__none__'}
                       onValueChange={(v) => setEdit(z.relationKey, v === '__none__' ? null : Number(v))}
                     >
-                      <SelectTrigger className="h-8 text-xs w-full">
-                        <SelectValue />
+                      <SelectTrigger
+                        className={`h-8 text-xs w-full ${isUnmapped ? 'text-muted-foreground italic' : ''}`}
+                      >
+                        <SelectValue placeholder="— nicht zugeordnet —" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__" className="text-xs text-muted-foreground italic">
-                          — kein Bereich —
+                          — nicht zugeordnet —
                         </SelectItem>
                         {bereiche.map((b) => (
                           <SelectItem key={b.id} value={String(b.id)} className="text-xs">

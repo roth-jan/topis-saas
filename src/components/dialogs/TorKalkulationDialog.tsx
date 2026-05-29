@@ -225,8 +225,8 @@ export function TorKalkulationDialog() {
           <span className="hidden lg:inline">Tor-Kalkulation</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl w-[min(1100px,95vw)] h-[min(90vh,820px)] flex flex-col gap-3 p-4 overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Tor-Kalkulation</DialogTitle>
           <DialogDescription>
             Paletten und Zeiten pro Tor eingeben - Tagesberechnung
@@ -238,10 +238,10 @@ export function TorKalkulationDialog() {
             Keine Tore in der Halle. Füge zuerst Tore hinzu.
           </div>
         ) : (
-          <>
+          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-y-auto pr-1">
             {/* Tor-Tabelle */}
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-sm min-w-[820px]">
                 <thead className="bg-muted">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium">Tor</th>
@@ -323,7 +323,7 @@ export function TorKalkulationDialog() {
             </div>
 
             {/* Ergebnis-Bereich */}
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
               {/* Zusammenfassung */}
               <div className="border rounded-lg p-4 bg-muted/30">
                 <h4 className="font-medium mb-3">Tages-Zusammenfassung</h4>
@@ -375,10 +375,10 @@ export function TorKalkulationDialog() {
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 shrink-0">
           <Button variant="outline" onClick={handleExport} disabled={tore.length === 0}>
             <FileDown className="h-4 w-4 mr-2" />
             CSV Export

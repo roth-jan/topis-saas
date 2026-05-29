@@ -55,6 +55,29 @@ export default function EditorPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Tablet-Default: auf Touch-Geraeten mit Viewport < 1024px beide Sidebars
+  // initial einmal pro Session einklappen, damit das Canvas Platz hat.
+  // sessionStorage-Flag merkt sich dass wir das schon gemacht haben, damit
+  // der User die Sidebars wieder ausklappen kann ohne dass sie sofort
+  // wieder zugehen. Auf Laptop (pointer:fine ODER >=1024px) wird hier
+  // nichts angefasst.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const isTablet = window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1024;
+    if (!isTablet) return;
+    try {
+      if (sessionStorage.getItem('topis-tablet-sidebars-collapsed') === '1') return;
+      sessionStorage.setItem('topis-tablet-sidebars-collapsed', '1');
+    } catch {
+      // sessionStorage nicht verfuegbar — dann eben jedes Mal collapsen
+    }
+    const t = setTimeout(() => {
+      leftPanelRef.current?.collapse();
+      rightPanelRef.current?.collapse();
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Command Palette (Cmd+K) */}
@@ -140,7 +163,7 @@ export default function EditorPage() {
                 type="button"
                 onClick={toggleLeft}
                 title="Linkes Panel öffnen ([)"
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center justify-center gap-2 h-44 w-10 bg-primary text-primary-foreground rounded-r-md shadow-lg hover:w-12 transition-all border border-l-0 border-primary-foreground/30"
+                className="absolute left-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center justify-center gap-2 py-[7px] h-44 w-10 bg-primary text-primary-foreground rounded-r-md shadow-lg hover:bg-primary/90 hover:shadow-xl transition-[background-color,box-shadow] duration-200 border border-l-0 border-primary-foreground/30"
                 aria-label="Linkes Panel öffnen — Objekte, Wege, Gänge"
               >
                 <PanelLeftOpen className="h-5 w-5" />
@@ -155,7 +178,7 @@ export default function EditorPage() {
                 type="button"
                 onClick={toggleRight}
                 title="Rechtes Panel öffnen (])"
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center justify-center gap-2 h-44 w-10 bg-primary text-primary-foreground rounded-l-md shadow-lg hover:w-12 transition-all border border-r-0 border-primary-foreground/30"
+                className="absolute right-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center justify-center gap-2 py-[7px] h-44 w-10 bg-primary text-primary-foreground rounded-l-md shadow-lg hover:bg-primary/90 hover:shadow-xl transition-[background-color,box-shadow] duration-200 border border-r-0 border-primary-foreground/30"
                 aria-label="Rechtes Panel öffnen — Eigenschaften, Analyse"
               >
                 <PanelRightOpen className="h-5 w-5" />

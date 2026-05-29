@@ -93,6 +93,22 @@ export interface TopisObject {
   shape?: 'rect' | 'circle';
   // Optionales Icon-Schlüsselwort für KI/Renderer (z.B. "crosshair", "scanner"). Frei wählbar.
   icon?: string;
+  // Wenn true: dieses Objekt blockiert Stapler-Wege (A* findet keinen Pfad durch).
+  // Standard: bei type 'wand', 'bereich', 'regal', 'hindernis' implizit true (im Code abgebildet),
+  // bei anderen Typen über dieses Flag explizit setzbar.
+  istUndurchlaessig?: boolean;
+
+  // ===== Wegpunkt-Property (Lastenheft 3.1.2 Tore, 3.1.3.2 Stellplätze) =====
+  // Markiert ob das Element als Start, Endpunkt, beides oder keiner für Wege
+  // dienen darf. Default: 'beides' (Backwards-Compat — alle Tore/Bereiche/
+  // Stellplätze gelten heute pauschal als beides).
+  wegpunktRolle?: 'beides' | 'start' | 'ende' | 'keiner';
+
+  // Wegpunkt-Anker-Position: relative Position innerhalb des Element-Rechtecks
+  // (0..1). Default {x: 0.5, y: 0.5} = Mittelpunkt. Lastenheft erlaubt
+  // alternativ Rand-Anker. Tore mit y=0 (Nord) bekommen typisch {0.5, 1.0}
+  // damit der Stapler innen am Tor startet, nicht draußen.
+  wegpunktOffset?: { x: number; y: number };
 }
 
 // ==================== PATHS ====================
@@ -100,6 +116,20 @@ export interface Waypoint {
   x: number;
   y: number;
   objectId: number | null;
+}
+
+/** Lastenheft 3.2.4: Mittlerer-Weg-Run — eine Berechnung mit Bezeichnung,
+ * Prozess-Zuordnung und Zeitstempel, wiederholbar. */
+export interface MittlererWegRun {
+  id: number;
+  name: string;
+  prozess?: string;
+  timestamp: string;
+  startIds: number[];
+  endIds: number[];
+  ffzId?: number;
+  ergebnisVerteilweg?: number;
+  ergebnisAnzahl?: number;
 }
 
 export interface Path {
@@ -272,6 +302,10 @@ export interface TopisState {
   pathAreas: PathArea[];
   pathAreaIdCounter: number;
 
+  // Mittlerer-Weg-Runs (Lastenheft 3.2.4)
+  mittlereWegRuns: MittlererWegRun[];
+  mittlererWegRunIdCounter: number;
+
   // Gangs
   gaenge: Gang[];
   showGaenge: boolean;
@@ -314,6 +348,8 @@ export interface TopisState {
   focusedTorId: number | null;
   /** Wenn true: alle Wege gleichzeitig anzeigen (Übersichts-Modus) */
   showAllSimRoutes: boolean;
+  /** Aktive Stapler-Animation: welche Sim-Auftrags-ID läuft gerade ab, oder null */
+  animationActiveId: string | null;
 }
 
 // ==================== CONSTANTS ====================
