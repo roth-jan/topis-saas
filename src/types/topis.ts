@@ -74,6 +74,14 @@ export interface TopisObject {
   // Tor-spezifisch
   torTyp?: 'sektionaltor' | 'rolltor' | 'schnelllauftor';
   torNummer?: number;
+  // Lastenheft 3.1.2: „Als zeichnerisches Element ohne Funktion sind sog.
+  // Überladebrücken **optional** bei den Toren vorzusehen. Die Überladebrücken
+  // sind rechteckig, **in der Breite des Tores**, mit **einzutragender Länge**
+  // darzustellen und liegen **im inneren Layout direkt vor dem Tor**."
+  // Wenn ueberladebrueckeAktiv === true, wird beim Render ein Rechteck in
+  // Tor-Breite × ueberladebrueckeLaenge direkt vor dem Tor gezeichnet.
+  ueberladebrueckeAktiv?: boolean;
+  ueberladebrueckeLaenge?: number;
   // Tor-Kalkulation (Papa's Anforderungen)
   palettenProTag?: number;        // Anzahl Paletten pro Tag
   entladeZeitSek?: number;        // Zeit pro Palette beim Entladen (Sekunden)

@@ -1035,6 +1035,31 @@ export function HallCanvas() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
+        // Lastenheft 3.1.2: Überladebrücke (optional, ohne Funktion).
+        // Rechteck in Tor-Breite × einzutragender Länge, direkt INNEN vor
+        // dem Tor (je nach Tor-Seite). Gestrichelter Umriss damit klar
+        // ist: zeichnerisches Element, keine Daten-Auswertung.
+        if (obj.type === 'tor' && obj.ueberladebrueckeAktiv && obj.ueberladebrueckeLaenge && obj.ueberladebrueckeLaenge > 0) {
+          const lenPx = obj.ueberladebrueckeLaenge * SCALE * zoom;
+          const side = obj.side ?? 'north';
+          let bx = pos.x, by = pos.y, bw = w, bh = h;
+          switch (side) {
+            case 'north': bx = pos.x; by = pos.y + h; bw = w; bh = lenPx; break;
+            case 'south': bx = pos.x; by = pos.y - lenPx; bw = w; bh = lenPx; break;
+            case 'west':  bx = pos.x + w; by = pos.y; bw = lenPx; bh = h; break;
+            case 'east':  bx = pos.x - lenPx; by = pos.y; bw = lenPx; bh = h; break;
+          }
+          ctx.save();
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.2)';
+          ctx.fillRect(bx, by, bw, bh);
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeRect(bx, by, bw, bh);
+          ctx.setLineDash([]);
+          ctx.restore();
+        }
+
         if (obj.type === 'tor') {
           // Tor-Label: wenn der Name vom Default-Schema "Tor N" abweicht (User hat
           // umbenannt), den vollen Namen zeigen — sonst nur die Nummer.
@@ -2382,50 +2407,13 @@ export function HallCanvas() {
           : {}),
       });
 
-      // For Tor: automatically create Entladebereich behind it
-      if (objectType === 'tor' && hall && torSide) {
-        const entladeDefaults = OBJECT_DEFAULTS['entladebereich'];
-        let entladeX = 0, entladeY = 0;
-        const entladeWidth = entladeDefaults.width;
-        const entladeHeight = entladeDefaults.height;
-
-        // Position Entladebereich inside the hall, behind the Tor
-        switch (torSide) {
-          case 'north':
-            entladeX = objX + (objWidth - entladeWidth) / 2;
-            entladeY = objHeight; // Just below the tor
-            break;
-          case 'south':
-            entladeX = objX + (objWidth - entladeWidth) / 2;
-            entladeY = hall.height - objHeight - entladeHeight;
-            break;
-          case 'west':
-            entladeX = objWidth; // Just right of the tor
-            entladeY = objY + (objHeight - entladeHeight) / 2;
-            break;
-          case 'east':
-            entladeX = hall.width - objWidth - entladeWidth;
-            entladeY = objY + (objHeight - entladeHeight) / 2;
-            break;
-        }
-
-        // Ensure Entladebereich stays within hall bounds
-        entladeX = Math.max(0, Math.min(hall.width - entladeWidth, entladeX));
-        entladeY = Math.max(0, Math.min(hall.height - entladeHeight, entladeY));
-
-        // Lastenheft 3.1.2: Überladebrücke „direkt vor dem Tor" + an Tor gebunden
-        addObject({
-          type: 'entladebereich',
-          x: entladeX,
-          y: entladeY,
-          width: entladeWidth,
-          height: entladeHeight,
-          name: `Entlade ${count}`,
-          parentObjectId: newObj.id,
-          parentOffset: { x: entladeX - newObj.x, y: entladeY - newObj.y },
-        });
-
-        toast.success(`Tor mit Überladebrücke erstellt (${torSide})`);
+      // Lastenheft 3.1.2: Überladebrücke ist **optional** und kein eigenes
+      // Objekt — sie ist eine reine Tor-Visualisierungs-Property
+      // (ueberladebrueckeAktiv + ueberladebrueckeLaenge). Default: aus.
+      // Entladezone als eigenständige Nutzfläche (Type `entladebereich`)
+      // bleibt verfügbar und wird vom User manuell gezeichnet.
+      if (objectType === 'tor') {
+        toast.success(`Tor ${count} erstellt`);
       }
 
       // Select the new object and switch to select tool for immediate editing

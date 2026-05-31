@@ -306,7 +306,7 @@ export function PropertiesPanel() {
     );
   }
 
-  const handleChange = (field: string, value: string | number | string[] | number[] | Record<string, string> | { x: number; y: number } | undefined) => {
+  const handleChange = (field: string, value: string | number | boolean | string[] | number[] | Record<string, string> | { x: number; y: number } | undefined) => {
     updateObject(selectedObject.id, { [field]: value });
   };
 
@@ -507,6 +507,39 @@ export function PropertiesPanel() {
         )}
 
         {/* Tor↔Stellplatz/Verlader/Fahrzeug-Relationen (Lastenheft 3.1.2) */}
+        {selectedObject.type === 'tor' && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Überladebrücke (Lastenheft 3.1.2, optional)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedObject.ueberladebrueckeAktiv === true}
+                  onChange={(e) => handleChange('ueberladebrueckeAktiv', e.target.checked)}
+                />
+                <span>Überladebrücke vor dem Tor anzeigen</span>
+              </label>
+              {selectedObject.ueberladebrueckeAktiv && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Länge (m, einzutragen)</Label>
+                  <Input
+                    type="number"
+                    step={0.1}
+                    min={0.5}
+                    value={selectedObject.ueberladebrueckeLaenge ?? 3}
+                    onChange={(e) => handleChange('ueberladebrueckeLaenge', parseFloat(e.target.value) || 3)}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Zeichnerisches Element ohne Funktion. Breite = Tor-Breite, Position direkt innen vor dem Tor.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {selectedObject.type === 'tor' && (
           <Card>
             <CardHeader className="py-3">
