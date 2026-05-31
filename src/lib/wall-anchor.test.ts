@@ -1,0 +1,120 @@
+import { describe, it, expect } from 'vitest';
+import {
+  findNearestWall,
+  anchorToWorldPoint,
+  torBoxFromAnchor,
+  reanchorTore,
+  isValidTorPosition,
+} from './wall-anchor';
+import type { Wall, TopisObject } from '@/types/topis';
+
+const rechteckHalle: Wall[] = [
+  { x1: 0, y1: 0, x2: 100, y2: 0 },   // Index 0: Nord
+  { x1: 100, y1: 0, x2: 100, y2: 50 }, // Index 1: Ost
+  { x1: 100, y1: 50, x2: 0, y2: 50 },  // Index 2: Süd
+  { x1: 0, y1: 50, x2: 0, y2: 0 },     // Index 3: West
+];
+
+describe('findNearestWall', () => {
+  it('Klick nahe Nord-Wand → wallIndex 0', () => {
+    const r = findNearestWall(50, 1, rechteckHalle);
+    expect(r).not.toBeNull();
+    expect(r!.wallIndex).toBe(0);
+    expect(r!.side).toBe('north');
+    expect(r!.abstandS).toBeCloseTo(50);
+    expect(r!.abstandE).toBeCloseTo(50);
+  });
+
+  it('Klick nahe Süd-Wand → wallIndex 2', () => {
+    const r = findNearestWall(30, 49, rechteckHalle);
+    expect(r!.wallIndex).toBe(2);
+    expect(r!.side).toBe('south');
+    // Süd-Wand verläuft 100→0, also S=Punkt(100,50), E=Punkt(0,50)
+    expect(r!.abstandS).toBeCloseTo(70); // 100-30
+  });
+
+  it('Klick weit weg → null bei maxDistance', () => {
+    expect(findNearestWall(50, 25, rechteckHalle, 5)).toBeNull();
+  });
+
+  it('Klick auf West-Wand → wallIndex 3, side=west', () => {
+    const r = findNearestWall(1, 25, rechteckHalle);
+    expect(r!.wallIndex).toBe(3);
+    expect(r!.side).toBe('west');
+  });
+});
+
+describe('anchorToWorldPoint', () => {
+  it('liefert Punkt zurück und behält Seite', () => {
+    const p = anchorToWorldPoint({ wallIndex: 0, abstandS: 30, abstandE: 70 }, rechteckHalle);
+    expect(p).not.toBeNull();
+    expect(p!.x).toBeCloseTo(30);
+    expect(p!.y).toBeCloseTo(0);
+    expect(p!.side).toBe('north');
+  });
+
+  it('null bei ungültigem wallIndex', () => {
+    expect(anchorToWorldPoint({ wallIndex: 99, abstandS: 0, abstandE: 0 }, rechteckHalle)).toBeNull();
+  });
+});
+
+describe('torBoxFromAnchor — Tor-Box-Position relativ zur Wand', () => {
+  it('Nord-Wand: Tor-Innenkante = Wand', () => {
+    const b = torBoxFromAnchor({ wallIndex: 0, abstandS: 30, abstandE: 70 }, rechteckHalle, 3.5, 1.5);
+    expect(b).not.toBeNull();
+    expect(b!.x).toBeCloseTo(30 - 3.5 / 2); // Mitte des Tores bei x=30
+    expect(b!.y).toBe(0); // Innenkante auf y=0
+    expect(b!.side).toBe('north');
+  });
+
+  it('Süd-Wand: Tor ragt nach innen (y < 50)', () => {
+    const b = torBoxFromAnchor({ wallIndex: 2, abstandS: 30, abstandE: 70 }, rechteckHalle, 3.5, 1.5);
+    expect(b!.side).toBe('south');
+    expect(b!.y).toBeCloseTo(50 - 1.5);
+  });
+});
+
+describe('reanchorTore — Wand-Move zieht Tore mit', () => {
+  it('verschiebt verankertes Tor wenn Wand sich verschiebt (Nord-Tor)', () => {
+    const tor: TopisObject = {
+      id: 1, type: 'tor', name: 'T1', x: 30 - 3.5 / 2, y: 0, width: 3.5, height: 1.5, side: 'north',
+      aussenwandRef: { wallIndex: 0, abstandS: 30, abstandE: 70 },
+    };
+    const verlaengerteWaende: Wall[] = [
+      { x1: 0, y1: 10, x2: 100, y2: 10 }, // Nord-Wand jetzt bei y=10 statt y=0
+      ...rechteckHalle.slice(1),
+    ];
+    const result = reanchorTore([tor], verlaengerteWaende);
+    // side='north' bleibt erhalten: Tor-Innenkante (y) = Wand-y (10)
+    expect(result[0].y).toBeCloseTo(10);
+    expect(result[0].x).toBeCloseTo(30 - 3.5 / 2);
+  });
+
+  it('lässt unverankerte Objekte unverändert', () => {
+    const obj: TopisObject = {
+      id: 1, type: 'stellplatz', name: 'SP', x: 5, y: 5, width: 2, height: 2,
+    };
+    const result = reanchorTore([obj], rechteckHalle);
+    expect(result[0]).toBe(obj);
+  });
+});
+
+describe('isValidTorPosition — Lastenheft-Validierung', () => {
+  it('Tor OHNE aussenwandRef ist ungültig', () => {
+    const tor: TopisObject = { id: 1, type: 'tor', name: 'T', x: 50, y: 25, width: 3, height: 1 };
+    expect(isValidTorPosition(tor, rechteckHalle)).toBe(false);
+  });
+
+  it('Tor MIT gültiger aussenwandRef ist gültig', () => {
+    const tor: TopisObject = {
+      id: 1, type: 'tor', name: 'T', x: 0, y: 0, width: 3, height: 1,
+      aussenwandRef: { wallIndex: 0, abstandS: 30, abstandE: 70 },
+    };
+    expect(isValidTorPosition(tor, rechteckHalle)).toBe(true);
+  });
+
+  it('Nicht-Tor-Objekte sind immer gültig (nur Tore brauchen Wand-Anker)', () => {
+    const sp: TopisObject = { id: 1, type: 'stellplatz', name: 'SP', x: 5, y: 5, width: 2, height: 2 };
+    expect(isValidTorPosition(sp, rechteckHalle)).toBe(true);
+  });
+});

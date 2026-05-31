@@ -25,6 +25,41 @@ import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { OBJECT_DEFAULTS, ObjectType } from '@/types/topis';
 
+// Lastenheft 3.1.2 — Nummerierungs-Schemata für Mehrfach-Insert
+type NummernSchema = '1' | 'A1' | '1A' | 'A';
+
+function generateLabel(schema: NummernSchema, prefix: string, startNum: number, i: number, defaultsName: string): string {
+  const idx = startNum + i;
+  if (schema === '1') {
+    return prefix ? `${prefix}${idx}` : `${defaultsName} ${idx}`;
+  }
+  if (schema === 'A') {
+    // A, B, C, ..., Z, AA, AB, ...
+    return prefix + numberToAlpha(idx - 1);
+  }
+  if (schema === 'A1') {
+    // A1, A2, A3 — Buchstabe konstant aus prefix (oder A wenn leer), Zahl läuft
+    const letter = prefix || 'A';
+    return `${letter}${idx}`;
+  }
+  if (schema === '1A') {
+    // 1A, 1B, 1C — Zahl konstant aus prefix (oder 1 wenn leer), Buchstabe läuft
+    const num = prefix || '1';
+    return `${num}${numberToAlpha(i)}`;
+  }
+  return `${defaultsName} ${idx}`;
+}
+
+function numberToAlpha(n: number): string {
+  let s = '';
+  let x = n;
+  do {
+    s = String.fromCharCode(65 + (x % 26)) + s;
+    x = Math.floor(x / 26) - 1;
+  } while (x >= 0);
+  return s;
+}
+
 export function MultiInsertDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [objectType, setObjectType] = useState<ObjectType>('tor');
@@ -35,6 +70,8 @@ export function MultiInsertDialog() {
   const [direction, setDirection] = useState<'horizontal' | 'vertical'>('horizontal');
   const [prefix, setPrefix] = useState('');
   const [startNum, setStartNum] = useState(1);
+  // Lastenheft 3.1.2 — Nummerierungs-Schema
+  const [schema, setSchema] = useState<NummernSchema>('1');
 
   const addObject = useTopisStore((s) => s.addObject);
   const hall = useTopisStore((s) => s.halls[0]);
@@ -62,7 +99,7 @@ export function MultiInsertDialog() {
         y = startY + i * spacing;
       }
 
-      const name = prefix ? `${prefix}${startNum + i}` : `${defaults.name} ${startNum + i}`;
+      const name = generateLabel(schema, prefix, startNum, i, defaults.name);
 
       addObject({
         type: objectType,
@@ -71,6 +108,7 @@ export function MultiInsertDialog() {
         width: defaults.width,
         height: defaults.height,
         name,
+        nummernSchema: schema,
       });
     }
 
@@ -206,6 +244,22 @@ export function MultiInsertDialog() {
               onChange={(e) => setStartNum(parseInt(e.target.value) || 1)}
               className="col-span-3"
             />
+          </div>
+
+          {/* Lastenheft 3.1.2 — Nummerierungs-Schema */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Schema</Label>
+            <Select value={schema} onValueChange={(v) => setSchema(v as NummernSchema)}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1, 2, 3, … (numerisch)</SelectItem>
+                <SelectItem value="A1">A1, A2, A3, … (Prefix-Zahl)</SelectItem>
+                <SelectItem value="1A">1A, 1B, 1C, … (Zahl-Buchstabe)</SelectItem>
+                <SelectItem value="A">A, B, C, …, Z, AA, … (alphabetisch)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

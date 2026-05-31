@@ -217,6 +217,13 @@ const objectTypes: { id: string; label: string; icon: React.ReactNode; shortcut?
   { id: 'gefahrgut', label: 'Gefahrgut', icon: <AlertTriangle className="h-4 w-4" />, category: 'spezial' },
   { id: 'sperrplatz', label: 'Sperrplatz', icon: <Ban className="h-4 w-4" />, category: 'spezial' },
   { id: 'klaerplatz', label: 'Klärplatz', icon: <HelpingHand className="h-4 w-4" />, category: 'spezial' },
+  // Lastenheft-Aufholplan 2026-05-31: 3.1.3.3 + 3.1.3.4
+  { id: 'av_platz', label: 'AV-Platz (Annahmeverweigerung)', icon: <Ban className="h-4 w-4" />, category: 'spezial' },
+  { id: 'uz_platz', label: 'ÜZ-Platz (Überzähligkeit)', icon: <AlertTriangle className="h-4 w-4" />, category: 'spezial' },
+  { id: 'wertverschlag', label: 'Wertverschlag (Käfig)', icon: <Square className="h-4 w-4" />, category: 'spezial' },
+  { id: 'palettenlager', label: 'Palettenlager', icon: <Layers className="h-4 w-4" />, category: 'spezial' },
+  { id: 'hallenterminal', label: 'Hallenterminal', icon: <Square className="h-4 w-4" />, category: 'spezial' },
+  { id: 'kommissionierflaeche', label: 'Kommissionierfläche', icon: <LayoutGrid className="h-4 w-4" />, category: 'spezial' },
   // Sozial
   { id: 'buero', label: 'Büro', icon: <Building2 className="h-4 w-4" />, category: 'sozial' },
   { id: 'sozialraum', label: 'Sozialraum', icon: <Coffee className="h-4 w-4" />, category: 'sozial' },
@@ -224,8 +231,11 @@ const objectTypes: { id: string; label: string; icon: React.ReactNode; shortcut?
   // Außenbereich
   { id: 'outdoor_area', label: 'Außenbereich', icon: <Square className="h-4 w-4" />, category: 'outdoor' },
   { id: 'outdoor_road', label: 'Straße', icon: <Square className="h-4 w-4" />, category: 'outdoor' },
-  { id: 'trailer_spot', label: 'Wechselbrücke', icon: <Truck className="h-4 w-4" />, category: 'outdoor' },
+  { id: 'trailer_spot', label: 'Wechselbrücke (alt)', icon: <Truck className="h-4 w-4" />, category: 'outdoor' },
   { id: 'parking', label: 'Parkplatz', icon: <Square className="h-4 w-4" />, category: 'outdoor' },
+  // Lastenheft-Aufholplan 2026-05-31: 3.1.6 Außengelände
+  { id: 'sattelplatz', label: 'Sattelplatz', icon: <Truck className="h-4 w-4" />, category: 'outdoor' },
+  { id: 'wechselbrueckenplatz', label: 'Wechselbrückenplatz', icon: <Truck className="h-4 w-4" />, category: 'outdoor' },
   // Benutzerdefiniert
   { id: 'custom', label: 'Benutzerdefiniert', icon: <Square className="h-4 w-4" />, category: 'custom' },
 ];

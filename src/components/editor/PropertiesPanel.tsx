@@ -1,6 +1,7 @@
 'use client';
 
 import { useTopisStore, useSelectedObject, useSelectedGang, useSelectedPathArea, useSelectedConveyor } from '@/lib/store';
+import type { TopisObject } from '@/types/topis';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -306,8 +307,8 @@ export function PropertiesPanel() {
     );
   }
 
-  const handleChange = (field: string, value: string | number | boolean | string[] | number[] | Record<string, string> | { x: number; y: number } | undefined) => {
-    updateObject(selectedObject.id, { [field]: value });
+  const handleChange = (field: string, value: unknown) => {
+    updateObject(selectedObject.id, { [field]: value } as Partial<TopisObject>);
   };
 
   const handleDelete = () => {
@@ -446,6 +447,72 @@ export function PropertiesPanel() {
           </CardContent>
         </Card>
 
+        {/* Lastenheft 3.1.1.2 — Verankerung + Einschränkungen + Bezeichnungs-Stil (generisch) */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Verankerung + Bezeichnung (Lastenheft 3.1.1.2)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Verankerung</Label>
+              <select
+                className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                value={selectedObject.verankert ?? 'verschiebbar'}
+                onChange={(e) => handleChange('verankert', e.target.value as 'starr' | 'verschiebbar')}
+              >
+                <option value="verschiebbar">verschiebbar</option>
+                <option value="starr">starr (fest)</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Einschränkungen (Positionierung / Zusammenspiel)</Label>
+              <Input
+                value={selectedObject.einschraenkungen ?? ''}
+                onChange={(e) => handleChange('einschraenkungen', e.target.value)}
+                placeholder="z.B. nur in Verladezone 1, nicht über Säule"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Bezeichnung-Schriftgröße (px)</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="number"
+                  min={6}
+                  max={48}
+                  value={selectedObject.bezeichnungStil?.fontSize ?? 12}
+                  onChange={(e) => handleChange('bezeichnungStil', {
+                    ...(selectedObject.bezeichnungStil ?? {}),
+                    fontSize: parseInt(e.target.value) || 12,
+                  })}
+                  className="w-20"
+                />
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={selectedObject.bezeichnungStil?.bold === true}
+                    onChange={(e) => handleChange('bezeichnungStil', {
+                      ...(selectedObject.bezeichnungStil ?? {}),
+                      bold: e.target.checked,
+                    })}
+                  />
+                  Fett
+                </label>
+                <label className="flex items-center gap-1 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={selectedObject.bezeichnungStil?.italic === true}
+                    onChange={(e) => handleChange('bezeichnungStil', {
+                      ...(selectedObject.bezeichnungStil ?? {}),
+                      italic: e.target.checked,
+                    })}
+                  />
+                  Kursiv
+                </label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Type-specific properties */}
         {(selectedObject.type === 'tor' || selectedObject.type === 'bereich' || selectedObject.type === 'stellplatz' || selectedObject.type === 'sperrplatz' || selectedObject.type === 'klaerplatz') && (
           <Card>
@@ -501,6 +568,71 @@ export function PropertiesPanel() {
               </div>
               <p className="text-xs text-muted-foreground">
                 0,0 = links-oben · 0,5;0,5 = Mitte (default) · 1,1 = rechts-unten. Beispiel: Nord-Tor mit Anker 0,5;1 startet/endet innen.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tor-Wand-Verankerung (Lastenheft 3.1.2 — Position als Abstand von S/E) */}
+        {selectedObject.type === 'tor' && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Wand-Verankerung (Lastenheft 3.1.2)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {selectedObject.aussenwandRef ? (
+                <>
+                  <div className="text-xs text-muted-foreground">
+                    Verankert an Wand-Index <span className="font-mono">{selectedObject.aussenwandRef.wallIndex}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Abstand S (m)</Label>
+                      <Input
+                        type="number"
+                        step={0.1}
+                        min={0}
+                        value={selectedObject.aussenwandRef.abstandS.toFixed(2)}
+                        onChange={(e) => {
+                          const abstandS = parseFloat(e.target.value) || 0;
+                          const ref = selectedObject.aussenwandRef!;
+                          const totalLength = ref.abstandS + ref.abstandE;
+                          handleChange('aussenwandRef', {
+                            wallIndex: ref.wallIndex,
+                            abstandS,
+                            abstandE: Math.max(0, totalLength - abstandS),
+                          });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Abstand E (m)</Label>
+                      <Input
+                        type="number"
+                        step={0.1}
+                        min={0}
+                        value={selectedObject.aussenwandRef.abstandE.toFixed(2)}
+                        onChange={(e) => {
+                          const abstandE = parseFloat(e.target.value) || 0;
+                          const ref = selectedObject.aussenwandRef!;
+                          const totalLength = ref.abstandS + ref.abstandE;
+                          handleChange('aussenwandRef', {
+                            wallIndex: ref.wallIndex,
+                            abstandS: Math.max(0, totalLength - abstandE),
+                            abstandE,
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-md bg-amber-100 dark:bg-amber-950 p-2 text-xs text-amber-900 dark:text-amber-200">
+                  ⚠ Dieses Tor ist nicht an einer Außenwand verankert. Verschiebe es nahe an eine Wand, um die Verankerung automatisch zu setzen (Lastenheft-Anforderung).
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Tore werden auf Außenwänden positioniert und sind fest mit der Wand verankert (Lastenheft 3.1.2). Position als Abstand zu den Wand-Eckpunkten S (Start) und E (End).
               </p>
             </CardContent>
           </Card>
@@ -631,6 +763,146 @@ export function PropertiesPanel() {
           </Card>
         )}
 
+        {/* Lastenheft 3.1.3.1 — Kapazität in 3 Einheiten + Füllgrad-Ampel */}
+        {(selectedObject.type === 'stellplatz' || selectedObject.type === 'regal') && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Kapazität (Lastenheft 3.1.3.1)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Packstücke</Label>
+                  <Input
+                    type="number"
+                    value={selectedObject.kapazitaetMulti?.packstuecke ?? ''}
+                    onChange={(e) => handleChange('kapazitaetMulti', {
+                      ...(selectedObject.kapazitaetMulti ?? {}),
+                      packstuecke: parseFloat(e.target.value) || 0,
+                    })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Lademeter</Label>
+                  <Input
+                    type="number"
+                    step={0.1}
+                    value={selectedObject.kapazitaetMulti?.lademeter ?? ''}
+                    onChange={(e) => handleChange('kapazitaetMulti', {
+                      ...(selectedObject.kapazitaetMulti ?? {}),
+                      lademeter: parseFloat(e.target.value) || 0,
+                    })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">qm</Label>
+                  <Input
+                    type="number"
+                    step={0.1}
+                    value={selectedObject.kapazitaetMulti?.qm ?? ''}
+                    onChange={(e) => handleChange('kapazitaetMulti', {
+                      ...(selectedObject.kapazitaetMulti ?? {}),
+                      qm: parseFloat(e.target.value) || 0,
+                    })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Füllgrad-Ampel</Label>
+                <div className="flex gap-2 items-center mt-1">
+                  <span className="text-xs">grün bis</span>
+                  <Input
+                    type="number"
+                    step={0.05}
+                    min={0}
+                    max={1}
+                    value={selectedObject.fuellgradFarben?.gruenBis ?? 0.7}
+                    onChange={(e) => handleChange('fuellgradFarben', {
+                      gruenBis: parseFloat(e.target.value) || 0.7,
+                      gelbBis: selectedObject.fuellgradFarben?.gelbBis ?? 0.9,
+                    })}
+                    className="w-20"
+                  />
+                  <span className="text-xs">, gelb bis</span>
+                  <Input
+                    type="number"
+                    step={0.05}
+                    min={0}
+                    max={1}
+                    value={selectedObject.fuellgradFarben?.gelbBis ?? 0.9}
+                    onChange={(e) => handleChange('fuellgradFarben', {
+                      gruenBis: selectedObject.fuellgradFarben?.gruenBis ?? 0.7,
+                      gelbBis: parseFloat(e.target.value) || 0.9,
+                    })}
+                    className="w-20"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Kapazität in 3 Einheiten (Lastenheft 3.1.3.1). Füllgrad = Menge / Kapazität → grün/gelb/rot.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Lastenheft 3.1.3.1 — Stellplatz↔Tor umgekehrt + Relationen */}
+        {selectedObject.type === 'stellplatz' && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Tor-Bedienung + Relationen</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Wird bedient von Toren (Komma-getrennte IDs)</Label>
+                <Input
+                  value={(selectedObject.bedientToreVon ?? []).join(', ')}
+                  onChange={(e) => {
+                    const ids = e.target.value.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
+                    handleChange('bedientToreVon', ids);
+                  }}
+                  placeholder="z.B. 1, 2"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Anzahl Relationen</Label>
+                <div className="text-xs text-muted-foreground">
+                  {(selectedObject.relationen ?? []).length} Relation(en) zugeordnet
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Lastenheft 3.1.3.1: 1 Stellplatz = bis zu n Tore + n Relationen mit Mengen. Relations-Verwaltung im RelationZuordnung-Dialog.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Lastenheft 3.1.3.1 — Form-Variante (Kreis/Trapez/Polygon) */}
+        {(selectedObject.type === 'stellplatz' || selectedObject.type === 'bereich') && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Form (Lastenheft 3.1.3.1)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Form-Variante</Label>
+                <select
+                  className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+                  value={selectedObject.formVariante ?? 'rect'}
+                  onChange={(e) => handleChange('formVariante', e.target.value as 'rect' | 'circle' | 'trapez' | 'polygon')}
+                >
+                  <option value="rect">Rechteck</option>
+                  <option value="circle">Kreis</option>
+                  <option value="trapez">Trapez</option>
+                  <option value="polygon">Freihand-Polygon</option>
+                </select>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Lastenheft: meist rechteckig, müssen jedoch auch individuell gestaltbar sein (Winkel ≠ 90°, Rundung).
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {selectedObject.type === 'regal' && (
           <Card>
             <CardHeader className="py-3">
@@ -694,6 +966,131 @@ export function PropertiesPanel() {
                 <div>Gesamthöhe: {((selectedObject.ebenen || 3) * (selectedObject.ebenenHoehe || 1.5) + (selectedObject.unterkante || 0.3)).toFixed(1)}m</div>
                 <div>Gesamt: {(selectedObject.palettenPlaetzeProEbene || Math.floor(selectedObject.width / 1.2)) * (selectedObject.ebenen || 3)} Palettenplätze</div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Lastenheft 3.1.3.2 — Regal-Ebenen als Array (jede Ebene = eigener Stellplatz) */}
+        {selectedObject.type === 'regal' && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Regal-Ebenen detailliert (Lastenheft 3.1.3.2)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="text-xs rounded-md border px-2 py-1 hover:bg-accent"
+                  onClick={() => {
+                    const aktuelle = selectedObject.regalEbenen ?? [];
+                    const naechsteId = aktuelle.length > 0 ? Math.max(...aktuelle.map(e => e.id)) + 1 : 1;
+                    const neueEbene = {
+                      id: naechsteId,
+                      name: `Ebene ${naechsteId}`,
+                      unterkante: (selectedObject.unterkante ?? 0.3) + (aktuelle.length * (selectedObject.ebenenHoehe ?? 1.5)),
+                      hoehe: selectedObject.ebenenHoehe ?? 1.5,
+                      palettenplaetze: selectedObject.palettenPlaetzeProEbene ?? Math.floor(selectedObject.width / 1.2),
+                    };
+                    handleChange('regalEbenen', [...aktuelle, neueEbene]);
+                  }}
+                >
+                  + Ebene
+                </button>
+                <button
+                  type="button"
+                  className="text-xs rounded-md border px-2 py-1 hover:bg-accent"
+                  onClick={() => {
+                    // Auto-generieren aus Skalaren
+                    const n = selectedObject.ebenen ?? 3;
+                    const uk = selectedObject.unterkante ?? 0.3;
+                    const eh = selectedObject.ebenenHoehe ?? 1.5;
+                    const pp = selectedObject.palettenPlaetzeProEbene ?? Math.floor(selectedObject.width / 1.2);
+                    const generiert = Array.from({ length: n }, (_, i) => ({
+                      id: i + 1,
+                      name: `Ebene ${i + 1}`,
+                      unterkante: uk + i * eh,
+                      hoehe: eh,
+                      palettenplaetze: pp,
+                    }));
+                    handleChange('regalEbenen', generiert);
+                  }}
+                >
+                  Aus Skalaren generieren
+                </button>
+              </div>
+              {(selectedObject.regalEbenen ?? []).length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Noch keine detaillierten Ebenen. Standard-Skalare oben werden verwendet. Klick „Aus Skalaren generieren" um pro Ebene zu konfigurieren.
+                </p>
+              )}
+              {(selectedObject.regalEbenen ?? []).map((ebene, idx) => (
+                <div key={ebene.id} className="rounded-md border p-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Input
+                      value={ebene.name}
+                      onChange={(e) => {
+                        const aktuelle = selectedObject.regalEbenen ?? [];
+                        const updated = aktuelle.map((x, i) => i === idx ? { ...x, name: e.target.value } : x);
+                        handleChange('regalEbenen', updated);
+                      }}
+                      className="text-xs h-7"
+                    />
+                    <button
+                      type="button"
+                      className="text-xs text-destructive ml-2"
+                      onClick={() => {
+                        const aktuelle = selectedObject.regalEbenen ?? [];
+                        handleChange('regalEbenen', aktuelle.filter((_, i) => i !== idx));
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Unterkante (m)</Label>
+                      <Input
+                        type="number"
+                        step={0.1}
+                        value={ebene.unterkante}
+                        onChange={(e) => {
+                          const aktuelle = selectedObject.regalEbenen ?? [];
+                          const updated = aktuelle.map((x, i) => i === idx ? { ...x, unterkante: parseFloat(e.target.value) || 0 } : x);
+                          handleChange('regalEbenen', updated);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Höhe (m)</Label>
+                      <Input
+                        type="number"
+                        step={0.1}
+                        value={ebene.hoehe}
+                        onChange={(e) => {
+                          const aktuelle = selectedObject.regalEbenen ?? [];
+                          const updated = aktuelle.map((x, i) => i === idx ? { ...x, hoehe: parseFloat(e.target.value) || 0 } : x);
+                          handleChange('regalEbenen', updated);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Plätze</Label>
+                      <Input
+                        type="number"
+                        value={ebene.palettenplaetze}
+                        onChange={(e) => {
+                          const aktuelle = selectedObject.regalEbenen ?? [];
+                          const updated = aktuelle.map((x, i) => i === idx ? { ...x, palettenplaetze: parseInt(e.target.value) || 0 } : x);
+                          handleChange('regalEbenen', updated);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground">
+                Lastenheft 3.1.3.2: 2-n Ebenen, jede Ebene = eigener Stellplatz mit Bezeichnung, Unterkante, Höhe, Palettenplätzen. Pro-Ebene-Bezeichnung wird im Hallenplan angezeigt.
+              </p>
             </CardContent>
           </Card>
         )}

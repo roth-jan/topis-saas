@@ -45,7 +45,16 @@ export type ObjectType =
   | 'outdoor_road'
   | 'trailer_spot'
   | 'parking'
-  | 'custom';
+  | 'custom'
+  // Neue Typen aus Lastenheft-Gegencheck 2026-05-31
+  | 'kommissionierflaeche'   // 3.1.3.4 — eigene Kategorie
+  | 'wertverschlag'          // 3.1.3.3 — Käfig
+  | 'hallenterminal'         // 3.1.3.3 — Hallenterminal
+  | 'av_platz'               // 3.1.3.3 — Annahmeverweigerung
+  | 'uz_platz'               // 3.1.3.3 — Überzähligkeit
+  | 'palettenlager'          // 3.1.3.3 — Palettenlager
+  | 'sattelplatz'            // 3.1.6 — Außengelände Sattelplatz
+  | 'wechselbrueckenplatz';  // 3.1.6 — Außengelände Wechselbrückenplatz
 
 export interface TopisObject {
   id: number;
@@ -132,6 +141,158 @@ export interface TopisObject {
   // alternativ Rand-Anker. Tore mit y=0 (Nord) bekommen typisch {0.5, 1.0}
   // damit der Stapler innen am Tor startet, nicht draußen.
   wegpunktOffset?: { x: number; y: number };
+
+  // ===== Lastenheft-Aufholplan 2026-05-31 =====
+
+  // 3.1.1.2 — Verankerung-Property („verankert (starr/verschiebbar)")
+  verankert?: 'starr' | 'verschiebbar';
+
+  // 3.1.1.2 — Einschränkungen (Positionierung / Zusammenspiel mit anderen Objekten)
+  einschraenkungen?: string;
+
+  // 3.1.3.1 — Bezeichnungstext formatierbar (Schriftgröße, Fett, Kursiv)
+  bezeichnungStil?: { fontSize?: number; bold?: boolean; italic?: boolean; color?: string };
+
+  // 3.1.7 — Eigenschaften je nach Ansicht ein-/ausblendbar (Bildschirm vs. Druckmodus)
+  // Key = Property-Name (z.B. 'name', 'kapazitaet'), Value = sichtbar.
+  // Default (nicht gesetzt) bedeutet „sichtbar".
+  bildschirmSichtbar?: Record<string, boolean>;
+  druckSichtbar?: Record<string, boolean>;
+
+  // 3.1.2 — Tor MUSS Außenwand-Kontakt haben. aussenwandRef referenziert den
+  // Wand-Index in halls[activeHall].walls und speichert die Position als
+  // Abstand von Eckpunkten S (Start) und E (End) der Wand.
+  // wallIndex < 0 = noch nicht verankert (Migration alter Tore).
+  aussenwandRef?: { wallIndex: number; abstandS: number; abstandE: number };
+
+  // 3.1.3.1 — Stellplatz↔Tor umgekehrt (am Stellplatz gespeichert welche Tore ihn bedienen)
+  bedientToreVon?: number[];
+
+  // 3.1.3.1 — n Relationen pro Stellplatz (Prozess + Relation + Menge + Verladebereich + Fahrzeuge)
+  relationen?: StellplatzRelation[];
+
+  // 3.1.3.1 — Kapazität in 3 Einheiten (Packstücke, Lademeter, qm)
+  kapazitaetMulti?: { packstuecke?: number; lademeter?: number; qm?: number };
+
+  // 3.1.3.1 — Füllgrad-Ampel-Schwellen (Menge/Kapazität → grün/gelb/rot)
+  fuellgradFarben?: { gruenBis: number; gelbBis: number };
+
+  // 3.1.3.2 — Regal-Ebenen als Array (jede Ebene = eigener Stellplatz mit Properties)
+  regalEbenen?: RegalEbene[];
+
+  // 3.1.2 — Nummerierungs-Schema beim Mehrfach-Insert
+  // '1' = 1,2,3   |   'A1' = A1,A2,A3   |   '1A' = 1A,1B,1C   |   'A' = A,B,C
+  nummernSchema?: '1' | 'A1' | '1A' | 'A';
+
+  // 3.1.3.1 — Form-Variante (Kreis, Trapez, Polygon zusätzlich zu rect/circle in shape)
+  formVariante?: 'rect' | 'circle' | 'trapez' | 'polygon';
+  // Für trapez/polygon: relative Polygon-Punkte 0..1 relativ zu width/height
+  polygonPunkte?: { x: number; y: number }[];
+
+  // 3.1.2 — Tor-Art als eigene Property (separat zu torTyp)
+  torArt?: string;  // max. 100 Zeichen freier Text laut Lastenheft
+
+  // 3.1.4.2 — Manuelle Wege ausgenommen von Auto-Aktualisierung (für Kettenanbindung)
+  // (Auf Path-Ebene, aber hier für Element-Verknüpfungen relevant)
+}
+
+// ==================== STELLPLATZ-RELATIONEN (Lastenheft 3.1.3.1 + 3.2.2) ====================
+/** Eine Zuordnung von Mengen + Verladebereich + Fahrzeugen zu einem Stellplatz.
+ * Ein Stellplatz kann n Relationen haben (n:m mit Prozessen), eine Relation
+ * kann sich prozentual auf mehrere Stellplätze verteilen. */
+export interface StellplatzRelation {
+  id: number;
+  prozess: string;         // z.B. „SE", „SA", „Cross-Dock"
+  relation: string;        // z.B. „Berlin-001", „München-Süd"
+  menge: number;           // Anzahl Colli/Paletten in dieser Relation
+  verladebereich?: string; // z.B. „B1", „B2"
+  fahrzeugIds?: number[];  // Verknüpfte Fahrzeuge
+  prozentAnteil?: number;  // 0..1 — falls Relation auf mehrere Stellplätze verteilt
+  bereichGruppe?: string;  // Untergruppierung der Relationen (Lastenheft)
+}
+
+// ==================== REGAL-EBENEN (Lastenheft 3.1.3.2) ====================
+/** Eine Regal-Ebene ist laut Lastenheft ein eigener Stellplatz mit allen
+ * Stellplatz-Eigenschaften plus pro-Ebene-Properties (Unterkante, Höhe, Plätze). */
+export interface RegalEbene {
+  id: number;
+  name: string;            // Pro-Ebene-Bezeichnung (auf Canvas anzeigbar)
+  unterkante: number;      // m über Boden
+  hoehe: number;           // m Ebenenhöhe
+  palettenplaetze: number; // Plätze pro Ebene
+  // Stellplatz-Properties pro Ebene (optional, sonst Regal-Defaults)
+  kapazitaetMulti?: { packstuecke?: number; lademeter?: number; qm?: number };
+  relationen?: StellplatzRelation[];
+}
+
+// ==================== MENGEN-MODELL (Lastenheft 3.2.1) ====================
+/** Prozesskategorie mit optionalen Subprozessen. */
+export interface Prozesskategorie {
+  id: number;
+  name: string;
+  subprozesse?: string[];
+}
+
+export type PackstueckTyp =
+  | 'palette'
+  | 'halbpalette'
+  | 'chep'
+  | 'gibo'
+  | 'industriepalette'
+  | 'colli'
+  | 'sonstiges';
+
+/** Ein einzelner Mengen-Eintrag pro Prozess+Relation+Typ. */
+export interface MengenEintrag {
+  id: number;
+  prozess: string;          // Verweis auf Prozesskategorie
+  subprozess?: string;
+  relation: string;
+  anzahl: number;            // 2 NK Präzision
+  typ: PackstueckTyp;
+  laenge?: number;           // m
+  breite?: number;           // m
+  hoehe?: number;            // m
+  stapelbar?: boolean;
+}
+
+// ==================== KETTEN-WEGBEREICH (Lastenheft 3.1.5) ====================
+/** Unterflurförderkette als eigener Wegbereich. Hat eigene Breite, Fließrichtung,
+ * Kurven+Geraden, darf sich mit normalen Wegen überlappen aber keine Nutzflächen
+ * dürfen darin liegen. */
+export interface KettenWegbereich {
+  id: number;
+  name: string;
+  punkte: { x: number; y: number }[]; // Pfad-Stützpunkte (Kurven via Bezier-Approx)
+  breite: number;
+  fliessrichtung: 'vorwaerts' | 'rueckwaerts'; // Pfeil-Visualisierung
+  farbe?: string;
+}
+
+// ==================== BEREICHSEINTEILUNG (Lastenheft 3.2.5) ====================
+/** Gruppierung von Toren + Stellplätzen für Auswertungen.
+ * „Menge der zugeordneten Relationen je Prozesskategorie summiert" — pro Bereich
+ * werden Tor-Belegung + Stellplatz-Mengen je Prozess aufsummiert. */
+export interface BereichsEinteilung {
+  id: number;
+  name: string;
+  torIds: number[];
+  stellplatzIds: number[];
+  color?: string;
+}
+
+// ==================== AUSSENGELÄNDE (Lastenheft 3.1.6) ====================
+/** Außengelände-Container: Gebäude, Straßen, Sattel-/Wechselbrücken-Plätze
+ * schematisch. Sattel-/Wechselbrücken-Plätze sind separat als TopisObject mit
+ * type='sattelplatz'/'wechselbrueckenplatz' modelliert, hier nur die
+ * abstrakte Gelände-Definition mit Außenflächen. */
+export interface Aussengelaende {
+  id: number;
+  name: string;
+  // Gelände-Umriss als Polygon (außerhalb der Halle)
+  punkte: { x: number; y: number }[];
+  farbe?: string;
+  beschreibung?: string;
 }
 
 // ==================== PATHS ====================
@@ -282,7 +443,19 @@ export type Tool =
   | 'gang'
   | 'conveyor'
   | 'measure'
-  | 'auftrag';
+  | 'auftrag'
+  // Lastenheft-Aufholplan 2026-05-31 — neue Tool-Buttons
+  | 'kommissionierflaeche'
+  | 'wertverschlag'
+  | 'hallenterminal'
+  | 'av_platz'
+  | 'uz_platz'
+  | 'palettenlager'
+  | 'sattelplatz'
+  | 'wechselbrueckenplatz'
+  | 'kette'              // 3.1.5 — Unterflurförderkette zeichnen
+  | 'aussengelaende'     // 3.1.6 — Außengelände-Polygon
+  | 'format-uebertragen'; // 3.1.1.2 — Format Übertragen
 
 /**
  * Simulierter Auftrag — wird per Klick im Canvas angelegt (Tor 1 → Tor 2 → Colli).
@@ -381,6 +554,30 @@ export interface TopisState {
   showAllSimRoutes: boolean;
   /** Aktive Stapler-Animation: welche Sim-Auftrags-ID läuft gerade ab, oder null */
   animationActiveId: string | null;
+
+  // ===== Lastenheft-Aufholplan 2026-05-31 =====
+  // 3.2.1 — Mengen-Modell
+  prozesskategorien: Prozesskategorie[];
+  prozesskategorieIdCounter: number;
+  mengenEintraege: MengenEintrag[];
+  mengenEintragIdCounter: number;
+  // 3.1.5 — Unterflurförderkette
+  kettenWegbereiche: KettenWegbereich[];
+  kettenWegbereichIdCounter: number;
+  selectedKette: KettenWegbereich | null;
+  // 3.2.5 — Bereichseinteilung (Auswertungs-Gruppen aus Toren + Stellplätzen)
+  bereichsEinteilungen: BereichsEinteilung[];
+  bereichsEinteilungIdCounter: number;
+  // 3.1.6 — Außengelände
+  aussengelaende: Aussengelaende[];
+  aussengelaendeIdCounter: number;
+  // 3.1.1.2 — Format Übertragen: zuletzt kopierte Eigenschaften
+  formatClipboard: {
+    sourceObjectId: number;
+    propertyNames: string[]; // welche Properties beim nächsten Klick übertragen
+  } | null;
+  // 3.1.7 — Anzeige-Modus
+  ansichtsModus: 'bildschirm' | 'druck';
 }
 
 // ==================== CONSTANTS ====================
@@ -424,6 +621,15 @@ export const OBJECT_COLORS: Record<ObjectType, string> = {
   trailer_spot: '#664422',  // Brown
   parking: '#336699',       // Blue-Gray
   custom: '#7799aa',        // Custom Gray-Blue
+  // Lastenheft-Aufholplan 2026-05-31
+  kommissionierflaeche: '#84cc16', // Lime
+  wertverschlag: '#a3a3a3',        // Gray
+  hallenterminal: '#0ea5e9',       // Sky
+  av_platz: '#fca5a5',             // Light Red (AV = Annahmeverweigerung)
+  uz_platz: '#fde047',             // Light Yellow (ÜZ = Überzähligkeit)
+  palettenlager: '#c2410c',        // Dark Orange
+  sattelplatz: '#7c3aed',          // Violet
+  wechselbrueckenplatz: '#92400e', // Brown
 };
 
 // Default sizes for each object type (in meters)
@@ -452,6 +658,15 @@ export const OBJECT_DEFAULTS: Record<ObjectType, { width: number; height: number
   trailer_spot: { width: 15, height: 3, name: 'Wechselbrücke' },
   parking: { width: 5, height: 5, name: 'Parkplatz' },
   custom: { width: 4, height: 4, name: 'Objekt' },
+  // Lastenheft-Aufholplan 2026-05-31
+  kommissionierflaeche: { width: 10, height: 6, name: 'Kommissionierfläche' },
+  wertverschlag: { width: 4, height: 3, name: 'Wertverschlag' },
+  hallenterminal: { width: 2, height: 1.5, name: 'Hallenterminal' },
+  av_platz: { width: 6, height: 3, name: 'AV-Platz' },
+  uz_platz: { width: 6, height: 3, name: 'ÜZ-Platz' },
+  palettenlager: { width: 10, height: 4, name: 'Palettenlager' },
+  sattelplatz: { width: 16, height: 4, name: 'Sattelplatz' },
+  wechselbrueckenplatz: { width: 8, height: 3, name: 'Wechselbrückenplatz' },
 };
 
 // German labels for object types
@@ -480,6 +695,15 @@ export const OBJECT_LABELS: Record<ObjectType, string> = {
   trailer_spot: 'Wechselbrücke',
   parking: 'Parkplatz',
   custom: 'Benutzerdefiniert',
+  // Lastenheft-Aufholplan 2026-05-31
+  kommissionierflaeche: 'Kommissionierfläche',
+  wertverschlag: 'Wertverschlag',
+  hallenterminal: 'Hallenterminal',
+  av_platz: 'AV-Platz',
+  uz_platz: 'ÜZ-Platz',
+  palettenlager: 'Palettenlager',
+  sattelplatz: 'Sattelplatz',
+  wechselbrueckenplatz: 'Wechselbrückenplatz',
 };
 
 // FFZ defaults

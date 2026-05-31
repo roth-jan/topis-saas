@@ -22,6 +22,7 @@ import {
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
 import { findPathBetweenObjects, buildGangGraph, findPath } from './pathfinding';
+import { findNearestWall, torBoxFromAnchor, reanchorTore } from './wall-anchor';
 
 // Modul-lokaler Debounce-Timer für Path-Auto-Recompute beim Object-Move
 let _recomputeTimer: number | null = null;
@@ -161,6 +162,17 @@ interface TopisStore extends TopisState {
   // Path-Recompute (Lastenheft 3.1.4.2 — automatische Aktualisierung)
   recomputeAllPaths: () => void;
   scheduleRecomputeForObject: (objectId: number) => void;
+
+  // ===== Lastenheft-Aufholplan 2026-05-31 — Bereichseinteilung (3.2.5) =====
+  addBereichsEinteilung: (b: Omit<import('@/types/topis').BereichsEinteilung, 'id'>) => void;
+  updateBereichsEinteilung: (id: number, updates: Partial<import('@/types/topis').BereichsEinteilung>) => void;
+  deleteBereichsEinteilung: (id: number) => void;
+  // ===== Lastenheft-Aufholplan 2026-05-31 — Format Übertragen (3.1.1.2) =====
+  setFormatClipboard: (sourceId: number, properties: string[]) => void;
+  applyFormatTo: (targetId: number) => void;
+  clearFormatClipboard: () => void;
+  // ===== Lastenheft-Aufholplan 2026-05-31 — Druck/Bildschirm-Modus (3.1.7) =====
+  setAnsichtsModus: (modus: 'bildschirm' | 'druck') => void;
 }
 
 const initialState: TopisState = {
@@ -210,7 +222,21 @@ const initialState: TopisState = {
     nachher: null,
     vorherScreenshot: null,
     nachherScreenshot: null
-  }
+  },
+  // Lastenheft-Aufholplan 2026-05-31
+  prozesskategorien: [],
+  prozesskategorieIdCounter: 1,
+  mengenEintraege: [],
+  mengenEintragIdCounter: 1,
+  kettenWegbereiche: [],
+  kettenWegbereichIdCounter: 1,
+  selectedKette: null,
+  bereichsEinteilungen: [],
+  bereichsEinteilungIdCounter: 1,
+  aussengelaende: [],
+  aussengelaendeIdCounter: 1,
+  formatClipboard: null,
+  ansichtsModus: 'bildschirm'
 };
 
 export const useTopisStore = create<TopisStore>()(
@@ -279,7 +305,15 @@ export const useTopisStore = create<TopisStore>()(
   },
 
   // Hall Actions
-  setHalls: (halls) => { get().pushSnapshot(); set({ halls }); },
+  setHalls: (halls) => {
+    get().pushSnapshot();
+    set((state) => {
+      const activeWalls = halls.find((h) => h.id === state.activeHallId)?.walls ?? [];
+      // Lastenheft 3.1.2 — Tore folgen Wand-Geometrie automatisch
+      const reanchored = activeWalls.length > 0 ? reanchorTore(state.objects, activeWalls) : state.objects;
+      return { halls, objects: reanchored };
+    });
+  },
   setActiveHall: (id) => set({ activeHallId: id }),
   updateHall: (id, updates) => {
     get().pushSnapshot();
@@ -291,7 +325,14 @@ export const useTopisStore = create<TopisStore>()(
       const legacyHall = id === state.activeHallId
         ? { ...state.hall, ...updates }
         : state.hall;
-      return { halls, hall: legacyHall };
+      // Lastenheft 3.1.2 — Wand-Änderungen ziehen Tore mit
+      const activeWalls = id === state.activeHallId
+        ? (halls.find((h) => h.id === id)?.walls ?? [])
+        : null;
+      const reanchored = activeWalls && activeWalls.length > 0
+        ? reanchorTore(state.objects, activeWalls)
+        : state.objects;
+      return { halls, hall: legacyHall, objects: reanchored };
     });
   },
 
@@ -326,7 +367,41 @@ export const useTopisStore = create<TopisStore>()(
   addObject: (obj) => {
     get().pushSnapshot();
     const id = get().objectIdCounter;
-    const newObj = { ...obj, id } as TopisObject;
+    let newObj = { ...obj, id } as TopisObject;
+    // Lastenheft 3.1.2 — Tor wird automatisch an nächste Außenwand verankert.
+    // Wenn der Aufrufer kein aussenwandRef gesetzt hat, suchen wir es per
+    // findNearestWall. Wenn keine Wand in Reichweite ist, bleibt das Tor
+    // unverankert (Migration alter Layouts / freie Halle ohne Wand-Geometrie).
+    if (newObj.type === 'tor' && !newObj.aussenwandRef) {
+      const walls = get().halls.find((h) => h.id === get().activeHallId)?.walls ?? [];
+      if (walls.length > 0) {
+        // Klickpunkt ist Mitte des Tor-Rechtecks
+        const px = newObj.x + newObj.width / 2;
+        const py = newObj.y + newObj.height / 2;
+        const nearest = findNearestWall(px, py, walls, 30);
+        if (nearest) {
+          const box = torBoxFromAnchor(
+            { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
+            walls,
+            newObj.width,
+            newObj.height,
+          );
+          if (box) {
+            newObj = {
+              ...newObj,
+              x: box.x,
+              y: box.y,
+              side: box.side ?? newObj.side,
+              aussenwandRef: {
+                wallIndex: nearest.wallIndex,
+                abstandS: nearest.abstandS,
+                abstandE: nearest.abstandE,
+              },
+            };
+          }
+        }
+      }
+    }
     set((state) => ({
       objects: [...state.objects, newObj],
       objectIdCounter: state.objectIdCounter + 1
@@ -343,8 +418,47 @@ export const useTopisStore = create<TopisStore>()(
       const dx = (parent && updatedParent && updates.x !== undefined) ? (updatedParent.x - parent.x) : 0;
       const dy = (parent && updatedParent && updates.y !== undefined) ? (updatedParent.y - parent.y) : 0;
       const moved = dx !== 0 || dy !== 0;
+      // Lastenheft 3.1.2 — Tor-Move soll Wand-Anker neu berechnen.
+      // Wenn der User ein Tor verschiebt, snappen wir es zur nächsten Wand
+      // und aktualisieren aussenwandRef. Außer der Aufrufer hat aussenwandRef
+      // selbst gesetzt (z.B. aus PropertiesPanel S/E-Eingabe).
+      const walls = state.halls.find((h) => h.id === state.activeHallId)?.walls ?? [];
       const newObjects = state.objects.map(o => {
-        if (o.id === id) return { ...o, ...updates };
+        if (o.id === id) {
+          let merged = { ...o, ...updates };
+          if (
+            merged.type === 'tor' &&
+            walls.length > 0 &&
+            (updates.x !== undefined || updates.y !== undefined) &&
+            updates.aussenwandRef === undefined
+          ) {
+            const px = merged.x + merged.width / 2;
+            const py = merged.y + merged.height / 2;
+            const nearest = findNearestWall(px, py, walls, 30);
+            if (nearest) {
+              const box = torBoxFromAnchor(
+                { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
+                walls,
+                merged.width,
+                merged.height,
+              );
+              if (box) {
+                merged = {
+                  ...merged,
+                  x: box.x,
+                  y: box.y,
+                  side: box.side ?? merged.side,
+                  aussenwandRef: {
+                    wallIndex: nearest.wallIndex,
+                    abstandS: nearest.abstandS,
+                    abstandE: nearest.abstandE,
+                  },
+                };
+              }
+            }
+          }
+          return merged;
+        }
         if (moved && o.parentObjectId === id) {
           return { ...o, x: o.x + dx, y: o.y + dy };
         }
@@ -788,6 +902,50 @@ export const useTopisStore = create<TopisStore>()(
       get().recomputeAllPaths();
     }, 80) as unknown as number;
   },
+
+  // ===== Lastenheft-Aufholplan 2026-05-31 — Bereichseinteilung (3.2.5) =====
+  addBereichsEinteilung: (b) => {
+    get().pushSnapshot();
+    set((state) => ({
+      bereichsEinteilungen: [...state.bereichsEinteilungen, { ...b, id: state.bereichsEinteilungIdCounter }],
+      bereichsEinteilungIdCounter: state.bereichsEinteilungIdCounter + 1,
+    }));
+  },
+  updateBereichsEinteilung: (id, updates) => {
+    get().pushSnapshot();
+    set((state) => ({
+      bereichsEinteilungen: state.bereichsEinteilungen.map((b) => b.id === id ? { ...b, ...updates } : b),
+    }));
+  },
+  deleteBereichsEinteilung: (id) => {
+    get().pushSnapshot();
+    set((state) => ({
+      bereichsEinteilungen: state.bereichsEinteilungen.filter((b) => b.id !== id),
+    }));
+  },
+
+  // ===== Lastenheft-Aufholplan 2026-05-31 — Format Übertragen (3.1.1.2) =====
+  setFormatClipboard: (sourceObjectId, propertyNames) => {
+    set({ formatClipboard: { sourceObjectId, propertyNames } });
+  },
+  applyFormatTo: (targetId) => {
+    const clip = get().formatClipboard;
+    if (!clip) return;
+    const source = get().objects.find((o) => o.id === clip.sourceObjectId);
+    if (!source) return;
+    const patch: Partial<TopisObject> = {};
+    for (const prop of clip.propertyNames) {
+      const value = (source as unknown as Record<string, unknown>)[prop];
+      if (value !== undefined) {
+        (patch as Record<string, unknown>)[prop] = value;
+      }
+    }
+    get().updateObject(targetId, patch);
+  },
+  clearFormatClipboard: () => set({ formatClipboard: null }),
+
+  // ===== Lastenheft-Aufholplan 2026-05-31 — Druck/Bildschirm-Modus (3.1.7) =====
+  setAnsichtsModus: (modus) => set({ ansichtsModus: modus }),
 }),
   {
     name: 'topis-layout',
@@ -811,6 +969,18 @@ export const useTopisStore = create<TopisStore>()(
       simAuftraege: state.simAuftraege,
       focusedTorId: state.focusedTorId,
       animationActiveId: state.animationActiveId,
+      // Lastenheft-Aufholplan 2026-05-31
+      bereichsEinteilungen: state.bereichsEinteilungen,
+      bereichsEinteilungIdCounter: state.bereichsEinteilungIdCounter,
+      prozesskategorien: state.prozesskategorien,
+      prozesskategorieIdCounter: state.prozesskategorieIdCounter,
+      mengenEintraege: state.mengenEintraege,
+      mengenEintragIdCounter: state.mengenEintragIdCounter,
+      kettenWegbereiche: state.kettenWegbereiche,
+      kettenWegbereichIdCounter: state.kettenWegbereichIdCounter,
+      aussengelaende: state.aussengelaende,
+      aussengelaendeIdCounter: state.aussengelaendeIdCounter,
+      ansichtsModus: state.ansichtsModus,
     }),
   }
 ));
