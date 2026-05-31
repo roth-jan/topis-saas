@@ -578,6 +578,11 @@ export interface TopisState {
   } | null;
   // 3.1.7 — Anzeige-Modus
   ansichtsModus: 'bildschirm' | 'druck';
+
+  // Lastenheft Kapitel 4 — Verlader
+  verlader: Verlader[];
+  verladerIdCounter: number;
+  selectedVerlader: Verlader | null;
 }
 
 // ==================== CONSTANTS ====================
@@ -705,6 +710,24 @@ export const OBJECT_LABELS: Record<ObjectType, string> = {
   sattelplatz: 'Sattelplatz',
   wechselbrueckenplatz: 'Wechselbrückenplatz',
 };
+
+// ==================== VERLADER (Lastenheft Kapitel 4) ====================
+/** Ein Verlader bedient Tore und Stellplätze — typischerweise ein Mitarbeiter
+ *  oder ein Team an einer Verladestelle. Hat optional eine Schicht-Zuordnung,
+ *  ein bevorzugtes FFZ, eine Liste bedienter Tore/Stellplätze und eine
+ *  Stunden-Kapazität (Colli/h) für Auslastungs- und Bedarfsrechnung. */
+export type VerladerSchicht = 'frueh' | 'spaet' | 'nacht' | 'tag';
+
+export interface Verlader {
+  id: number;
+  name: string;
+  schicht?: VerladerSchicht;
+  ffzId?: number;                  // Bevorzugtes FFZ
+  bedientToreIds: number[];        // Welche Tore bedient er
+  bedientStellplatzIds: number[];
+  kapazitaetProStunde?: number;    // Colli/h
+  notiz?: string;
+}
 
 // FFZ defaults
 export const DEFAULT_FFZ: FFZ[] = [

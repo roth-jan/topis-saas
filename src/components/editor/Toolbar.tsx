@@ -78,6 +78,11 @@ import { ThemeToggleSimple } from '@/components/theme-toggle';
 import { useTheme } from 'next-themes';
 import { SimulationDialog } from '@/components/dialogs/SimulationDialog';
 import { MultiInsertDialog } from '@/components/dialogs/MultiInsertDialog';
+import { BereichsEinteilungDialog } from '@/components/dialogs/BereichsEinteilungDialog';
+import { MengenDialog } from '@/components/dialogs/MengenDialog';
+import { VerladerDialog } from '@/components/dialogs/VerladerDialog';
+import { HallenRelationsPlanDialog } from '@/components/dialogs/HallenRelationsPlanDialog';
+import { KettenDialog } from '@/components/dialogs/KettenDialog';
 import { MatrixDialog } from '@/components/dialogs/MatrixDialog';
 import { WegeberechnungDialog } from '@/components/dialogs/WegeberechnungDialog';
 import { HallenAssistentDialog } from '@/components/dialogs/HallenAssistentDialog';
@@ -413,6 +418,12 @@ export function Toolbar() {
   const [showMeasurements, setShowMeasurements] = useState(true);
 
   const [showBereichOptimizer, setShowBereichOptimizer] = useState(false);
+  // Lastenheft-Aufholplan 2026-05-31 — neue Dialoge
+  const [showBereichsEinteilung, setShowBereichsEinteilung] = useState(false);
+  const [showMengen, setShowMengen] = useState(false);
+  const [showVerlader, setShowVerlader] = useState(false);
+  const [showHallenRelationsPlan, setShowHallenRelationsPlan] = useState(false);
+  const [showKetten, setShowKetten] = useState(false);
 
   // Workflow-Phasen — gliedert die Toolbar nach Beratungs-Story
   type Phase = 'daten' | 'layout' | 'wege' | 'auswertung' | 'planung' | 'vergleich' | 'cockpit';
@@ -1031,6 +1042,42 @@ export function Toolbar() {
         </DropdownMenu>
         )}
 
+        {/* ============ LASTENHEFT MENU — neue Dialoge aus Aufholplan 2026-05-31 ============ */}
+        {(phase === 'layout') && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-1 px-2">
+              Lastenheft <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-64">
+            <DropdownMenuLabel>Auswertungen</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setShowHallenRelationsPlan(true)}>
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              Hallen-Relations-Plan (3.2.3)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowBereichsEinteilung(true)}>
+              <Layers className="mr-2 h-4 w-4" />
+              Bereichseinteilung (3.2.5)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Mengen + Module</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => setShowMengen(true)}>
+              <Package className="mr-2 h-4 w-4" />
+              Mengen-Modell (3.2.1)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowVerlader(true)}>
+              <Truck className="mr-2 h-4 w-4" />
+              Verlader-Modul (Kap. 4)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowKetten(true)}>
+              <Square className="mr-2 h-4 w-4" />
+              Unterflurförderkette (3.1.5)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        )}
+
         {/* ============ SCENARIOS MENU (Daten-Phase) ============ */}
         {(phase === 'daten') && (
         <DropdownMenu>
@@ -1390,6 +1437,11 @@ export function Toolbar() {
       </div>
       </div>
       <BereichOptimizerDialog open={showBereichOptimizer} onOpenChange={setShowBereichOptimizer} />
+      <BereichsEinteilungDialog open={showBereichsEinteilung} onOpenChange={setShowBereichsEinteilung} />
+      <MengenDialog open={showMengen} onOpenChange={setShowMengen} />
+      <VerladerDialog open={showVerlader} onOpenChange={setShowVerlader} />
+      <HallenRelationsPlanDialog open={showHallenRelationsPlan} onOpenChange={setShowHallenRelationsPlan} />
+      <KettenDialog open={showKetten} onOpenChange={setShowKetten} />
     </TooltipProvider>
   );
 }

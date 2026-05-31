@@ -9,6 +9,7 @@ import { findPathBetweenObjects, lineCrossesAnyWall, buildGangGraph, findPath } 
 import { findNearestAnchor } from '@/lib/path-anchor';
 import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResult } from '@/lib/gang-snap';
 import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
+import { pathForFormVariante, pointInFormVariante } from '@/lib/shape-render';
 import { toast } from 'sonner';
 
 export function HallCanvas() {
@@ -238,8 +239,16 @@ export function HallCanvas() {
     const hits: TopisObject[] = [];
     for (const obj of objects) {
       const extra = obj.type === 'tor' ? torTouchExtra : 0;
+      // AABB als schnelle Vorprüfung (mit optionalem Touch-Extra für Tore).
       if (wx >= obj.x - extra && wx <= obj.x + obj.width + extra &&
           wy >= obj.y - extra && wy <= obj.y + obj.height + extra) {
+        // Lastenheft 3.1.3.1: bei formVariante=circle|trapez|polygon
+        // muss die Hit-Detection mit der gerenderten Form übereinstimmen.
+        // Touch-Extra wird hier ignoriert — die Form ist eng am sichtbaren
+        // Rand; Toleranz greift im zweiten Pass.
+        if (obj.formVariante && obj.formVariante !== 'rect') {
+          if (!pointInFormVariante(wx, wy, obj)) continue;
+        }
         hits.push(obj);
       }
     }
@@ -251,6 +260,8 @@ export function HallCanvas() {
         const tol = tolerance + extra;
         if (wx >= obj.x - tol && wx <= obj.x + obj.width + tol &&
             wy >= obj.y - tol && wy <= obj.y + obj.height + tol) {
+          // Hier akzeptieren wir die AABB-Toleranz auch für Nicht-Rect-Formen,
+          // damit Touch-Klicks bei kleinen Objekten zuverlässig treffen.
           hits.push(obj);
         }
       }
@@ -1013,21 +1024,49 @@ export function HallCanvas() {
       }
 
       // Object fill (rechteckige Objekte)
+      // Lastenheft 3.1.3.1: formVariante=circle|trapez|polygon → Pfad statt Rechteck.
+      // Für rect/undefined bleibt fillRect (Standard-Pfad, identische Performance).
       // Bereiche: semi-transparent (0.4) — Heatmap-tauglich, weniger visuelles Rauschen
-      if (obj.type === 'bereich') {
-        ctx.fillStyle = baseColor;
-        ctx.globalAlpha = 0.4;
-        ctx.fillRect(pos.x, pos.y, w, h);
-        ctx.globalAlpha = 1.0;
+      const useShapePath = obj.formVariante && obj.formVariante !== 'rect';
+      if (useShapePath) {
+        // Lastenheft 3.1.3.1 — Form-Variante via shape-render helper.
+        // SCALE * zoom = Welt→Pixel-Faktor (vgl. w = obj.width * SCALE * zoom).
+        const renderScale = SCALE * zoom;
+        if (obj.type === 'bereich') {
+          ctx.fillStyle = baseColor;
+          ctx.globalAlpha = 0.4;
+          ctx.beginPath();
+          pathForFormVariante(ctx, obj, worldToScreen, renderScale);
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+        } else {
+          ctx.fillStyle = baseColor;
+          ctx.beginPath();
+          pathForFormVariante(ctx, obj, worldToScreen, renderScale);
+          ctx.fill();
+        }
+        // Object border (gleicher Pfad)
+        ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.beginPath();
+        pathForFormVariante(ctx, obj, worldToScreen, renderScale);
+        ctx.stroke();
       } else {
-        ctx.fillStyle = baseColor;
-        ctx.fillRect(pos.x, pos.y, w, h);
-      }
+        if (obj.type === 'bereich') {
+          ctx.fillStyle = baseColor;
+          ctx.globalAlpha = 0.4;
+          ctx.fillRect(pos.x, pos.y, w, h);
+          ctx.globalAlpha = 1.0;
+        } else {
+          ctx.fillStyle = baseColor;
+          ctx.fillRect(pos.x, pos.y, w, h);
+        }
 
-      // Object border
-      ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = isSelected ? 2 : 1;
-      ctx.strokeRect(pos.x, pos.y, w, h);
+        // Object border
+        ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = isSelected ? 2 : 1;
+        ctx.strokeRect(pos.x, pos.y, w, h);
+      }
 
       // Object label — Tore und Bereiche unterschiedlich behandeln
       if (zoom > 0.3 && obj.name) {
