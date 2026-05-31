@@ -306,7 +306,7 @@ export function PropertiesPanel() {
     );
   }
 
-  const handleChange = (field: string, value: string | number | string[] | Record<string, string> | { x: number; y: number } | undefined) => {
+  const handleChange = (field: string, value: string | number | string[] | number[] | Record<string, string> | { x: number; y: number } | undefined) => {
     updateObject(selectedObject.id, { [field]: value });
   };
 
@@ -501,6 +501,53 @@ export function PropertiesPanel() {
               </div>
               <p className="text-xs text-muted-foreground">
                 0,0 = links-oben · 0,5;0,5 = Mitte (default) · 1,1 = rechts-unten. Beispiel: Nord-Tor mit Anker 0,5;1 startet/endet innen.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tor↔Stellplatz/Verlader/Fahrzeug-Relationen (Lastenheft 3.1.2) */}
+        {selectedObject.type === 'tor' && (
+          <Card>
+            <CardHeader className="py-3">
+              <CardTitle className="text-sm">Tor-Verknüpfungen (Lastenheft 3.1.2)</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Bedient Stellplätze (Komma-getrennte IDs/Namen)</Label>
+                <Input
+                  value={(selectedObject.bedientStellplatzIds ?? []).join(', ')}
+                  onChange={(e) => {
+                    const ids = e.target.value.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
+                    handleChange('bedientStellplatzIds', ids);
+                  }}
+                  placeholder="z.B. 12, 13, 14"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Bedient Verlader (Komma-getrennte IDs)</Label>
+                <Input
+                  value={(selectedObject.bedientVerladerIds ?? []).join(', ')}
+                  onChange={(e) => {
+                    const ids = e.target.value.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
+                    handleChange('bedientVerladerIds', ids);
+                  }}
+                  placeholder="z.B. 1, 2"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Bedient Fahrzeuge (Komma-getrennte IDs)</Label>
+                <Input
+                  value={(selectedObject.bedientFahrzeugIds ?? []).join(', ')}
+                  onChange={(e) => {
+                    const ids = e.target.value.split(',').map(s => Number(s.trim())).filter(n => Number.isFinite(n) && n > 0);
+                    handleChange('bedientFahrzeugIds', ids);
+                  }}
+                  placeholder="z.B. 1"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Lastenheft 3.1.2: 1 Tor = 1..n Verlader/Stellplätze/Fahrzeuge. Persistierte Verknüpfung für Auswertungen (Verladeplan, Cross-Docking).
               </p>
             </CardContent>
           </Card>

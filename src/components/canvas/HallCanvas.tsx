@@ -2413,16 +2413,19 @@ export function HallCanvas() {
         entladeX = Math.max(0, Math.min(hall.width - entladeWidth, entladeX));
         entladeY = Math.max(0, Math.min(hall.height - entladeHeight, entladeY));
 
+        // Lastenheft 3.1.2: Überladebrücke „direkt vor dem Tor" + an Tor gebunden
         addObject({
           type: 'entladebereich',
           x: entladeX,
           y: entladeY,
           width: entladeWidth,
           height: entladeHeight,
-          name: `Entlade ${count}`
+          name: `Entlade ${count}`,
+          parentObjectId: newObj.id,
+          parentOffset: { x: entladeX - newObj.x, y: entladeY - newObj.y },
         });
 
-        toast.success(`Tor mit Entladebereich erstellt (${torSide})`);
+        toast.success(`Tor mit Überladebrücke erstellt (${torSide})`);
       }
 
       // Select the new object and switch to select tool for immediate editing

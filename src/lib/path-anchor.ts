@@ -45,11 +45,30 @@ export function isValidEndAnchor(obj: TopisObject): boolean {
 }
 
 /**
+ * Liefert das implizite Anker-Offset je Tor-Seite (Lastenheft 3.1.2):
+ * Nord-Tor sitzt an der Nord-Außenwand → Stapler startet INNEN (y=1.0)
+ * Süd-Tor → y=0.0; West-Tor → x=1.0; Ost-Tor → x=0.0
+ * Für andere Objekte (Bereich/Stellplatz) bleibt Mitte (0.5/0.5).
+ */
+export function defaultAnchorOffset(obj: TopisObject): { x: number; y: number } {
+  if (obj.type === 'tor' && obj.side) {
+    switch (obj.side) {
+      case 'north': return { x: 0.5, y: 1.0 };
+      case 'south': return { x: 0.5, y: 0.0 };
+      case 'west':  return { x: 1.0, y: 0.5 };
+      case 'east':  return { x: 0.0, y: 0.5 };
+    }
+  }
+  return { x: 0.5, y: 0.5 };
+}
+
+/**
  * Liefert die physische Anker-Position (Welt-Koordinaten) für einen Wegpunkt.
- * Default Mittelpunkt; via wegpunktOffset kann der User Rand- oder Eck-Anker setzen.
+ * Explizit gesetzter wegpunktOffset hat Vorrang; sonst kommt der seitenabhängige
+ * Default (Nord-Tor → Innenseite, etc.).
  */
 export function anchorPoint(obj: TopisObject): { x: number; y: number } {
-  const off = obj.wegpunktOffset ?? { x: 0.5, y: 0.5 };
+  const off = obj.wegpunktOffset ?? defaultAnchorOffset(obj);
   return {
     x: obj.x + obj.width * off.x,
     y: obj.y + obj.height * off.y,

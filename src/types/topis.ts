@@ -98,6 +98,21 @@ export interface TopisObject {
   // bei anderen Typen über dieses Flag explizit setzbar.
   istUndurchlaessig?: boolean;
 
+  // ===== Parent-Bindung (Lastenheft 3.1.2 Überladebrücke „direkt vor dem Tor") =====
+  // Wenn gesetzt: dieses Objekt folgt seinem Parent (z.B. eine Überladebrücke an
+  // einem Tor). Beim Verschieben/Löschen des Parents wandert/verschwindet das
+  // Kind automatisch. parentOffset speichert die Welt-Differenz zur Parent-Position
+  // zum Zeitpunkt der Bindung — bleibt damit auch bei Tor-Move erhalten.
+  parentObjectId?: number;
+  parentOffset?: { x: number; y: number };
+
+  // ===== Tor↔Auswertungs-Verknüpfungen (Lastenheft 3.1.2) =====
+  // 1 Tor = 1..n Verlader / Stellplätze / Fahrzeuge. Persistierte Relation für
+  // Auswertungen (Verladeplan, Tor-Belegung, Cross-Docking).
+  bedientStellplatzIds?: number[];
+  bedientVerladerIds?: number[];
+  bedientFahrzeugIds?: number[];
+
   // ===== Wegpunkt-Property (Lastenheft 3.1.2 Tore, 3.1.3.2 Stellplätze) =====
   // Markiert ob das Element als Start, Endpunkt, beides oder keiner für Wege
   // dienen darf. Default: 'beides' (Backwards-Compat — alle Tore/Bereiche/

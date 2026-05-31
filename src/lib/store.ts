@@ -335,34 +335,58 @@ export const useTopisStore = create<TopisStore>()(
   },
   updateObject: (id, updates) => {
     get().pushSnapshot();
-    set((state) => ({
-      objects: state.objects.map(o => o.id === id ? { ...o, ...updates } : o),
-      selectedObject: state.selectedObject?.id === id
-        ? { ...state.selectedObject, ...updates }
-        : state.selectedObject
-    }));
-    // Lastenheft 3.1.4.2: bei Verschiebung von verknüpften Elementen Wege
-    // automatisch aktualisieren. Debounced damit Drag-Frames nicht spammen.
+    set((state) => {
+      const parent = state.objects.find(o => o.id === id);
+      const updatedParent = parent ? { ...parent, ...updates } : null;
+      // Parent-Bindung (Lastenheft 3.1.2 Überladebrücke): Kinder folgen
+      // ihrem Parent bei x/y-Move. Width/Height-Updates lassen Kinder in Ruhe.
+      const dx = (parent && updatedParent && updates.x !== undefined) ? (updatedParent.x - parent.x) : 0;
+      const dy = (parent && updatedParent && updates.y !== undefined) ? (updatedParent.y - parent.y) : 0;
+      const moved = dx !== 0 || dy !== 0;
+      const newObjects = state.objects.map(o => {
+        if (o.id === id) return { ...o, ...updates };
+        if (moved && o.parentObjectId === id) {
+          return { ...o, x: o.x + dx, y: o.y + dy };
+        }
+        return o;
+      });
+      return {
+        objects: newObjects,
+        selectedObject: state.selectedObject?.id === id
+          ? { ...state.selectedObject, ...updates }
+          : state.selectedObject,
+      };
+    });
     if (updates.x !== undefined || updates.y !== undefined || updates.width !== undefined || updates.height !== undefined) {
       get().scheduleRecomputeForObject(id);
     }
   },
   deleteObject: (id) => {
     get().pushSnapshot();
-    set((state) => ({
-      objects: state.objects.filter(o => o.id !== id),
-      selectedObject: state.selectedObject?.id === id ? null : state.selectedObject,
-      // Verwaiste Paths bekommen "weg-fehlt"-Marker via Name. Tatsächliches
-      // Löschen würde User-Arbeit zerstören — wir lassen die Path-Geometrie
-      // stehen, markieren sie aber als verwaist (Lastenheft sagt nichts zum
-      // Lösch-Verhalten, sichere Variante).
-      paths: state.paths.map(p => {
-        const verwaist = (p.startObjectId === id) || (p.endObjectId === id);
-        if (!verwaist) return p;
-        return { ...p, name: p.name.startsWith('⚠ ') ? p.name : `⚠ ${p.name}` };
-      }),
-      simAuftraege: state.simAuftraege.filter(a => a.vonObjectId !== id && a.nachObjectId !== id),
-    }));
+    set((state) => {
+      // Parent-Bindung (3.1.2): alle Kinder dieses Objekts mitlöschen
+      const childIds = new Set<number>();
+      const collectDescendants = (parentId: number) => {
+        for (const o of state.objects) {
+          if (o.parentObjectId === parentId && !childIds.has(o.id)) {
+            childIds.add(o.id);
+            collectDescendants(o.id);
+          }
+        }
+      };
+      collectDescendants(id);
+      const idsToDelete = new Set([id, ...childIds]);
+      return {
+        objects: state.objects.filter(o => !idsToDelete.has(o.id)),
+        selectedObject: state.selectedObject && idsToDelete.has(state.selectedObject.id) ? null : state.selectedObject,
+        paths: state.paths.map(p => {
+          const verwaist = (p.startObjectId != null && idsToDelete.has(p.startObjectId)) || (p.endObjectId != null && idsToDelete.has(p.endObjectId));
+          if (!verwaist) return p;
+          return { ...p, name: p.name.startsWith('⚠ ') ? p.name : `⚠ ${p.name}` };
+        }),
+        simAuftraege: state.simAuftraege.filter(a => !idsToDelete.has(a.vonObjectId) && !idsToDelete.has(a.nachObjectId)),
+      };
+    });
   },
   selectObject: (obj) => set({ selectedObject: obj, selectedPath: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null }),
 
