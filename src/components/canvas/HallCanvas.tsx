@@ -425,6 +425,10 @@ export function HallCanvas() {
       startObjectName: startObj?.name,
       endObjectId: endObj?.id,
       endObjectName: endObj?.name,
+      // Original-Klicks (Stützpunkte) speichern — Recompute kann zwischen
+      // ihnen neu A*'en. Bei reinem 2-Anker-Pfad sind die Stützpunkte =
+      // Start- und End-Anker; nicht nötig zu persistieren.
+      stuetzpunkte: waypoints.length >= 3 ? waypoints : undefined,
     });
 
     if (routedOverGang) {

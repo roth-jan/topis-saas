@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createDebouncedLocalStorage } from './debounced-storage';
+import { gaengeFuerPathArea } from './gang-aus-patharea';
+import { generateConnectors } from './gang-insel-verbinder';
 import {
   TopisState,
   TopisObject,
@@ -19,7 +21,7 @@ import {
   MittlererWegRun,
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
-import { findPathBetweenObjects, buildGangGraph } from './pathfinding';
+import { findPathBetweenObjects, buildGangGraph, findPath } from './pathfinding';
 
 // Modul-lokaler Debounce-Timer für Path-Auto-Recompute beim Object-Move
 let _recomputeTimer: number | null = null;
@@ -415,27 +417,65 @@ export const useTopisStore = create<TopisStore>()(
     get().pushSnapshot();
     const id = get().pathAreaIdCounter;
     const newArea = { ...area, id } as PathArea;
-    set((state) => ({
-      pathAreas: [...state.pathAreas, newArea],
-      pathAreaIdCounter: state.pathAreaIdCounter + 1
-    }));
+    const autoGangs = gaengeFuerPathArea(newArea);
+    set((state) => {
+      let gangIdNext = Math.max(0, ...state.gaenge.map(g => g.id)) + 1;
+      const neueGaenge = autoGangs.map(g => ({ ...g, id: gangIdNext++ } as Gang));
+      // Insel-Verbinder neu generieren: alte Connectoren (Namens-Präfix
+      // „Auto: Verbinder") wegwerfen und auf Basis aller Auto-Gänge neu
+      // rechnen — damit eine neu hinzugefügte pathArea ans Netz andockt.
+      const ohneVerbinder = [...state.gaenge.filter(g => !g.name.startsWith('Auto: Verbinder')), ...neueGaenge];
+      const connectors = generateConnectors(ohneVerbinder);
+      const connectorGangs = connectors.map(g => ({ ...g, id: gangIdNext++ } as Gang));
+      return {
+        pathAreas: [...state.pathAreas, newArea],
+        pathAreaIdCounter: state.pathAreaIdCounter + 1,
+        gaenge: [...ohneVerbinder, ...connectorGangs],
+      };
+    });
+    get().scheduleRecomputeForObject(-1);
     return newArea;
   },
-  updatePathArea: (id, updates) => set((state) => {
-    const updatedAreas = state.pathAreas.map(a => a.id === id ? { ...a, ...updates } : a);
-    return {
-      pathAreas: updatedAreas,
-      selectedPathArea: state.selectedPathArea?.id === id
-        ? { ...state.selectedPathArea, ...updates }
-        : state.selectedPathArea
-    };
-  }),
+  updatePathArea: (id, updates) => {
+    set((state) => {
+      const updatedAreas = state.pathAreas.map(a => a.id === id ? { ...a, ...updates } : a);
+      const updatedPA = updatedAreas.find(a => a.id === id);
+      // Auto-Gänge dieser pathArea + alle Verbinder entfernen, neu erzeugen
+      const ohneAlteAutoGaenge = state.gaenge.filter(
+        g => g.autoFromPathAreaId !== id && !g.name.startsWith('Auto: Verbinder')
+      );
+      let gangIdNext = Math.max(0, ...state.gaenge.map(g => g.id)) + 1;
+      const neueAutoGaenge = updatedPA
+        ? gaengeFuerPathArea(updatedPA).map(g => ({ ...g, id: gangIdNext++ } as Gang))
+        : [];
+      const basis = [...ohneAlteAutoGaenge, ...neueAutoGaenge];
+      const connectors = generateConnectors(basis);
+      const connectorGangs = connectors.map(g => ({ ...g, id: gangIdNext++ } as Gang));
+      return {
+        pathAreas: updatedAreas,
+        gaenge: [...basis, ...connectorGangs],
+        selectedPathArea: state.selectedPathArea?.id === id && updatedPA ? updatedPA : state.selectedPathArea,
+      };
+    });
+    get().scheduleRecomputeForObject(-1);
+  },
   deletePathArea: (id) => {
     get().pushSnapshot();
-    set((state) => ({
-      pathAreas: state.pathAreas.filter(a => a.id !== id),
-      selectedPathArea: state.selectedPathArea?.id === id ? null : state.selectedPathArea
-    }));
+    set((state) => {
+      const ohneArea = state.pathAreas.filter(a => a.id !== id);
+      const ohneAutoGaenge = state.gaenge.filter(
+        g => g.autoFromPathAreaId !== id && !g.name.startsWith('Auto: Verbinder')
+      );
+      let gangIdNext = Math.max(0, ...state.gaenge.map(g => g.id)) + 1;
+      const connectors = generateConnectors(ohneAutoGaenge);
+      const connectorGangs = connectors.map(g => ({ ...g, id: gangIdNext++ } as Gang));
+      return {
+        pathAreas: ohneArea,
+        gaenge: [...ohneAutoGaenge, ...connectorGangs],
+        selectedPathArea: state.selectedPathArea?.id === id ? null : state.selectedPathArea,
+      };
+    });
+    get().scheduleRecomputeForObject(-1);
   },
   selectPathArea: (area) => set({ selectedPathArea: area, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedGang: null }),
 
@@ -668,6 +708,35 @@ export const useTopisStore = create<TopisStore>()(
     const byId = new Map(state.objects.map((o) => [o.id, o]));
     let changed = false;
     const newPaths = state.paths.map((p) => {
+      // Variante A: Pfad mit Stützpunkten (3+ User-Klicks) → A* zwischen jedem
+      // Paar, Stützpunkte bleiben anker-treu zur User-Intention.
+      if (p.stuetzpunkte && p.stuetzpunkte.length >= 2) {
+        const stitched: { x: number; y: number; objectId: number | null }[] = [];
+        let totalDist = 0;
+        let totalTime = 0;
+        let anyChanged = false;
+        for (let i = 0; i + 1 < p.stuetzpunkte.length; i++) {
+          const a = p.stuetzpunkte[i];
+          const b = p.stuetzpunkte[i + 1];
+          const r = findPath(a.x, a.y, b.x, b.y, graph, undefined, walls, state.pathAreas);
+          if (r && r.path.length >= 2) {
+            anyChanged = true;
+            const pts = stitched.length === 0 ? r.path : r.path.slice(1);
+            pts.forEach((pt) => stitched.push({ x: pt.x, y: pt.y, objectId: null }));
+            totalDist += r.distance;
+            totalTime += r.time;
+          } else {
+            if (stitched.length === 0) stitched.push({ ...a });
+            stitched.push({ ...b });
+          }
+        }
+        if (anyChanged) {
+          changed = true;
+          return { ...p, waypoints: stitched, distance: totalDist, time: totalTime };
+        }
+        return p;
+      }
+      // Variante B: Pfad nur mit Anker-Objekten (2-Anker-Auto-Route)
       if (p.startObjectId == null || p.endObjectId == null) return p;
       const from = byId.get(p.startObjectId);
       const to = byId.get(p.endObjectId);
