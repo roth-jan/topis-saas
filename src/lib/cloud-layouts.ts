@@ -24,29 +24,39 @@ export interface Profile {
   display_name: string | null;
 }
 
-/** Aktuellen Editor-Zustand (alle Stores) als JSON-Blob einsammeln. */
+/** Aktuellen Editor-Zustand (alle Stores) als JSON-Blob einsammeln.
+ * WICHTIG: pro Store das volle persist-Objekt { state, version } speichern —
+ * sonst geht die Version verloren und Migrationen greifen beim Cloud-Laden
+ * nicht (bzw. falsch), wenn der Code später die Datenform ändert. */
 export function serializeCurrentLayout(): Record<string, unknown> {
   const data: Record<string, unknown> = {};
   for (const key of STORE_KEYS) {
     const raw = localStorage.getItem(key);
     if (raw) {
-      try { data[key] = JSON.parse(raw).state ?? null; } catch { /* ignore */ }
+      try {
+        const parsed = JSON.parse(raw);
+        data[key] = { state: parsed.state ?? null, version: parsed.version ?? 0 };
+      } catch { /* ignore */ }
     }
   }
   return data;
 }
 
-/** Cloud-Blob in die Stores zurückschreiben + Reload, damit alle Stores
- * (inkl. Rehydrate-Migration) sauber neu aufbauen. */
+/** Cloud-Blob in die Stores zurückschreiben + Reload. Die persist-Middleware
+ * sieht beim Rehydrieren die gespeicherte Version und ruft bei Bedarf migrate()
+ * + onRehydrateStorage auf — so werden alte Cloud-Layouts automatisch aufs
+ * aktuelle Format gehoben. */
 export function applyLayoutData(data: Record<string, unknown>): void {
   for (const key of STORE_KEYS) {
-    if (data[key] != null) {
-      // persist-Format wiederherstellen: { state, version }
-      const existing = localStorage.getItem(key);
-      let version = 0;
-      if (existing) { try { version = JSON.parse(existing).version ?? 0; } catch { /* */ } }
-      localStorage.setItem(key, JSON.stringify({ state: data[key], version }));
-    }
+    const entry = data[key] as { state?: unknown; version?: number } | unknown | null;
+    if (entry == null) continue;
+    // Neues Format { state, version } direkt übernehmen; altes Format
+    // (nur state, ohne version) als version 0 behandeln (rückwärtskompatibel).
+    const hasWrapper = typeof entry === 'object' && entry !== null && 'state' in (entry as object);
+    const payload = hasWrapper
+      ? { state: (entry as { state: unknown }).state, version: (entry as { version?: number }).version ?? 0 }
+      : { state: entry, version: 0 };
+    localStorage.setItem(key, JSON.stringify(payload));
   }
   window.location.reload();
 }

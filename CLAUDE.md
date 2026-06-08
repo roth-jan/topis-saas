@@ -318,3 +318,20 @@ npm run build                    # Static Export nach out/
 - Canvas rendert ALLE Elemente - neue Typen brauchen: Rendering + Hit-Detection + Properties Panel
 - Bei neuen selektierbaren Elementen: gegenseitigen Ausschluss in ALLEN select*-Actions beachten
 - Heatmap-Daten (heatmapConfig, betriebsAnalyse) MÜSSEN in Canvas useCallback/useEffect Deps stehen
+
+## Cloud-Backend & Daten-Migration (seit 08.06.2026)
+
+### Supabase (optional, client-seitig)
+- Login (E-Mail/Passwort + Magic Link) + Cloud-Layouts mit gezieltem Teilen.
+- Projekt `febebiqrjvazjozyowdt` (eu-central-1). Config in `.env.local` (`NEXT_PUBLIC_SUPABASE_URL/ANON_KEY`). Ohne Config → reiner localStorage-Modus, CloudMenu blendet sich aus.
+- Code: `src/lib/{supabase.ts,auth.tsx,cloud-layouts.ts}`, `src/components/auth/*`, `src/components/dialogs/CloudProjekteDialog.tsx`.
+- DB: `profiles` (Auto-Trigger), `layouts` (owner + `data` jsonb = die 4 Zustand-Stores als `{state,version}`-Blobs), `layout_shares` (view/edit). RLS aktiv mit SECURITY-DEFINER-Helfern (`is_layout_owner`, `has_layout_access`).
+
+### Daten-Migration — VERBINDLICHE REGEL
+Gespeicherte Hallen (localStorage UND Cloud) sind Produktionsdaten. Bei jeder Änderung:
+1. **Berechnungs-Änderung** (Pathfinding, Verteilweg, Min/Colli): unkritisch — liest gespeicherte Geometrie, rechnet neu. Keine Migration nötig.
+2. **Datenform-Änderung** (Feld umbenennen/entfernen, Objektstruktur ändern, neues Pflichtfeld): in der betroffenen persist-Config `version` erhöhen UND `migrate(persisted, fromVersion)`-Schritt ergänzen (Muster in `store.ts`). Cloud-Layouts speichern `{state,version}` → dieselbe Migration greift beim Laden.
+3. **Vor jedem Breaking-Deploy**: `SUPABASE_PAT=sbp_... ./scripts/backup-cloud-layouts.sh` (sichert alle Blobs nach ~/topis-backups/).
+4. **Testen**: ein vor der Änderung gespeichertes Layout laden und prüfen, dass nichts verloren geht (headless E2E wie bei der Tor-Migration).
+
+Alle 4 Stores haben `version: 1` als Baseline. Idempotente Sonderfälle (z.B. Tor-Verankerung nachziehen) liegen in `onRehydrateStorage`.

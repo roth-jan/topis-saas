@@ -162,6 +162,14 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
   {
     name: 'topis-prozessmodell',
     storage: createJSONStorage(() => createDebouncedLocalStorage()),
+    // Schema-Version: bei Datenform-Änderungen erhöhen + Migrationsschritt unten.
+    // Gilt für localStorage UND Cloud-Layouts. Muster siehe store.ts.
+    version: 1,
+    migrate: (persisted: unknown, fromVersion: number) => {
+      const s = persisted as Record<string, unknown>;
+      if (fromVersion < 1) { /* Baseline, keine Transformation */ }
+      return s;
+    },
     partialize: (state) => ({
       modell: state.modell,
       parameter: state.parameter,

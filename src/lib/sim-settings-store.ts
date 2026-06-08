@@ -40,6 +40,13 @@ export const useSimSettingsStore = create<SimSettingsState>()(
     {
       name: 'topis-sim-settings',
       storage: createJSONStorage(() => createDebouncedLocalStorage()),
+      // Schema-Version: bei Datenform-Änderungen erhöhen + Migrationsschritt.
+      version: 1,
+      migrate: (persisted: unknown, fromVersion: number) => {
+        const s = persisted as Record<string, unknown>;
+        if (fromVersion < 1) { /* Baseline, keine Transformation */ }
+        return s;
+      },
     }
   )
 );

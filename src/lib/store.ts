@@ -1124,6 +1124,24 @@ export const useTopisStore = create<TopisStore>()(
   {
     name: 'topis-layout',
     storage: createJSONStorage(() => createDebouncedLocalStorage()),
+    // ===== SCHEMA-VERSION & MIGRATIONEN =====
+    // Bei JEDER Änderung der gespeicherten Datenform (Feld umbenennen/entfernen,
+    // Objektstruktur ändern, neues Pflichtfeld): version erhöhen UND unten einen
+    // Migrationsschritt von der Vorgängerversion ergänzen. Gilt für localStorage
+    // UND Cloud-Layouts (die speichern dieselbe {state, version}-Struktur).
+    // Vor riskanten Änderungen: scripts/backup-cloud-layouts.sh laufen lassen.
+    version: 1,
+    migrate: (persisted: unknown, fromVersion: number) => {
+      let s = persisted as Record<string, unknown>;
+      // v0 → v1: Baseline. Datenform unverändert; die Tor-Verankerung wird
+      // idempotent in onRehydrateStorage nachgezogen (keine Strukturänderung).
+      if (fromVersion < 1) {
+        // (keine Transformation nötig)
+      }
+      // Künftige Schritte hier anhängen, z.B.:
+      // if (fromVersion < 2) { s = migrateV1toV2(s); }
+      return s;
+    },
     // Migration (Niko-Bug 02.06.): Vor dem Fix gespeicherte Tore haben kein
     // aussenwandRef → die „nicht verankert"-Warnung bliebe für sie dauerhaft
     // stehen, auch wenn sie längst auf einer Wand sitzen. Beim Rehydrieren
