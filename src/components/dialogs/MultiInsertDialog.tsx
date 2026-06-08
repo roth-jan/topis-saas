@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,10 @@ function numberToAlpha(n: number): string {
 export function MultiInsertDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [objectType, setObjectType] = useState<ObjectType>('tor');
+  // Niko-Wunsch 02.06.: Breite/Tiefe vorab für ALLE Objekte setzen, statt jedes
+  // Tor einzeln nachzupflegen. Default aus dem Objekttyp, beim Typwechsel neu.
+  const [width, setWidth] = useState(OBJECT_DEFAULTS['tor'].width);
+  const [height, setHeight] = useState(OBJECT_DEFAULTS['tor'].height);
   const [count, setCount] = useState(5);
   const [spacing, setSpacing] = useState(5);
   const [startX, setStartX] = useState(0);
@@ -75,6 +79,12 @@ export function MultiInsertDialog() {
 
   const addObject = useTopisStore((s) => s.addObject);
   const hall = useTopisStore((s) => s.halls[0]);
+
+  // Beim Typwechsel Breite/Tiefe auf die Default-Maße des neuen Typs setzen.
+  useEffect(() => {
+    const d = OBJECT_DEFAULTS[objectType];
+    if (d) { setWidth(d.width); setHeight(d.height); }
+  }, [objectType]);
 
   const handleInsert = () => {
     if (count < 1 || count > 100) {
@@ -105,8 +115,8 @@ export function MultiInsertDialog() {
         type: objectType,
         x,
         y,
-        width: defaults.width,
-        height: defaults.height,
+        width: width > 0 ? width : defaults.width,
+        height: height > 0 ? height : defaults.height,
         name,
         nummernSchema: schema,
       });
@@ -156,6 +166,30 @@ export function MultiInsertDialog() {
                 <SelectItem value="bereich">Bereich</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Größe — Niko-Wunsch: für alle Objekte vorab */}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Breite (m)</Label>
+            <Input
+              type="number"
+              min={0.1}
+              step={0.5}
+              value={width}
+              onChange={(e) => setWidth(parseFloat(e.target.value) || 0)}
+              className="col-span-3"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Tiefe (m)</Label>
+            <Input
+              type="number"
+              min={0.1}
+              step={0.5}
+              value={height}
+              onChange={(e) => setHeight(parseFloat(e.target.value) || 0)}
+              className="col-span-3"
+            />
           </div>
 
           {/* Count */}
