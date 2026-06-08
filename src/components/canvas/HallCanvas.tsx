@@ -10,9 +10,12 @@ import { findNearestAnchor } from '@/lib/path-anchor';
 import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResult } from '@/lib/gang-snap';
 import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
 import { pathForFormVariante, pointInFormVariante } from '@/lib/shape-render';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
 export function HallCanvas() {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== 'light'; // Default dunkel
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
@@ -511,8 +514,8 @@ export function HallCanvas() {
     if (!canvas || !ctx) return;
 
     // Clear canvas — neutrales Apple-Anthrazit als Zeichen-Viewport
-    // (bewusst dunkel in beiden Modi, wie in Figma/CAD-Tools).
-    ctx.fillStyle = '#1b1b1d';
+    // Theme-abhängig: helle Zeichenfläche im Light-Mode, Anthrazit im Dark-Mode.
+    ctx.fillStyle = isDark ? '#1b1b1d' : '#f4f4f6';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid)
@@ -520,7 +523,8 @@ export function HallCanvas() {
       const pos = worldToScreen(0, 0);
       const w = hall.width * SCALE * zoom;
       const h = hall.height * SCALE * zoom;
-      ctx.fillStyle = hall.color || '#16213e';
+      // Light-Mode: helle Hallenfläche; Dark-Mode: gespeicherte Hallenfarbe.
+      ctx.fillStyle = isDark ? (hall.color || '#16213e') : '#ffffff';
       ctx.fillRect(pos.x, pos.y, w, h);
     }
 
@@ -535,7 +539,7 @@ export function HallCanvas() {
       const majorPx = majorStepM * SCALE * zoom;
 
       if (minorPx >= 6) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.10)';
+        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         for (let x = pan.x % minorPx; x < canvas.width; x += minorPx) {
@@ -547,7 +551,7 @@ export function HallCanvas() {
         ctx.stroke();
       }
 
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.13)';
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x = pan.x % majorPx; x < canvas.width; x += majorPx) {
@@ -565,11 +569,11 @@ export function HallCanvas() {
       const w = hall.width * SCALE * zoom;
       const h = hall.height * SCALE * zoom;
 
-      ctx.strokeStyle = '#4a5568';
+      ctx.strokeStyle = isDark ? '#4a5568' : '#c4c8d0';
       ctx.lineWidth = 2;
       ctx.strokeRect(pos.x, pos.y, w, h);
 
-      ctx.fillStyle = '#718096';
+      ctx.fillStyle = isDark ? '#718096' : '#8a8f99';
       ctx.font = `${12 * zoom}px Inter, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(hall.name, pos.x + w / 2, pos.y - 8);
@@ -996,7 +1000,7 @@ export function HallCanvas() {
         ctx.fillStyle = baseColor;
         ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.85)';
+        ctx.strokeStyle = isSelected ? (isDark ? '#fff' : '#1d1d1f') : (isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.45)');
         ctx.lineWidth = isSelected ? 2 : 1.5;
         ctx.stroke();
         // Crosshair (default für icon='crosshair' oder bei tag 'messpunkt')
@@ -1767,7 +1771,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
