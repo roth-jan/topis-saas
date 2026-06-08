@@ -23,7 +23,7 @@ import {
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
 import { findPathBetweenObjects, buildGangGraph, findPath } from './pathfinding';
-import { findNearestWall, torBoxFromAnchor, reanchorTore } from './wall-anchor';
+import { findNearestWall, torBoxFromAnchor, reanchorTore, deriveWalls } from './wall-anchor';
 import * as mengenActions from './mengen-store-actions';
 
 // Modul-lokaler Debounce-Timer für Path-Auto-Recompute beim Object-Move
@@ -336,7 +336,9 @@ export const useTopisStore = create<TopisStore>()(
   setHalls: (halls) => {
     get().pushSnapshot();
     set((state) => {
-      const activeWalls = halls.find((h) => h.id === state.activeHallId)?.walls ?? [];
+      const activeHall = halls.find((h) => h.id === state.activeHallId);
+      // Lastenheft 3.1.1.1 — Außenwände aus der Hallen-Geometrie ableiten.
+      const activeWalls = activeHall ? deriveWalls(activeHall) : [];
       // Lastenheft 3.1.2 — Tore folgen Wand-Geometrie automatisch
       const reanchored = activeWalls.length > 0 ? reanchorTore(state.objects, activeWalls) : state.objects;
       return { halls, objects: reanchored };
@@ -354,8 +356,10 @@ export const useTopisStore = create<TopisStore>()(
         ? { ...state.hall, ...updates }
         : state.hall;
       // Lastenheft 3.1.2 — Wand-Änderungen ziehen Tore mit
-      const activeWalls = id === state.activeHallId
-        ? (halls.find((h) => h.id === id)?.walls ?? [])
+      const activeHall = halls.find((h) => h.id === id);
+      // Lastenheft 3.1.1.1 — Außenwände aus aktualisierter Geometrie ableiten.
+      const activeWalls = id === state.activeHallId && activeHall
+        ? deriveWalls(activeHall)
         : null;
       const reanchored = activeWalls && activeWalls.length > 0
         ? reanchorTore(state.objects, activeWalls)
@@ -401,7 +405,8 @@ export const useTopisStore = create<TopisStore>()(
     // findNearestWall. Wenn keine Wand in Reichweite ist, bleibt das Tor
     // unverankert (Migration alter Layouts / freie Halle ohne Wand-Geometrie).
     if (newObj.type === 'tor' && !newObj.aussenwandRef) {
-      const walls = get().halls.find((h) => h.id === get().activeHallId)?.walls ?? [];
+      const activeHall = get().halls.find((h) => h.id === get().activeHallId);
+      const walls = activeHall ? deriveWalls(activeHall) : [];
       if (walls.length > 0) {
         // Klickpunkt ist Mitte des Tor-Rechtecks
         const px = newObj.x + newObj.width / 2;
@@ -450,7 +455,13 @@ export const useTopisStore = create<TopisStore>()(
       // Wenn der User ein Tor verschiebt, snappen wir es zur nächsten Wand
       // und aktualisieren aussenwandRef. Außer der Aufrufer hat aussenwandRef
       // selbst gesetzt (z.B. aus PropertiesPanel S/E-Eingabe).
-      const walls = state.halls.find((h) => h.id === state.activeHallId)?.walls ?? [];
+      const activeHall = state.halls.find((h) => h.id === state.activeHallId);
+      const walls = activeHall ? deriveWalls(activeHall) : [];
+      // Das tatsächlich gemergte (ggf. an Wand gesnappte) Objekt festhalten,
+      // damit selectedObject NICHT nur ...updates bekommt — sonst zeigt das
+      // PropertiesPanel die auto-gesetzte aussenwandRef nie an und die
+      // „nicht verankert"-Warnung bleibt stehen (Niko-Bug 02.06.).
+      let mergedSelected: TopisObject | null = null;
       const newObjects = state.objects.map(o => {
         if (o.id === id) {
           let merged = { ...o, ...updates };
@@ -484,7 +495,23 @@ export const useTopisStore = create<TopisStore>()(
                 };
               }
             }
+          } else if (
+            merged.type === 'tor' &&
+            walls.length > 0 &&
+            updates.aussenwandRef !== undefined &&
+            merged.aussenwandRef &&
+            updates.x === undefined &&
+            updates.y === undefined
+          ) {
+            // Lastenheft 3.1.2 — Abstand S/E im Panel direkt geändert: Tor muss
+            // auf der Wand entlangwandern (Niko Schritt 5). x/y aus dem neuen
+            // Anker neu berechnen, sonst ändert sich nur die Zahl, nicht das Tor.
+            const box = torBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height);
+            if (box) {
+              merged = { ...merged, x: box.x, y: box.y, side: box.side ?? merged.side };
+            }
           }
+          mergedSelected = merged;
           return merged;
         }
         if (moved && o.parentObjectId === id) {
@@ -495,11 +522,11 @@ export const useTopisStore = create<TopisStore>()(
       return {
         objects: newObjects,
         selectedObject: state.selectedObject?.id === id
-          ? { ...state.selectedObject, ...updates }
+          ? (mergedSelected ?? { ...state.selectedObject, ...updates })
           : state.selectedObject,
       };
     });
-    if (updates.x !== undefined || updates.y !== undefined || updates.width !== undefined || updates.height !== undefined) {
+    if (updates.x !== undefined || updates.y !== undefined || updates.width !== undefined || updates.height !== undefined || updates.aussenwandRef !== undefined) {
       get().scheduleRecomputeForObject(id);
     }
   },
@@ -1097,6 +1124,26 @@ export const useTopisStore = create<TopisStore>()(
   {
     name: 'topis-layout',
     storage: createJSONStorage(() => createDebouncedLocalStorage()),
+    // Migration (Niko-Bug 02.06.): Vor dem Fix gespeicherte Tore haben kein
+    // aussenwandRef → die „nicht verankert"-Warnung bliebe für sie dauerhaft
+    // stehen, auch wenn sie längst auf einer Wand sitzen. Beim Rehydrieren
+    // jedes unverankerte Tor an die nächste abgeleitete Außenwand binden.
+    onRehydrateStorage: () => (state) => {
+      if (!state) return;
+      const activeHall = state.halls?.find((h) => h.id === state.activeHallId);
+      const walls = activeHall ? deriveWalls(activeHall) : [];
+      if (walls.length === 0) return;
+      state.objects = state.objects.map((o) => {
+        if (o.type !== 'tor' || o.aussenwandRef) return o;
+        const nearest = findNearestWall(o.x + o.width / 2, o.y + o.height / 2, walls, 30);
+        if (!nearest) return o;
+        const ref = { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE };
+        const box = torBoxFromAnchor(ref, walls, o.width, o.height);
+        return box
+          ? { ...o, x: box.x, y: box.y, side: box.side ?? o.side, aussenwandRef: ref }
+          : { ...o, aussenwandRef: ref };
+      });
+    },
     partialize: (state) => ({
       halls: state.halls,
       activeHallId: state.activeHallId,

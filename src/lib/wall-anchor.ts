@@ -13,7 +13,33 @@
  * Bei Wand-Move/Resize wandern alle daran verankerten Tore automatisch mit.
  */
 
-import type { Wall, TopisObject } from '@/types/topis';
+import type { Wall, TopisObject, Hall } from '@/types/topis';
+
+/**
+ * Leitet die Außenwand-Segmente aus der Hallen-Geometrie ab (Lastenheft 3.1.1.1:
+ * „Grundriss, Außenwände" — die Halle wird durch ihre Außenwände definiert).
+ *
+ * Objekte leben im hallen-lokalen Koordinatensystem (0,0)→(width,height) — das
+ * deckt sich mit der Hit-Detection und worldToScreen(0,0) als Hallen-Ursprung.
+ * `offsetX/offsetY` betreffen nur die Canvas-Platzierung, nicht die Objekt-Welt.
+ *
+ * Reihenfolge (= wallIndex-Semantik, identisch zu den Tests + reanchorTore):
+ *   0 Nord, 1 Ost, 2 Süd, 3 West — im Uhrzeigersinn.
+ *
+ * Hinweis: aktuell wird im Store ausschließlich shape 'rect' verwendet. Für
+ * L/T/U/C wird vorerst das umschließende Rechteck geliefert (TODO: echte Kontur),
+ * was besser ist als die bisherige leere Wandliste (= kein Tor verankerbar).
+ */
+export function deriveWalls(hall: Pick<Hall, 'width' | 'height'>): Wall[] {
+  const { width: W, height: H } = hall;
+  if (!(W > 0) || !(H > 0)) return [];
+  return [
+    { x1: 0, y1: 0, x2: W, y2: 0 }, // 0: Nord
+    { x1: W, y1: 0, x2: W, y2: H }, // 1: Ost
+    { x1: W, y1: H, x2: 0, y2: H }, // 2: Süd
+    { x1: 0, y1: H, x2: 0, y2: 0 }, // 3: West
+  ];
+}
 
 export interface WallAnchor {
   wallIndex: number;

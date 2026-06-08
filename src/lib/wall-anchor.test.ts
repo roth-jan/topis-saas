@@ -5,6 +5,7 @@ import {
   torBoxFromAnchor,
   reanchorTore,
   isValidTorPosition,
+  deriveWalls,
 } from './wall-anchor';
 import type { Wall, TopisObject } from '@/types/topis';
 
@@ -96,6 +97,37 @@ describe('reanchorTore — Wand-Move zieht Tore mit', () => {
     };
     const result = reanchorTore([obj], rechteckHalle);
     expect(result[0]).toBe(obj);
+  });
+});
+
+describe('deriveWalls — Außenwände aus Hallen-Geometrie (Lastenheft 3.1.1.1)', () => {
+  it('rect-Halle 100×50 → 4 Wände im Uhrzeigersinn (N,O,S,W)', () => {
+    const walls = deriveWalls({ width: 100, height: 50 });
+    expect(walls).toHaveLength(4);
+    // Reihenfolge/Richtung muss zur wallIndex-Konvention der Tests passen
+    expect(walls[0]).toEqual({ x1: 0, y1: 0, x2: 100, y2: 0 });   // Nord
+    expect(walls[1]).toEqual({ x1: 100, y1: 0, x2: 100, y2: 50 }); // Ost
+    expect(walls[2]).toEqual({ x1: 100, y1: 50, x2: 0, y2: 50 });  // Süd
+    expect(walls[3]).toEqual({ x1: 0, y1: 50, x2: 0, y2: 0 });     // West
+  });
+
+  it('entartete Halle (0-Maß) → keine Wände statt Müll-Segmente', () => {
+    expect(deriveWalls({ width: 0, height: 50 })).toEqual([]);
+    expect(deriveWalls({ width: 100, height: 0 })).toEqual([]);
+  });
+
+  it('Tor an der Nordkante einer abgeleiteten Halle ist verankerbar (Niko-Bug)', () => {
+    // Reproduziert Schritt 4: Tor sitzt an der oberen Wand, muss erkannt werden.
+    const walls = deriveWalls({ width: 150, height: 42 });
+    const tor: TopisObject = { id: 1, type: 'tor', name: 'Tor 1', x: 70, y: 0, width: 3.5, height: 1.5 };
+    const nearest = findNearestWall(tor.x + tor.width / 2, tor.y + tor.height / 2, walls, 30);
+    expect(nearest).not.toBeNull();
+    expect(nearest!.side).toBe('north');
+    const anchored: TopisObject = {
+      ...tor,
+      aussenwandRef: { wallIndex: nearest!.wallIndex, abstandS: nearest!.abstandS, abstandE: nearest!.abstandE },
+    };
+    expect(isValidTorPosition(anchored, walls)).toBe(true);
   });
 });
 
