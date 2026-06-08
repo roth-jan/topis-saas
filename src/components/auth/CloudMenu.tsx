@@ -7,7 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AuthDialog } from './AuthDialog';
+import { AuthScreen } from './AuthScreen';
 import { CloudProjekteDialog } from '@/components/dialogs/CloudProjekteDialog';
 import { Cloud, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 
@@ -52,7 +52,7 @@ export function CloudMenu() {
         </div>
       )}
 
-      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      <AuthScreen open={authOpen} onOpenChange={setAuthOpen} />
       <CloudProjekteDialog open={cloudOpen} onOpenChange={setCloudOpen} onNeedLogin={() => setAuthOpen(true)} />
     </>
   );
