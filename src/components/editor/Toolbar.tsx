@@ -75,6 +75,7 @@ import { generateWegflaecheNegativ } from '@/lib/wegflaeche-negativ';
 import { generateGaengeFromPathAreas } from '@/lib/gang-aus-patharea';
 import { ProjektVergleichDialog } from '@/components/dialogs/ProjektVergleichDialog';
 import { ThemeToggleSimple } from '@/components/theme-toggle';
+import { CloudMenu } from '@/components/auth/CloudMenu';
 import { useTheme } from 'next-themes';
 import { SimulationDialog } from '@/components/dialogs/SimulationDialog';
 import { MultiInsertDialog } from '@/components/dialogs/MultiInsertDialog';
@@ -689,6 +690,7 @@ export function Toolbar() {
           <TooltipContent side="bottom">Wiederholen <kbd className="ml-1 text-[10px]">⇧⌘Z</kbd></TooltipContent>
         </Tooltip>
         <ThemeToggleSimple />
+        <CloudMenu />
         {/* Geführte Tour Trigger entfernt — die alten Schritte referenzieren
             Elemente die in der neuen Workflow-Phasen-Toolbar nur in der jeweiligen
             Phase rendern. driver.js-Overlay blockierte sonst alle Klicks. */}
