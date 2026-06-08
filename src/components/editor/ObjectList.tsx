@@ -66,16 +66,16 @@ export function ObjectList() {
 
   return (
     <Tabs defaultValue="objects" className="h-full flex flex-col">
-      <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+      <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto">
         <TabsTrigger
           value="objects"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
+          className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-display text-[13px] data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground"
         >
           Objekte
         </TabsTrigger>
         <TabsTrigger
           value="hall"
-          className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
+          className="rounded-none border-b-2 border-transparent px-3 py-2.5 font-display text-[13px] data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground"
         >
           Halle
         </TabsTrigger>
@@ -83,24 +83,14 @@ export function ObjectList() {
 
       <TabsContent value="objects" className="flex-1 mt-0 overflow-hidden">
         <div className="p-3 border-b">
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-2 mb-3 text-center">
-            <div className="p-2 rounded bg-muted">
-              <div className="text-lg font-bold">{stats.tore}</div>
-              <div className="text-xs text-muted-foreground">Tore</div>
-            </div>
-            <div className="p-2 rounded bg-muted">
-              <div className="text-lg font-bold">{stats.stellplaetze}</div>
-              <div className="text-xs text-muted-foreground">Stellpl.</div>
-            </div>
-            <div className="p-2 rounded bg-muted">
-              <div className="text-lg font-bold">{stats.bereiche}</div>
-              <div className="text-xs text-muted-foreground">Bereiche</div>
-            </div>
-            <div className="p-2 rounded bg-muted">
-              <div className="text-lg font-bold">{stats.gesamt}</div>
-              <div className="text-xs text-muted-foreground">Gesamt</div>
-            </div>
+          {/* Stats — feiner Strip mit Hairline-Trennern */}
+          <div className="grid grid-cols-4 mb-3 rounded-lg border border-border divide-x divide-border overflow-hidden">
+            {([['Tore', stats.tore], ['Stellpl.', stats.stellplaetze], ['Bereiche', stats.bereiche], ['Gesamt', stats.gesamt]] as [string, number][]).map(([label, n], i) => (
+              <div key={label} className="px-1 py-2 text-center">
+                <div className={`font-display text-lg leading-none ${i === 3 ? 'text-primary' : ''}`} style={{ fontWeight: 700 }}>{n}</div>
+                <div className="mt-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{label}</div>
+              </div>
+            ))}
           </div>
 
           {/* Filter */}
@@ -157,8 +147,14 @@ export function ObjectList() {
             ))}
 
             {objects.length === 0 && (
-              <div className="text-center text-muted-foreground p-4 text-sm">
-                Keine Objekte vorhanden
+              <div className="flex flex-col items-center gap-2.5 px-4 py-10 text-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
+                  <LayoutGrid className="h-5 w-5" />
+                </div>
+                <div className="text-sm font-medium text-foreground">Noch keine Objekte</div>
+                <div className="max-w-[190px] text-xs leading-relaxed text-muted-foreground">
+                  Wähle oben ein Werkzeug (Tor, Stellplatz …) oder lade eine Halle über <span className="font-mono text-[11px]">Daten → Datei</span>.
+                </div>
               </div>
             )}
           </div>

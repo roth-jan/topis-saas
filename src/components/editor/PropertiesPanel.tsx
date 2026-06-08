@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Copy, RotateCw, Route } from 'lucide-react';
+import { Trash2, Copy, RotateCw, Route, Settings } from 'lucide-react';
 
 // Sub-panel for Gang properties
 function GangProperties() {
@@ -300,9 +300,12 @@ export function PropertiesPanel() {
 
   if (!selectedObject) {
     return (
-      <div className="p-4 text-center text-muted-foreground">
-        <p className="text-sm">Kein Element ausgewählt</p>
-        <p className="text-xs mt-2">Klicke auf ein Element um es zu bearbeiten</p>
+      <div className="flex flex-col items-center gap-2.5 px-4 py-12 text-center">
+        <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
+          <Settings className="h-5 w-5" />
+        </div>
+        <p className="text-sm font-medium text-foreground">Kein Element ausgewählt</p>
+        <p className="max-w-[190px] text-xs leading-relaxed text-muted-foreground">Klicke im Plan auf ein Tor, einen Stellplatz oder eine Wand, um die Eigenschaften zu bearbeiten.</p>
       </div>
     );
   }

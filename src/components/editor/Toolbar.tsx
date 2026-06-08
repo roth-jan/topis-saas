@@ -617,11 +617,11 @@ export function Toolbar() {
       <div className="h-11 flex items-center px-2 gap-2 min-w-0 border-b border-border/40">
         {/* Logo */}
         <div className="flex items-center gap-2 px-1 shrink-0">
-          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center font-bold text-primary-foreground text-sm">
+          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground text-sm font-display" style={{ fontWeight: 900 }}>
             T
           </div>
-          <span className="font-semibold hidden xl:inline">TOPIS</span>
-          <Badge variant="outline" className="text-[10px] hidden 2xl:inline-flex">SaaS</Badge>
+          <span className="hidden xl:inline font-display text-[15px] tracking-tight" style={{ fontWeight: 800 }}>TOPIS</span>
+          <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">SaaS</Badge>
         </div>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
@@ -641,7 +641,7 @@ export function Toolbar() {
               <Button
                 variant={phase === p.id ? 'default' : 'ghost'}
                 size="sm"
-                className="h-8 px-2 xl:px-3 text-xs xl:text-sm font-medium shrink-0"
+                className="h-8 px-2 xl:px-3 text-xs xl:text-sm font-display shrink-0"
                 onClick={() => !externalHref && setPhase(p.id)}
               >
                 {p.label}
