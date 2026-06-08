@@ -510,8 +510,9 @@ export function HallCanvas() {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    // Clear canvas
-    ctx.fillStyle = '#0a0a0a';
+    // Clear canvas — neutrales Apple-Anthrazit als Zeichen-Viewport
+    // (bewusst dunkel in beiden Modi, wie in Figma/CAD-Tools).
+    ctx.fillStyle = '#1b1b1d';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid)

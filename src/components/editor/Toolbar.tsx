@@ -628,7 +628,7 @@ export function Toolbar() {
 
         {/* Phasen-Tabs — bei schmalem Viewport kompakter, damit unter 1280px keine
             horizontale Scrollbar entsteht (Alex 21.05.). */}
-        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto min-w-0">
+        <div className="flex items-center gap-0.5 flex-1 overflow-x-auto min-w-0 rounded-[10px] bg-muted/60 p-0.5">
           {phases.map((p) => {
             // "Planung" und "Dashboard" sind eigene Seiten — Phase-Tab muss
             // dorthin navigieren, sonst wirken die alten globalen Buttons als
@@ -639,9 +639,14 @@ export function Toolbar() {
               : null;
             const btn = (
               <Button
-                variant={phase === p.id ? 'default' : 'ghost'}
+                variant="ghost"
                 size="sm"
-                className="h-8 px-2 xl:px-3 text-xs xl:text-sm font-display shrink-0"
+                className={`h-7 px-2.5 xl:px-3.5 text-xs xl:text-[13px] font-display shrink-0 rounded-[7px] transition-all ${
+                  phase === p.id
+                    ? 'bg-card text-foreground shadow-sm hover:bg-card'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
+                }`}
+                style={{ fontWeight: phase === p.id ? 600 : 500 }}
                 onClick={() => !externalHref && setPhase(p.id)}
               >
                 {p.label}

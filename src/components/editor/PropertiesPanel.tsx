@@ -371,80 +371,27 @@ export function PropertiesPanel() {
           />
         </div>
 
-        {/* Position */}
+        {/* Position & Größe — kompakter Figma-Inspector (X/Y/B/T-Raster) */}
         <Card>
           <CardHeader className="py-3">
-            <CardTitle className="text-sm">Position</CardTitle>
+            <CardTitle className="text-sm">Position & Größe</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="x" className="text-xs">X (m)</Label>
-                <Input
-                  id="x"
-                  type="number"
-                  value={selectedObject.x}
-                  onChange={(e) => handleChange('x', parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="y" className="text-xs">Y (m)</Label>
-                <Input
-                  id="y"
-                  type="number"
-                  value={selectedObject.y}
-                  onChange={(e) => handleChange('y', parseFloat(e.target.value) || 0)}
-                />
-              </div>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <NumField letter="X" value={selectedObject.x} onChange={(v) => handleChange('x', v)} />
+              <NumField letter="Y" value={selectedObject.y} onChange={(v) => handleChange('y', v)} />
+              <NumField letter="B" value={selectedObject.width} onChange={(v) => handleChange('width', v || 1)} />
+              <NumField letter="T" value={selectedObject.height} onChange={(v) => handleChange('height', v || 1)} />
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Size */}
-        <Card>
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm">Größe</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="width" className="text-xs">Breite (m)</Label>
-                <Input
-                  id="width"
-                  type="number"
-                  value={selectedObject.width}
-                  onChange={(e) => handleChange('width', parseFloat(e.target.value) || 1)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="height" className="text-xs">Tiefe (m)</Label>
-                <Input
-                  id="height"
-                  type="number"
-                  value={selectedObject.height}
-                  onChange={(e) => handleChange('height', parseFloat(e.target.value) || 1)}
-                />
-              </div>
-            </div>
-
-            {/* Rotation */}
-            <div className="flex items-center gap-2">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="rotation" className="text-xs">Rotation (°)</Label>
-                <Input
-                  id="rotation"
-                  type="number"
-                  value={selectedObject.rotation || 0}
-                  onChange={(e) => handleChange('rotation', parseFloat(e.target.value) || 0)}
-                />
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <NumField letter="∠" value={selectedObject.rotation || 0} onChange={(v) => handleChange('rotation', v)} />
               <Button
                 variant="outline"
-                size="icon"
-                className="mt-5"
+                size="sm"
+                className="h-9 gap-1.5 text-xs"
                 onClick={() => handleChange('rotation', ((selectedObject.rotation || 0) + 90) % 360)}
               >
-                <RotateCw className="h-4 w-4" />
+                <RotateCw className="h-3.5 w-3.5" /> 90°
               </Button>
             </div>
           </CardContent>
@@ -1248,5 +1195,20 @@ export function PropertiesPanel() {
         </Card>
       </div>
     </ScrollArea>
+  );
+}
+
+// Kompaktes Zahlenfeld im Figma-Inspector-Stil: Buchstaben-Label + randloses Input.
+function NumField({ letter, value, onChange }: { letter: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex h-9 items-center gap-1.5 rounded-lg border bg-muted/30 px-2.5 focus-within:ring-1 focus-within:ring-ring">
+      <span className="w-3 shrink-0 text-center font-mono text-[11px] text-muted-foreground">{letter}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="w-full border-0 bg-transparent p-0 text-[13px] tabular-nums outline-none"
+      />
+    </div>
   );
 }

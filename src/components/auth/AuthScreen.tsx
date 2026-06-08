@@ -86,12 +86,12 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
           <div className="relative animate-[ts-up_.5s_.05s_both]">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"
-                   style={{ fontFamily: 'var(--font-archivo)', fontWeight: 900 }}>T</div>
+                   style={{ fontFamily: 'var(--font-display)', fontWeight: 900 }}>T</div>
               <span className="text-[11px] uppercase tracking-[0.35em] text-white/40"
-                    style={{ fontFamily: 'var(--font-plex-mono)' }}>Planungs-Konsole</span>
+                    style={{ fontFamily: 'var(--font-mono)' }}>Planungs-Konsole</span>
             </div>
             <h1 className="mt-6 text-5xl leading-[0.95] text-white"
-                style={{ fontFamily: 'var(--font-archivo)', fontWeight: 800, letterSpacing: '-0.02em' }}>
+                style={{ fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: '-0.02em' }}>
               TOPIS<span className="text-primary">.</span>
             </h1>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/55">
@@ -107,7 +107,7 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
 
           {/* Fuß: Spec-Readout in Mono */}
           <div className="relative flex items-center justify-between text-[10.5px] text-white/35 animate-[ts-up_.5s_.25s_both]"
-               style={{ fontFamily: 'var(--font-plex-mono)' }}>
+               style={{ fontFamily: 'var(--font-mono)' }}>
             <span>150.8m × 42.0m · 85 TORE · A*-WEGENETZ</span>
             <span>REGION eu-central-1</span>
           </div>
@@ -124,11 +124,11 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
             {/* Mobile-Wortmarke */}
             <div className="mb-6 flex items-center gap-2 lg:hidden">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground"
-                   style={{ fontFamily: 'var(--font-archivo)', fontWeight: 900 }}>T</div>
-              <span style={{ fontFamily: 'var(--font-archivo)', fontWeight: 800 }} className="text-lg">TOPIS</span>
+                   style={{ fontFamily: 'var(--font-display)', fontWeight: 900 }}>T</div>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }} className="text-lg">TOPIS</span>
             </div>
 
-            <h2 className="text-2xl text-foreground" style={{ fontFamily: 'var(--font-archivo)', fontWeight: 700, letterSpacing: '-0.01em' }}>
+            <h2 className="text-2xl text-foreground" style={{ fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '-0.01em' }}>
               {tab === 'signup' ? 'Konto erstellen' : tab === 'magic' ? 'Login-Link' : 'Willkommen zurück'}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -139,7 +139,7 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
 
             {/* Segmented Tabs */}
             <div className="mt-6 grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/40 p-1"
-                 style={{ fontFamily: 'var(--font-plex-mono)' }}>
+                 style={{ fontFamily: 'var(--font-mono)' }}>
               {([['login', 'Login'], ['signup', 'Registr.'], ['magic', 'Magic']] as [Tab, string][]).map(([id, lbl]) => (
                 <button key={id} onClick={() => setTab(id)}
                   className={`rounded-md px-2 py-1.5 text-xs uppercase tracking-wider transition-all ${
@@ -171,7 +171,7 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
               )}
 
               <Button onClick={submit} disabled={busy}
-                className="group h-11 w-full gap-2 text-sm" style={{ fontFamily: 'var(--font-archivo)', fontWeight: 600 }}>
+                className="group h-11 w-full gap-2 text-sm" style={{ fontFamily: 'var(--font-display)', fontWeight: 600 }}>
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" />
                   : tab === 'magic' ? <Mail className="h-4 w-4" /> : null}
                 {tab === 'signup' ? 'Konto erstellen' : tab === 'magic' ? 'Login-Link senden' : 'Einloggen'}
@@ -206,7 +206,7 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'var(--font-plex-mono)' }}>{label}</Label>
+      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground" style={{ fontFamily: 'var(--font-mono)' }}>{label}</Label>
       {children}
     </div>
   );
