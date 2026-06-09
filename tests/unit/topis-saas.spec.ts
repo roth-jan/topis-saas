@@ -10,7 +10,7 @@ test.describe('TOPIS SaaS - Vergleichstest', () => {
     });
 
     test('Navigation zum Editor funktioniert', async ({ page }) => {
-      await page.goto('/');
+      await page.goto('');
       await page.click('text=Editor starten');
       await expect(page).toHaveURL('/projekt');
     });
