@@ -6,7 +6,7 @@
  * italic). All four fields must survive a page reload.
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, patchLayoutState, readLayoutState } from './helpers/topisPage';
+import { gotoTopis, patchLayoutState, readLayoutState, inputByLabel, selectObjectByName } from './helpers/topisPage';
 
 test.describe('UC-14 Generic properties persistence', () => {
   test.beforeEach(async ({ page }) => {
@@ -23,16 +23,18 @@ test.describe('UC-14 Generic properties persistence', () => {
   });
 
   test('Verankerung, Einschränkungen, Schriftgröße, Fett survive reload', async ({ page }) => {
+    // selectedObject wird nicht persistiert → Objekt in der Liste selektieren.
+    await selectObjectByName(page, 'SP-Generic');
+
     // Set Verankerung to "starr"
-    const verankerungSelect = page.getByLabel('Verankerung');
-    await verankerungSelect.selectOption('starr');
+    await inputByLabel(page, 'Verankerung').selectOption('starr');
 
     // Einschränkungen text
     const einschr = page.getByPlaceholder('z.B. nur in Verladezone 1, nicht über Säule');
     await einschr.fill('Test note 42');
 
     // Schriftgröße
-    const fontSize = page.getByLabel('Bezeichnung-Schriftgröße (px)');
+    const fontSize = inputByLabel(page, 'Bezeichnung-Schriftgröße');
     await fontSize.fill('18');
     await fontSize.press('Tab');
 

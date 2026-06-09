@@ -9,7 +9,7 @@
  *   100 / (50 * 8) = 0.25 → ceil = 1
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis } from './helpers/topisPage';
+import { gotoTopis, inputByLabel } from './helpers/topisPage';
 
 const CASES = [
   { colliProTag: 500,  kapProH: 50, hours: 8, expected: 2 },
@@ -26,20 +26,16 @@ test.describe('CS-2 Verlader Bedarfs-Rechner', () => {
       await page.getByRole('menuitem', { name: /Verlader-Modul/ }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
 
-      // Bedarfs-Rechner inputs at the bottom
-      const colliInput = page.getByLabel(/Colli pro Tag/i);
-      const hoursInput = page.getByLabel(/Arbeitsstunden/i);
-      const kapInput = page.getByLabel(/Kapazität pro Verlader/i);
+      // Bedarfs-Rechner inputs (Labels: "Volumen (Colli/Tag)",
+      // "Kapazität pro Verlader (Colli/h)", "Arbeitsstunden pro Tag")
+      await inputByLabel(page, /Kapazität pro Verlader/i).fill(String(c.kapProH));
+      await inputByLabel(page, /Arbeitsstunden/i).fill(String(c.hours));
+      await inputByLabel(page, /Volumen \(Colli/i).fill(String(c.colliProTag));
 
-      await kapInput.fill(String(c.kapProH));
-      await hoursInput.fill(String(c.hours));
-      await colliInput.fill(String(c.colliProTag));
-
-      // Look for the result text. Could be "Mindestens X Verlader benötigt"
-      // or "Bedarf: X" — assert the number is present somewhere within the
-      // Bedarfs-Rechner card.
-      const bedarfCard = page.getByText(/Bedarfs-Rechner/i).locator('..');
-      await expect(bedarfCard).toContainText(new RegExp(`\\b${c.expected}\\b`));
+      // Ergebnis: "Benötigte Verlader: N"
+      await expect(page.getByText(/Benötigte Verlader:/i).locator('..')).toContainText(
+        new RegExp(`\\b${c.expected}\\b`),
+      );
     });
   }
 });

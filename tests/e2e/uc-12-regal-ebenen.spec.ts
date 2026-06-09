@@ -11,7 +11,7 @@
  *  - Edits persist across reload.
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, patchLayoutState, readLayoutState } from './helpers/topisPage';
+import { gotoTopis, patchLayoutState, readLayoutState, selectObjectByName } from './helpers/topisPage';
 
 test.describe('UC-12 Regal-Ebenen array', () => {
   test.beforeEach(async ({ page }) => {
@@ -31,6 +31,7 @@ test.describe('UC-12 Regal-Ebenen array', () => {
   });
 
   test('"Aus Skalaren generieren" creates 4 level rows', async ({ page }) => {
+    await selectObjectByName(page, 'R-Test');
     await page.getByRole('button', { name: 'Aus Skalaren generieren' }).click();
     await expect.poll(async () => {
       const s = await readLayoutState(page);
@@ -40,6 +41,7 @@ test.describe('UC-12 Regal-Ebenen array', () => {
   });
 
   test('+ Ebene adds, × removes', async ({ page }) => {
+    await selectObjectByName(page, 'R-Test');
     await page.getByRole('button', { name: 'Aus Skalaren generieren' }).click();
     await expect.poll(async () => {
       const s = await readLayoutState(page);

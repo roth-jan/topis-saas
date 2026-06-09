@@ -30,15 +30,30 @@ export async function clearStorage(page: Page): Promise<void> {
  * shape `{ state: TopisState, version: number }`. */
 export async function patchLayoutState(
   page: Page,
-  patcher: (state: Record<string, unknown>) => void,
+  patcher: (state: Record<string, unknown>, arg?: unknown) => void,
+  arg?: unknown,
 ): Promise<void> {
-  await page.evaluate((patchFn) => {
-    const raw = window.localStorage.getItem('topis-layout');
-    const stored = raw ? JSON.parse(raw) : { state: {}, version: 0 };
+  // Vollen State aus dem Live-Store nehmen (immer komplett, inkl. halls) statt aus
+  // localStorage — bei frischer Seite ist dort noch nichts/unvollständig geschrieben.
+  // setState schreibt den Patch in den Store, dessen Persist + ein Direkt-Write nach
+  // localStorage verhindern, dass ein ausstehender App-Write den Patch überschreibt.
+  await page.waitForFunction(() => !!(window as unknown as { __topisStore?: unknown }).__topisStore);
+  await page.evaluate(({ patchFn, arg }) => {
+    const store = (window as unknown as { __topisStore: { getState: () => Record<string, unknown>; setState: (s: Record<string, unknown>) => void } }).__topisStore;
+    const s = store.getState();
+    const state: Record<string, unknown> = JSON.parse(JSON.stringify({
+      halls: s.halls, activeHallId: s.activeHallId, hall: s.hall,
+      objects: s.objects, objectIdCounter: s.objectIdCounter,
+      paths: s.paths, gaenge: s.gaenge, pathAreas: s.pathAreas, conveyors: s.conveyors,
+    }));
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    new Function('state', patchFn)(stored.state);
-    window.localStorage.setItem('topis-layout', JSON.stringify(stored));
-  }, `(${patcher.toString()})(state)`);
+    new Function('state', 'arg', patchFn)(state, arg);
+    store.setState(state);
+    const raw = window.localStorage.getItem('topis-layout');
+    const version = raw ? (JSON.parse(raw).version ?? 0) : 0;
+    const existing = raw ? JSON.parse(raw).state : {};
+    window.localStorage.setItem('topis-layout', JSON.stringify({ state: { ...existing, ...state }, version }));
+  }, { patchFn: `(${patcher.toString()})(state, arg)`, arg });
   await page.reload();
   await gotoTopis(page);
 }
@@ -49,6 +64,32 @@ export async function readLayoutState(page: Page): Promise<Record<string, unknow
     if (!raw) return {};
     return JSON.parse(raw).state ?? {};
   });
+}
+
+/** Findet das Eingabefeld zu einem Label-Text. Die App verknüpft <Label> NICHT
+ * via htmlFor mit <Input> (shadcn-Pattern: beide liegen im selben space-y-Div),
+ * daher funktioniert getByLabel nicht — hier über den gemeinsamen Container. */
+/** Name des aktuell selektierten Objekts aus dem Live-Store (selectedObject wird
+ * NICHT in localStorage persistiert, daher über window.__topisStore). */
+export async function selectedObjectName(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const store = (window as unknown as { __topisStore?: { getState: () => { selectedObject: { name?: string } | null } } }).__topisStore;
+    return store?.getState().selectedObject?.name ?? null;
+  });
+}
+
+/** Objekt über die linke Objektliste selektieren. Nötig, weil selectedObject
+ * NICHT persistiert wird — per localStorage injiziertes selectedObject geht beim
+ * Reload verloren, das Objekt selbst (in objects[]) bleibt aber und ist klickbar. */
+export async function selectObjectByName(page: Page, name: string): Promise<void> {
+  await page.getByText(name, { exact: false }).first().click();
+}
+
+export function inputByLabel(page: Page, labelText: string | RegExp) {
+  // Nur echte <label>-Elemente matchen (nicht Beschreibungstexte, die denselben
+  // Wortlaut enthalten). Label + Input liegen als Geschwister im selben Div.
+  return page.locator('label').filter({ hasText: labelText }).first()
+    .locator('xpath=..').locator('input, select, textarea').first();
 }
 
 /** Insert four outer walls into the active hall — needed for UC-11 since the

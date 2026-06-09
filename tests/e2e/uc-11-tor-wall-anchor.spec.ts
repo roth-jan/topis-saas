@@ -8,7 +8,7 @@
  * Use loadHallWithWalls() to inject 4 outer walls.
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, patchLayoutState, readLayoutState, loadHallWithWalls } from './helpers/topisPage';
+import { gotoTopis, patchLayoutState, readLayoutState, loadHallWithWalls, inputByLabel, selectObjectByName } from './helpers/topisPage';
 import { clickWorld } from './helpers/canvas';
 
 test.describe('UC-11 Tor wall anchor', () => {
@@ -52,11 +52,14 @@ test.describe('UC-11 Tor wall anchor', () => {
       (state as Record<string, unknown>).selectedObject = objs[objs.length - 1];
     });
 
+    // selectedObject wird nicht persistiert → Tor in der Liste selektieren.
+    await selectObjectByName(page, 'T-Test');
+
     // The right Eigenschaften panel should show Wand-Verankerung card with Abstand S input
     await expect(page.getByText('Wand-Verankerung (Lastenheft 3.1.2)')).toBeVisible();
 
     // Change Abstand S to 30
-    const sInput = page.getByLabel('Abstand S (m)');
+    const sInput = inputByLabel(page, 'Abstand S');
     await sInput.fill('30');
     await sInput.press('Tab');
 

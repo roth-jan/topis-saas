@@ -21,7 +21,8 @@ interface AggregatRow {
 }
 
 async function setupSeed(page: import('@playwright/test').Page, menge: number) {
-  await patchLayoutState(page, (state) => {
+  await patchLayoutState(page, (state, arg) => {
+    const m = arg as number;
     const objs = state.objects as unknown[] || [];
     const id = (state.objectIdCounter as number) || 1;
     objs.push({
@@ -29,12 +30,12 @@ async function setupSeed(page: import('@playwright/test').Page, menge: number) {
       kapazitaetMulti: { packstuecke: 200 },
       fuellgradFarben: { gruenBis: 0.7, gelbBis: 0.9 },
       relationen: [
-        { id: 1, prozess: 'SE', relation: 'R001', menge },
+        { id: 1, prozess: 'SE', relation: 'R001', menge: m },
       ],
     });
     (state as Record<string, unknown>).objects = objs;
     (state as Record<string, unknown>).objectIdCounter = id + 1;
-  });
+  }, menge);
 }
 
 test.describe('CS-1 Stellplatz Füllgrad-Ampel', () => {

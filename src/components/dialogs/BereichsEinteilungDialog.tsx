@@ -42,7 +42,11 @@ export function BereichsEinteilungDialog({ open, onOpenChange }: Props) {
     const a = document.createElement('a');
     a.href = url;
     a.download = `bereichseinteilungen-${new Date().toISOString().slice(0, 10)}.csv`;
+    // An DOM hängen, sonst löst der Klick in manchen Browsern/Headless keinen
+    // Download aus.
+    document.body.appendChild(a);
     a.click();
+    a.remove();
     URL.revokeObjectURL(url);
   }
 

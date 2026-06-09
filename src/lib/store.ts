@@ -1217,6 +1217,13 @@ export const useHalls = () => useTopisStore((state) => state.halls);
 export const useActiveHall = () => useTopisStore((state) =>
   state.halls.find(h => h.id === state.activeHallId) || state.halls[0]
 );
+
+// E2E-Hook: Store im Browser zugänglich machen, damit Tests den Live-Zustand
+// (inkl. nicht-persistiertem selectedObject) lesen können. Read-only Referenz.
+if (typeof window !== 'undefined') {
+  (window as unknown as { __topisStore?: typeof useTopisStore }).__topisStore = useTopisStore;
+}
+
 export const useTool = () => useTopisStore((state) => state.currentTool);
 export const useZoom = () => useTopisStore((state) => state.zoom);
 export const usePan = () => useTopisStore((state) => state.pan);
