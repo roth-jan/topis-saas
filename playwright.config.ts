@@ -8,7 +8,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    // App läuft unter basePath /topis-saas, Editor unter /projekt/.
+    baseURL: 'http://localhost:3000/topis-saas/projekt/',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -20,7 +21,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:3000',
+    // Readiness gegen den echten App-Pfad prüfen (Root 404t wegen basePath).
+    url: 'http://localhost:3000/topis-saas/projekt/',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
