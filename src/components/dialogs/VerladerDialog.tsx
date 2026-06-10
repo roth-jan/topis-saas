@@ -113,7 +113,7 @@ export function VerladerDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Verlader-Verwaltung (Lastenheft Kapitel 4)</DialogTitle>
+          <DialogTitle>Verlader-Verwaltung</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

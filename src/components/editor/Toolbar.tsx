@@ -504,7 +504,7 @@ export function Toolbar() {
     }
   };
 
-  // Auto-Gänge aus pathAreas (Lastenheft 3.1.4.2 "orientiert an Mitte des Wegs")
+  // Auto-Gänge aus pathAreas
   const handleGenerateGaengeAusPathAreas = () => {
     const state = useTopisStore.getState();
     const pas = state.pathAreas;
@@ -521,7 +521,7 @@ export function Toolbar() {
     toast.success(`${neueGaenge.length} Auto-Gänge aus ${pas.length} Wegflächen abgeleitet (Mittellinien)`);
   };
 
-  // Wegfläche Negativ-Modus (Lastenheft 3.1.4.1 Variante 1)
+  // Wegfläche Negativ-Modus
   const handleGenerateWegflaecheNegativ = () => {
     if (!activeHall) {
       toast.error('Keine Halle aktiv');
@@ -1054,32 +1054,18 @@ export function Toolbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
-              Lastenheft <ChevronDown className="h-3 w-3" />
+              Module <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-64">
-            <DropdownMenuLabel>Auswertungen</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setShowHallenRelationsPlan(true)}>
-              <LayoutGrid className="mr-2 h-4 w-4" />
-              Hallen-Relations-Plan (3.2.3)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setShowBereichsEinteilung(true)}>
-              <Layers className="mr-2 h-4 w-4" />
-              Bereichseinteilung (3.2.5)
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Mengen + Module</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setShowMengen(true)}>
-              <Package className="mr-2 h-4 w-4" />
-              Mengen-Modell (3.2.1)
-            </DropdownMenuItem>
+          <DropdownMenuContent className="w-56">
+            <DropdownMenuLabel>Module</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setShowVerlader(true)}>
               <Truck className="mr-2 h-4 w-4" />
-              Verlader-Modul (Kap. 4)
+              Verlader-Modul
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setShowKetten(true)}>
               <Square className="mr-2 h-4 w-4" />
-              Unterflurförderkette (3.1.5)
+              Unterflurförderkette
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -1122,12 +1108,6 @@ export function Toolbar() {
                 {vorlage.name} — {vorlage.standort} ({vorlage.jahr})
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Assistenten</DropdownMenuLabel>
-            <DropdownMenuItem onClick={handleGenerateGaenge}>
-              <Truck className="mr-2 h-4 w-4" />
-              Gang-Generator
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         )}
@@ -1237,50 +1217,66 @@ export function Toolbar() {
 
         {/* ============ WEGE — Wegberechnung + Distanzmatrix + Tor-Kalkulation ============ */}
         {(phase === 'wege') && (
-        <div id="tour-wege" className="flex items-center gap-1">
+        <div id="tour-wege" className="flex items-center gap-1 flex-wrap">
+          {objects.length === 0 && (
+            <span className="mr-2 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+              Erst im Layout Tore, Bereiche &amp; Gänge anlegen — dann sind Wege berechenbar.
+            </span>
+          )}
           <span id="tour-matrix"><MatrixDialog /></span>
           <span id="tour-wegeberechnung"><WegeberechnungDialog /></span>
           <span id="tour-torkalkulation"><TorKalkulationDialog /></span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={handleGenerateGaenge}
-            title="Fahrgänge automatisch generieren"
-          >
-            <Truck className="h-3.5 w-3.5" />
-            Gang-Generator
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={handleGenerateWegflaecheNegativ}
-            title="Halle als Wegfläche, Bereiche/Regale/Hindernisse abziehen (Lastenheft 3.1.4.1 Variante 1)"
-          >
-            Negativ-Modus
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1 text-xs"
-            onClick={handleGenerateGaengeAusPathAreas}
-            title="Lastenheft 3.1.4.2 'orientiert an Mitte des Wegs': pro Wegfläche eine Mittellinie als Gang ableiten"
-          >
-            Gänge aus Wegflächen
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-1 text-xs">
+                <Truck className="h-3.5 w-3.5" />
+                Gänge erzeugen <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-72">
+              <DropdownMenuItem onClick={handleGenerateGaenge} className="flex-col items-start gap-0.5">
+                <span className="flex items-center"><Truck className="mr-2 h-4 w-4" />Automatisch</span>
+                <span className="pl-6 text-xs text-muted-foreground">Fahrgänge aus dem Layout ableiten</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGenerateGaengeAusPathAreas} className="flex-col items-start gap-0.5">
+                <span className="flex items-center"><Layers className="mr-2 h-4 w-4" />Aus Wegflächen</span>
+                <span className="pl-6 text-xs text-muted-foreground">Mittellinie je Wegfläche als Gang</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGenerateWegflaecheNegativ} className="flex-col items-start gap-0.5">
+                <span className="flex items-center"><Square className="mr-2 h-4 w-4" />Negativ-Modus</span>
+                <span className="pl-6 text-xs text-muted-foreground">Halle als Wegfläche, Belegtes abziehen</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         )}
 
         {/* ============ AUSWERTUNG ============ */}
         {(phase === 'auswertung') && (
-        <div id="tour-analyse" className="flex items-center gap-1">
+        <div id="tour-analyse" className="flex items-center gap-1 flex-wrap">
+          {objects.length === 0 && (
+            <span className="mr-2 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+              Erst Layout aufbauen und Daten laden — dann liefern die Auswertungen Werte.
+            </span>
+          )}
           <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
           <ProzessmodellImportDialog />
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowMengen(true)} title="Prozess- und Mengenkategorien">
+            <Package className="h-3.5 w-3.5" />
+            Mengen-Modell
+          </Button>
           <span id="tour-flaechenbedarf"><FlaechenbedarfDialog /></span>
           <span id="tour-benchmark"><BenchmarkDialog /></span>
           <span id="tour-istsoll"><IstSollDialog /></span>
           <span id="tour-torbelegung"><TorbelegungDialog /></span>
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowHallenRelationsPlan(true)} title="Relationen je Halle als Plan">
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Relations-Plan
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowBereichsEinteilung(true)} title="Bereiche einteilen und auswerten">
+            <Layers className="h-3.5 w-3.5" />
+            Bereichseinteilung
+          </Button>
           <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowBereichOptimizer(true)}>
             <Sparkles className="h-3.5 w-3.5" />
             Optimieren

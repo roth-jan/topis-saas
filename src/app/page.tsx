@@ -106,6 +106,11 @@ export default function Home() {
 
       {/* Features */}
       <section className="mx-auto max-w-6xl px-5 pb-20">
+        <div className="mx-auto mb-10 max-w-2xl text-center">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">Funktionen</p>
+          <h2 className="mt-2 font-display text-3xl tracking-tight" style={{ fontWeight: 700 }}>Alles für die operative Hallenplanung</h2>
+          <p className="mt-3 text-muted-foreground">Vom Grundriss bis zur Kennzahl — ein durchgängiger Workflow, direkt im Browser.</p>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: LayoutGrid, t: 'Hallenplanung', d: 'Tore, Stellplätze, Bereiche und Wände maßstabsgetreu zeichnen.' },
@@ -124,6 +129,26 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Abschluss-CTA */}
+      <section className="mx-auto max-w-6xl px-5 pb-24">
+        <div className="overflow-hidden rounded-3xl border border-border bg-muted/40 px-8 py-14 text-center">
+          <h2 className="mx-auto max-w-2xl font-display text-3xl tracking-tight sm:text-4xl" style={{ fontWeight: 700 }}>
+            Bereit, Ihre Halle zu optimieren?
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
+            Sofort im Editor loslegen — oder in Sekunden prüfen lassen, wie produktiv Ihre Halle heute arbeitet.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
+              <Link href="/projekt">Editor starten <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="h-11 rounded-xl px-6">
+              <Link href="/check">Hallen-Check starten</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
@@ -135,7 +160,7 @@ export default function Home() {
           <div className="flex gap-5">
             <Link href="#" className="hover:text-foreground">Impressum</Link>
             <Link href="#" className="hover:text-foreground">Datenschutz</Link>
-            <Link href="#" className="hover:text-foreground">Kontakt</Link>
+            <a href="mailto:info@roth-logistik.de" className="hover:text-foreground">Kontakt</a>
           </div>
         </div>
       </footer>

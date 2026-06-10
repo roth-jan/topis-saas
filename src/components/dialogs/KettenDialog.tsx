@@ -68,7 +68,7 @@ export function KettenDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Unterflurförderkette (Lastenheft 3.1.5)</DialogTitle>
+          <DialogTitle>Unterflurförderkette</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

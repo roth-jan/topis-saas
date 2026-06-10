@@ -2127,7 +2127,7 @@ export function HallCanvas() {
           x >= a.x && x <= a.x + a.width && y >= a.y && y <= a.y + a.height
         );
       if (pathAreas.length > 0 && !pointInsidePathArea(snapPos.x, snapPos.y)) {
-        toast.warning('Wegpunkt liegt außerhalb der definierten Wegflächen (Lastenheft 3.1.4.2).');
+        toast.warning('Wegpunkt liegt außerhalb der definierten Wegflächen.');
         return;
       }
 
@@ -2680,7 +2680,7 @@ export function HallCanvas() {
           );
           if (ueberschneidet) {
             toast.warning(
-              `Wegfläche überschneidet "${ueberschneidet.name}" (${ueberschneidet.type}) — Lastenheft 3.1.4.1 verbietet Wegflächen über belegten Elementen. Trotzdem angelegt.`,
+              `Wegfläche überschneidet "${ueberschneidet.name}" (${ueberschneidet.type}) — Wegflächen sollten nicht über belegten Elementen liegen. Trotzdem angelegt.`,
               { duration: 5000 },
             );
           }

@@ -170,7 +170,7 @@ export function HallenRelationsPlanDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[min(1100px,95vw)] h-[min(85vh,800px)] flex flex-col gap-3 p-4">
         <DialogHeader className="shrink-0">
-          <DialogTitle>Hallen-Relations-Plan (Lastenheft 3.2.3)</DialogTitle>
+          <DialogTitle>Hallen-Relations-Plan</DialogTitle>
           <DialogDescription>
             Verteilung der Relationen auf {stellplatzAnzahl} Stellplätze —{' '}
             {relationsAnzahl} Relations-Einträge gesamt. Mehrfach-Zuordnungen

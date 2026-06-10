@@ -78,7 +78,7 @@ export function WegeberechnungDialog() {
   const relationZuordnungen = useBetriebsdatenStore((s) => s.relationZuordnungen);
   const hasScanData = scandatenRecords.length > 0;
 
-  // Filter objects by type + Wegpunkt-Rolle (Lastenheft 3.1.4.2)
+  // Filter objects by type + Wegpunkt-Rolle
   const tore = useMemo(() =>
     objects.filter(o => o.type === 'tor' && (o.wegpunktRolle ?? 'beides') !== 'keiner' && (o.wegpunktRolle ?? 'beides') !== 'ende'),
     [objects]
@@ -500,7 +500,7 @@ export function WegeberechnungDialog() {
                   Wege in Layout übernehmen ({results.filter(r => r.result).length})
                 </Button>
                 <Button onClick={handleCsvExport} variant="outline">
-                  CSV-Export (Lastenheft 3.2.4.4)
+                  CSV-Export
                 </Button>
                 {autoPathCount > 0 && (
                   <Button onClick={handleDeleteAuto} variant="outline" className="text-destructive">
@@ -512,9 +512,9 @@ export function WegeberechnungDialog() {
 
               <Separator />
 
-              {/* Mittlerer-Weg-Run speichern (Lastenheft 3.2.4) */}
+              {/* Mittlerer-Weg-Run speichern */}
               <div className="space-y-2">
-                <h4 className="font-medium text-sm">Mittlerer-Weg-Run speichern (Lastenheft 3.2.4)</h4>
+                <h4 className="font-medium text-sm">Mittlerer-Weg-Run speichern</h4>
                 <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
                   <div className="space-y-1">
                     <Label className="text-xs">Bezeichnung</Label>

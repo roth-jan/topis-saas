@@ -400,7 +400,7 @@ export function PropertiesPanel() {
         {/* Lastenheft 3.1.1.2 — Verankerung + Einschränkungen + Bezeichnungs-Stil (generisch) */}
         <Card>
           <CardHeader className="py-3">
-            <CardTitle className="text-sm">Verankerung + Bezeichnung (Lastenheft 3.1.1.2)</CardTitle>
+            <CardTitle className="text-sm">Verankerung + Bezeichnung</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-1">
@@ -467,7 +467,7 @@ export function PropertiesPanel() {
         {(selectedObject.type === 'tor' || selectedObject.type === 'bereich' || selectedObject.type === 'stellplatz' || selectedObject.type === 'sperrplatz' || selectedObject.type === 'klaerplatz') && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Wegpunkt (Lastenheft 3.1.4.2)</CardTitle>
+              <CardTitle className="text-sm">Wegpunkt</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
@@ -523,11 +523,11 @@ export function PropertiesPanel() {
           </Card>
         )}
 
-        {/* Tor-Wand-Verankerung (Lastenheft 3.1.2 — Position als Abstand von S/E) */}
+        {/* Tor-Wand-Verankerung */}
         {selectedObject.type === 'tor' && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Wand-Verankerung (Lastenheft 3.1.2)</CardTitle>
+              <CardTitle className="text-sm">Wand-Verankerung</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {selectedObject.aussenwandRef ? (
@@ -578,21 +578,21 @@ export function PropertiesPanel() {
                 </>
               ) : (
                 <div className="rounded-md bg-amber-100 dark:bg-amber-950 p-2 text-xs text-amber-900 dark:text-amber-200">
-                  ⚠ Dieses Tor ist nicht an einer Außenwand verankert. Verschiebe es nahe an eine Wand, um die Verankerung automatisch zu setzen (Lastenheft-Anforderung).
+                  ⚠ Dieses Tor ist nicht an einer Außenwand verankert. Verschiebe es nahe an eine Wand, um die Verankerung automatisch zu setzen.
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Tore werden auf Außenwänden positioniert und sind fest mit der Wand verankert (Lastenheft 3.1.2). Position als Abstand zu den Wand-Eckpunkten S (Start) und E (End).
+                Tore werden auf Außenwänden positioniert und sind fest mit der Wand verankert. Position als Abstand zu den Wand-Eckpunkten S (Start) und E (End).
               </p>
             </CardContent>
           </Card>
         )}
 
-        {/* Tor↔Stellplatz/Verlader/Fahrzeug-Relationen (Lastenheft 3.1.2) */}
+        {/* Tor↔Stellplatz/Verlader/Fahrzeug-Relationen */}
         {selectedObject.type === 'tor' && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Überladebrücke (Lastenheft 3.1.2, optional)</CardTitle>
+              <CardTitle className="text-sm">Überladebrücke (optional)</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <label className="flex items-center gap-2 text-sm">
@@ -625,7 +625,7 @@ export function PropertiesPanel() {
         {selectedObject.type === 'tor' && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Tor-Verknüpfungen (Lastenheft 3.1.2)</CardTitle>
+              <CardTitle className="text-sm">Tor-Verknüpfungen</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1">
@@ -662,7 +662,7 @@ export function PropertiesPanel() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Lastenheft 3.1.2: 1 Tor = 1..n Verlader/Stellplätze/Fahrzeuge. Persistierte Verknüpfung für Auswertungen (Verladeplan, Cross-Docking).
+                1 Tor = 1..n Verlader/Stellplätze/Fahrzeuge. Persistierte Verknüpfung für Auswertungen (Verladeplan, Cross-Docking).
               </p>
             </CardContent>
           </Card>
@@ -717,7 +717,7 @@ export function PropertiesPanel() {
         {(selectedObject.type === 'stellplatz' || selectedObject.type === 'regal') && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Kapazität (Lastenheft 3.1.3.1)</CardTitle>
+              <CardTitle className="text-sm">Kapazität</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
@@ -789,7 +789,7 @@ export function PropertiesPanel() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Kapazität in 3 Einheiten (Lastenheft 3.1.3.1). Füllgrad = Menge / Kapazität → grün/gelb/rot.
+                Kapazität in 3 Einheiten. Füllgrad = Menge / Kapazität → grün/gelb/rot.
               </p>
             </CardContent>
           </Card>
@@ -820,7 +820,7 @@ export function PropertiesPanel() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Lastenheft 3.1.3.1: 1 Stellplatz = bis zu n Tore + n Relationen mit Mengen. Relations-Verwaltung im RelationZuordnung-Dialog.
+                1 Stellplatz = bis zu n Tore + n Relationen mit Mengen. Relations-Verwaltung im RelationZuordnung-Dialog.
               </p>
             </CardContent>
           </Card>
@@ -830,7 +830,7 @@ export function PropertiesPanel() {
         {(selectedObject.type === 'stellplatz' || selectedObject.type === 'bereich') && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Form (Lastenheft 3.1.3.1)</CardTitle>
+              <CardTitle className="text-sm">Form</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               <div className="space-y-1">
@@ -847,7 +847,7 @@ export function PropertiesPanel() {
                 </select>
               </div>
               <p className="text-xs text-muted-foreground">
-                Lastenheft: meist rechteckig, müssen jedoch auch individuell gestaltbar sein (Winkel ≠ 90°, Rundung).
+                meist rechteckig, müssen jedoch auch individuell gestaltbar sein (Winkel ≠ 90°, Rundung).
               </p>
             </CardContent>
           </Card>
@@ -924,7 +924,7 @@ export function PropertiesPanel() {
         {selectedObject.type === 'regal' && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Regal-Ebenen detailliert (Lastenheft 3.1.3.2)</CardTitle>
+              <CardTitle className="text-sm">Regal-Ebenen detailliert</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex gap-2">
@@ -1039,7 +1039,7 @@ export function PropertiesPanel() {
                 </div>
               ))}
               <p className="text-xs text-muted-foreground">
-                Lastenheft 3.1.3.2: 2-n Ebenen, jede Ebene = eigener Stellplatz mit Bezeichnung, Unterkante, Höhe, Palettenplätzen. Pro-Ebene-Bezeichnung wird im Hallenplan angezeigt.
+                2-n Ebenen, jede Ebene = eigener Stellplatz mit Bezeichnung, Unterkante, Höhe, Palettenplätzen. Pro-Ebene-Bezeichnung wird im Hallenplan angezeigt.
               </p>
             </CardContent>
           </Card>

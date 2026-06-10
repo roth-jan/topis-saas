@@ -177,7 +177,7 @@ export function MengenDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[88vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Prozess- und Mengenkategorien (Lastenheft 3.2.1)</DialogTitle>
+          <DialogTitle>Prozess- und Mengenkategorien</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="kategorien" className="w-full">

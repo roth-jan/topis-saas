@@ -54,7 +54,7 @@ export function BereichsEinteilungDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Bereichseinteilung (Lastenheft 3.2.5)</DialogTitle>
+          <DialogTitle>Bereichseinteilung</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
