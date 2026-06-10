@@ -50,26 +50,55 @@ export default function Home() {
             <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
             <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
             <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-            <span className="mx-auto font-mono text-[11px] text-muted-foreground">TOPIS — Andreas Schmid · Halle 6</span>
+            <span className="mx-auto font-mono text-[11px] text-muted-foreground">TOPIS — Umschlaghalle · Layout</span>
           </div>
-          <div className="relative bg-[#1b1b1d] p-0" style={{ height: 360 }}>
-            <svg viewBox="0 0 1000 360" className="h-full w-full" preserveAspectRatio="xMidYMid slice">
+          <div className="relative bg-card" style={{ height: 380 }}>
+            <svg viewBox="0 0 1000 380" className="h-full w-full text-foreground" preserveAspectRatio="xMidYMid slice">
               <defs>
                 <pattern id="g" width="26" height="26" patternUnits="userSpaceOnUse">
-                  <path d="M26 0H0V26" fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="1" />
+                  <path d="M26 0H0V26" fill="none" stroke="currentColor" strokeOpacity={0.06} strokeWidth="1" />
                 </pattern>
               </defs>
-              <rect width="1000" height="360" fill="url(#g)" />
-              <rect x="90" y="70" width="820" height="220" rx="4" fill="rgba(255,255,255,.02)" stroke="rgba(255,255,255,.22)" strokeWidth="1.5" />
+              <rect width="1000" height="380" fill="url(#g)" />
+
+              {/* Hallen-Umriss */}
+              <rect x="90" y="60" width="820" height="220" rx="5" fill="currentColor" fillOpacity={0.02} stroke="currentColor" strokeOpacity={0.22} strokeWidth="2" />
+
+              {/* Tore (Nordwand) */}
               {Array.from({ length: 16 }).map((_, i) => (
-                <rect key={'n' + i} x={120 + i * 50} y={63} width="30" height="9" rx="2" fill="var(--primary)" />
+                <rect key={'t' + i} x={118 + i * 50} y={53} width="30" height="9" rx="2" fill="var(--primary)" />
               ))}
-              {[150, 320, 490, 660, 830].map((x) => (
-                <rect key={x} x={x} y={120} width="90" height="120" rx="3" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1" />
-              ))}
-              <path d="M140 66 L140 180 L420 180 L420 280" fill="none" stroke="var(--primary)" strokeWidth="2" strokeDasharray="5 4" />
-              <circle cx="140" cy="66" r="4" fill="var(--primary)" />
-              <circle cx="420" cy="280" r="4" fill="var(--primary)" />
+
+              {/* Lagerblöcke — 2 Reihen mit Gängen dazwischen, mit Kopfleiste */}
+              {[115, 265, 415, 565, 715].flatMap((x, ci) =>
+                [95, 205].map((y, ri) => {
+                  const accent = (ci + ri) % 3 === 0;
+                  return (
+                    <g key={`b${ci}-${ri}`}>
+                      <rect x={x} y={y} width="120" height="70" rx="3"
+                        fill="var(--primary)" fillOpacity={accent ? 0.09 : 0}
+                        stroke="var(--primary)" strokeOpacity={accent ? 0.35 : 0} strokeWidth="1" />
+                      {!accent && (
+                        <rect x={x} y={y} width="120" height="70" rx="3"
+                          fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.14} strokeWidth="1" />
+                      )}
+                      <rect x={x} y={y} width="120" height="9" rx="3"
+                        fill={accent ? 'var(--primary)' : 'currentColor'} fillOpacity={accent ? 0.28 : 0.1} />
+                    </g>
+                  );
+                })
+              )}
+
+              {/* Verteilweg — läuft nur in den Gängen, nie durch einen Block */}
+              <path d="M250 62 L250 185 L550 185 L550 205" fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeDasharray="6 4" strokeLinecap="round" />
+              <circle cx="250" cy="62" r="4.5" fill="var(--primary)" />
+              <circle cx="550" cy="205" r="4.5" fill="var(--primary)" />
+
+              {/* Maßangabe (Berater-/Plan-Anmutung) */}
+              <line x1="90" y1="312" x2="910" y2="312" stroke="currentColor" strokeOpacity={0.25} strokeWidth="1" />
+              <line x1="90" y1="306" x2="90" y2="318" stroke="currentColor" strokeOpacity={0.25} strokeWidth="1" />
+              <line x1="910" y1="306" x2="910" y2="318" stroke="currentColor" strokeOpacity={0.25} strokeWidth="1" />
+              <text x="500" y="332" textAnchor="middle" fontSize="13" fill="currentColor" fillOpacity={0.5} fontFamily="var(--font-mono)">≈ 150 m · 16 Tore</text>
             </svg>
           </div>
         </div>
