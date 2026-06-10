@@ -23,6 +23,9 @@ src/
       ObjectList.tsx                 # Linkes Panel: Objektliste (gruppiert nach Typ)
       PropertiesPanel.tsx            # Rechtes Panel: Eigenschaften + Analyse
       CommandPalette.tsx             # Cmd+K Suchpalette
+    auth/
+      AuthScreen.tsx                 # Login/Registrieren/Magic-Link (Apple-Look)
+      CloudMenu.tsx                  # Toolbar: Anmelden bzw. User-Menü + Cloud
     panels/
       GangPanel.tsx                  # Gang-Verwaltung
       PathPanel.tsx                  # Wege-Verwaltung
@@ -49,7 +52,11 @@ src/
   hooks/
     useKeyboardShortcuts.ts          # Tastaturkürzel
   lib/
-    store.ts                         # Zustand Store (TopisStore: objects, paths, gaenge, etc.)
+    store.ts                         # Zustand Store (TopisStore) + window.__topisStore (E2E)
+    supabase.ts                      # Supabase-Client (lazy, guarded)
+    auth.tsx                         # AuthProvider + useAuth (Login/Magic-Link/Logout)
+    cloud-layouts.ts                 # Cloud-CRUD für Layouts + gezieltes Teilen
+    wall-anchor.ts                   # Außenwand-Ableitung + Tor-Verankerung (deriveWalls)
     betriebsdaten-store.ts           # Zustand Store (ScanRecords, Analyse, HeatmapConfig, Szenarien)
     heatmap-utils.ts                 # Heatmap-Farben (getHeatmapColor, getMetrikWert, formatMetrikWert)
     analytics.ts                     # Produktivitätsanalyse
@@ -277,15 +284,38 @@ Das hart-kodierte SE-Modell in `prozessmodell-se.ts` liefert **2.040 Min/Colli**
 
 **SharePoint-Quelle:** `Logistik-Beratung/20260306_Prozessmodell_AS_Aktualisiert.xlsx`. Credentials in `~/.openclaw/workspace/sharepoint_credentials.json`.
 
+## Design-System (Apple-Schale + Figma-Inspector, seit 09.06.2026)
+
+Gewählte Richtung nach Mockup-Vergleich (siehe Memory `project_topis_design_direction`): **Apple (macOS/iOS) als Schale + Figma-Anleihe im Inspector**, hell UND dunkel umschaltbar. shadcn/ui bleibt die Basis (themebar, KI-freundlich).
+
+- **Tokens** in `src/app/globals.css` (`@theme inline` + `:root`/`.dark`): neutrale Apple-Palette (Anthrazit/Hellgrau), **ROTH-Rot als Akzent** (`--primary` ~`oklch(0.55 0.19 27)`), Radius `0.75rem`.
+- **Schrift:** `--font-sans`/`--font-display` = San-Francisco-Stack (`-apple-system, BlinkMacSystemFont, …` → echtes SF auf Mac, Fallback Inter), `--font-mono` = SF Mono / IBM Plex Mono. Genutzt via `font-display` / `font-mono`-Utilities.
+- **Hell/Dunkel:** next-themes (`.dark`-Klasse). Auch das **Canvas** folgt dem Theme (`HallCanvas` liest `useTheme().resolvedTheme` → `isDark`; Hintergrund/Raster/Hallenfläche/Objekt-Konturen umschalten). `isDark` MUSS in der `draw`-useCallback-Dependency-Liste stehen.
+- **Muster:** Apple-Unified-Toolbar (translucent/backdrop-blur), Phasen-Nav als Segmented-Control, inset-gruppierte Panels, geführte Empty-States mit Icon. **Inspector** (`PropertiesPanel`): kompaktes Figma-Raster X/Y/B/T über die `NumField`-Komponente.
+- **Login** (`src/components/auth/AuthScreen.tsx`) + **Startseite** (`src/app/page.tsx`) im selben Apple-Look.
+- Verworfen: frühere Blueprint/Archivo-Richtung. Vor Design-Änderungen: Playwright-Screenshot hell+dunkel (Pflicht, siehe Memory `feedback_webdesign_quality_standard`).
+
 ## Tests
 
-- Vitest 4.1.4 (`npm test`, `npm run test:watch`). Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`.
-- 4 Test-Dateien mit insgesamt 34 Tests (32 synthetisch + 2 lokale Integration):
-  - `prozessrechner.test.ts` — SE-Baseline (2.040 als Regression-Lock + Kommentar zur 1.917-Doku-Drift), FFZ-Mix, MA-Bedarf
-  - `prozessrechner-kunden.test.ts` — Geis Nürnberg + Nörpel Ulm (beide Δ 0.0%)
-  - `pathfinding.test.ts` — buildGangGraph + A* + FFZ-Filter + L-förmiger Pfad
-  - `distanzmatrix-rechner.test.ts` — AS-Matching (122.7m), Exact/Prefix/Fallback, synthetische Minimal-Matrix
-  - `prozessmodell-excel-import.test.ts` — Block-Erkennung, Multi-Block, Folgezeilen, synthetisches Workbook-Roundtrip, AS-Integration
+### Unit/Integration — Vitest 4.1.4 (`npm test`, `npm run test:watch`)
+Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`. Stand 217 passed | 2 skipped. Kerndateien:
+- `prozessrechner.test.ts` — SE-Baseline (2.040 als Regression-Lock + Kommentar zur 1.917-Doku-Drift), FFZ-Mix, MA-Bedarf
+- `prozessrechner-kunden.test.ts` — Geis Nürnberg + Nörpel Ulm (beide Δ 0.0%)
+- `pathfinding.test.ts` — buildGangGraph + A* + FFZ-Filter + L-förmiger Pfad
+- `distanzmatrix-rechner.test.ts` — AS-Matching (122.7m), Exact/Prefix/Fallback, synthetische Minimal-Matrix
+- `prozessmodell-excel-import.test.ts` — Block-Erkennung, Multi-Block, Folgezeilen, synthetisches Workbook-Roundtrip, AS-Integration
+- `wall-anchor.test.ts` — deriveWalls (Außenwand-Ableitung), Tor-Verankerung
+
+### E2E — Playwright (`npx playwright test tests/e2e`)
+- Config `playwright.config.ts`: `baseURL`/`webServer.url` = `http://localhost:3000/topis-saas/projekt/` (Root 404t wegen basePath!). `webServer` startet `npm run dev` automatisch. Live-Tests via `BASE_URL=https://roth-jan.github.io/topis-saas/projekt/`.
+- Stand: **23 passed, 2 `test.fixme`** (cs-3 Headless-Download-Capture, uc-10 Canvas-Pixel-Kalibrierung — Features im Code vorhanden, nur E2E-Mechanik offen).
+- Use Cases: `uc-09` Lastenheft-Dropdown, `uc-10` Stellplatz-Formvarianten, `uc-11` Tor-Wandverankerung, `uc-12` Regal-Ebenen, `uc-13` Multi-Insert-Schemata, `uc-14` generische Properties; Customer-Szenarien `cs-1` Füllgrad-Ampel, `cs-2` Verlader-Bedarf, `cs-3` Bereich-CSV.
+- **Helper `tests/e2e/helpers/topisPage.ts`** (zentral für neue Tests):
+  - `gotoTopis(page)` — navigiert + wartet auf Hydration.
+  - `patchLayoutState(page, patcher, arg?)` — seedet State aus dem **Live-Store** (`window.__topisStore`, robust gegen Fresh-Page-Race). `arg` an den Patcher durchreichen statt Closures (sonst ReferenceError beim Serialisieren!).
+  - `inputByLabel(page, text)` — Input über `<label>`-Text finden (App verknüpft Label nicht via htmlFor → `getByLabel` greift nicht).
+  - `selectObjectByName` / `selectedObjectName` — `selectedObject` wird NICHT persistiert → in der Liste klicken bzw. aus dem Live-Store lesen.
+- `window.__topisStore` ist in `store.ts` exponiert (Read-Hook für E2E).
 
 ## Performance-Fixes (seit 17.04.2026)
 
