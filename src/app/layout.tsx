@@ -1,21 +1,22 @@
 import type { Metadata } from "next";
-import { Inter, Archivo, IBM_Plex_Mono } from "next/font/google";
+import { Poppins, Libre_Baskerville, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth";
 
-const inter = Inter({
-  variable: "--font-inter",
+// tweakcn „Elegant Luxury": Poppins als durchgängige Sans/Display-Schrift,
+// Libre Baskerville als elegante Serife, IBM Plex Mono für technische Werte.
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
-// Industrielle Display-Schrift (Headlines, Wortmarke) + technische Mono
-// (Koordinaten, Spec-Readouts) — für das Blueprint/Konsolen-Look des Auth-Screens.
-const archivo = Archivo({
-  variable: "--font-archivo",
+const libre = Libre_Baskerville({
+  variable: "--font-libre",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800", "900"],
+  weight: ["400", "700"],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -36,11 +37,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" suppressHydrationWarning>
-      <body className={`${inter.variable} ${archivo.variable} ${plexMono.variable} font-sans antialiased`}>
+      <body className={`${poppins.variable} ${libre.variable} ${plexMono.variable} font-sans antialiased`}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <AuthProvider>

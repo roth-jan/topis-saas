@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { X, ArrowRight, Loader2, Mail } from 'lucide-react';
+import { X, ArrowRight, Loader2, Mail, CheckCircle2 } from 'lucide-react';
 
 type Tab = 'login' | 'signup' | 'magic';
 
@@ -59,64 +59,50 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
       <div className="relative flex min-h-full items-center justify-center p-4 sm:p-6">
 
       {/* Karte */}
-      <div className="relative my-auto grid w-full max-w-5xl overflow-hidden rounded-xl border border-white/10 shadow-2xl lg:grid-cols-[1.1fr_1fr] animate-[ts-rise_.4s_cubic-bezier(.2,.8,.2,1)]"
-           style={{ backgroundColor: 'oklch(0.16 0 0)' }}>
+      <div className="relative my-auto grid w-full max-w-5xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl lg:grid-cols-[1.1fr_1fr] animate-[ts-rise_.4s_cubic-bezier(.2,.8,.2,1)]">
 
-        {/* ============ LINKS: Blueprint-Konsole ============ */}
-        <div className="relative hidden flex-col justify-between overflow-hidden p-8 lg:flex"
-             style={{ backgroundColor: 'oklch(0.13 0 0)' }}>
-          {/* Blueprint-Raster */}
-          <div className="pointer-events-none absolute inset-0 opacity-60" style={{
-            backgroundImage:
-              'linear-gradient(to right, rgba(255,255,255,.045) 1px, transparent 1px),' +
-              'linear-gradient(to bottom, rgba(255,255,255,.045) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }} />
-          {/* Akzent-Grobraster */}
-          <div className="pointer-events-none absolute inset-0" style={{
-            backgroundImage:
-              'linear-gradient(to right, color-mix(in oklch, var(--primary) 22%, transparent) 1px, transparent 1px),' +
-              'linear-gradient(to bottom, color-mix(in oklch, var(--primary) 22%, transparent) 1px, transparent 1px)',
-            backgroundSize: '140px 140px',
-          }} />
-          {/* Eck-Marken (wie Canvas-Auswahl) */}
-          <CornerTicks />
+        {/* ============ LINKS: Markenpanel (warm, themefolgend) ============ */}
+        <div className="relative hidden flex-col justify-between overflow-hidden bg-muted p-10 text-foreground lg:flex">
+          {/* sehr dezenter Akzent-Schimmer */}
+          <div className="pointer-events-none absolute -left-28 -top-28 h-80 w-80 rounded-full"
+               style={{ background: 'radial-gradient(closest-side, color-mix(in oklch, var(--primary) 14%, transparent), transparent)' }} />
 
-          {/* Kopf: Wortmarke */}
+          {/* Kopf: Wortmarke + Headline (Echo des Landing-Hero) */}
           <div className="relative animate-[ts-up_.5s_.05s_both]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground"
-                   style={{ fontFamily: 'var(--font-display)', fontWeight: 900 }}>T</div>
-              <span className="text-[11px] uppercase tracking-[0.35em] text-white/40"
-                    style={{ fontFamily: 'var(--font-mono)' }}>Planungs-Konsole</span>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-primary text-primary-foreground shadow-sm font-display"
+                   style={{ fontWeight: 800 }}>T</div>
+              <span className="font-display text-[15px] tracking-tight text-foreground/90"
+                    style={{ fontWeight: 700 }}>TOPIS</span>
             </div>
-            <h1 className="mt-6 text-5xl leading-[0.95] text-white"
-                style={{ fontFamily: 'var(--font-display)', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              TOPIS<span className="text-primary">.</span>
+            <h1 className="mt-8 font-display text-[2.6rem] leading-[1.05] text-foreground"
+                style={{ fontWeight: 700, letterSpacing: '-0.025em' }}>
+              Hallenplanung,<br /><span className="text-primary">intelligent optimiert.</span>
             </h1>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/55">
-              Tool für Operative Planung und Interaktive Simulation. Umschlaghallen entwerfen,
-              Wege berechnen, Prozesse optimieren.
+            <p className="mt-4 max-w-sm text-[15px] leading-relaxed text-muted-foreground">
+              Umschlaghallen entwerfen, Wege berechnen, Prozesse simulieren — direkt im Browser.
             </p>
           </div>
 
           {/* Hallen-Strichzeichnung (echo des Canvas) */}
-          <div className="relative my-4 animate-[ts-up_.5s_.15s_both]">
+          <div className="relative my-6 text-foreground/70 animate-[ts-up_.5s_.15s_both]">
             <HallSketch />
           </div>
 
-          {/* Fuß: Spec-Readout in Mono */}
-          <div className="relative flex items-center justify-between text-[10.5px] text-white/35 animate-[ts-up_.5s_.25s_both]"
-               style={{ fontFamily: 'var(--font-mono)' }}>
-            <span>150.8m × 42.0m · 85 TORE · A*-WEGENETZ</span>
-            <span>REGION eu-central-1</span>
-          </div>
+          {/* Fuß: Value-Punkte */}
+          <ul className="relative space-y-2.5 animate-[ts-up_.5s_.25s_both]">
+            {['Wege & Verteilweg automatisch berechnen', 'Szenarien vergleichen, Δ in Prozent', 'Cloud-Layouts sicher teilen'].map((t) => (
+              <li key={t} className="flex items-center gap-2.5 text-sm text-foreground/70">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />{t}
+              </li>
+            ))}
+          </ul>
         </div>
 
         {/* ============ RECHTS: Formular ============ */}
         <div className="relative p-8 sm:p-10">
           <button onClick={() => onOpenChange(false)}
-                  className="absolute right-4 top-4 rounded-md p-1.5 text-white/40 transition-colors hover:bg-white/5 hover:text-white/80">
+                  className="absolute right-4 top-4 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
 
@@ -212,35 +198,23 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function CornerTicks() {
-  const base = 'absolute h-4 w-4 border-primary/50';
-  return (
-    <div className="pointer-events-none absolute inset-5">
-      <div className={`${base} left-0 top-0 border-l-2 border-t-2`} />
-      <div className={`${base} right-0 top-0 border-r-2 border-t-2`} />
-      <div className={`${base} bottom-0 left-0 border-b-2 border-l-2`} />
-      <div className={`${base} bottom-0 right-0 border-b-2 border-r-2`} />
-    </div>
-  );
-}
-
 // Schematische Draufsicht einer Umschlaghalle: Außenwände + Tore (Striche) + ein Weg.
 function HallSketch() {
   const tore = Array.from({ length: 9 }, (_, i) => 30 + i * 30);
   return (
     <svg viewBox="0 0 300 120" className="w-full" fill="none" style={{ maxHeight: 150 }}>
       {/* Außenwände */}
-      <rect x="16" y="16" width="268" height="88" stroke="white" strokeOpacity="0.25" strokeWidth="1.5" rx="2" />
+      <rect x="16" y="16" width="268" height="88" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.5" rx="2" />
       {/* Tore Nord + Süd */}
       {tore.map((x) => (
         <g key={x}>
           <rect x={x} y="11" width="16" height="6" fill="var(--primary)" fillOpacity="0.85" rx="1" />
-          <rect x={x} y="103" width="16" height="6" fill="white" fillOpacity="0.2" rx="1" />
+          <rect x={x} y="103" width="16" height="6" fill="currentColor" fillOpacity="0.35" rx="1" />
         </g>
       ))}
       {/* Stellplätze (innen) */}
       {[40, 90, 140, 190, 240].map((x) => (
-        <rect key={x} x={x} y="44" width="34" height="32" stroke="white" strokeOpacity="0.14" strokeWidth="1" rx="1.5" />
+        <rect key={x} x={x} y="44" width="34" height="32" stroke="currentColor" strokeOpacity="0.28" strokeWidth="1" rx="1.5" />
       ))}
       {/* Verteilweg (A*-Pfad) */}
       <path d="M38 14 L38 60 L130 60 L130 94" stroke="var(--primary)" strokeOpacity="0.7" strokeWidth="1.5" strokeDasharray="4 3" />

@@ -597,7 +597,7 @@ export const DEFAULT_HALL: Hall = {
   walls: [],
   offsetX: 0,
   offsetY: 0,
-  color: '#16213e'
+  color: '#26262a'
 };
 
 // Object colors matching NTC theme

@@ -524,7 +524,7 @@ export function HallCanvas() {
       const w = hall.width * SCALE * zoom;
       const h = hall.height * SCALE * zoom;
       // Light-Mode: helle Hallenfläche; Dark-Mode: gespeicherte Hallenfarbe.
-      ctx.fillStyle = isDark ? (hall.color || '#16213e') : '#ffffff';
+      ctx.fillStyle = isDark ? (hall.color || '#26262a') : '#ffffff';
       ctx.fillRect(pos.x, pos.y, w, h);
     }
 
@@ -1871,7 +1871,7 @@ export function HallCanvas() {
     const offY = (MM_H - hall.height * scaleMM) / 2;
 
     // Halle
-    ctx.fillStyle = hall.color || '#16213e';
+    ctx.fillStyle = hall.color || '#26262a';
     ctx.fillRect(offX, offY, hall.width * scaleMM, hall.height * scaleMM);
     ctx.strokeStyle = '#4a5568';
     ctx.lineWidth = 1;

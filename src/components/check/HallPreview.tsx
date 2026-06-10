@@ -73,7 +73,7 @@ export function HallPreview({
     // === Hall Background ===
     const hallTL = worldToScreen(0, 0);
     const hallBR = worldToScreen(hall.width, hall.height);
-    ctx.fillStyle = hall.color || '#16213e';
+    ctx.fillStyle = hall.color || '#26262a';
     ctx.fillRect(hallTL.x, hallTL.y, hallBR.x - hallTL.x, hallBR.y - hallTL.y);
 
     // Hall border

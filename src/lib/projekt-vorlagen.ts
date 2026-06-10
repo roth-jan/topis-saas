@@ -44,7 +44,7 @@ export function ladeProjektVorlage(id: string): ProjektVorlage | undefined {
     width: vorlage.hall.width,
     height: vorlage.hall.height,
     name: vorlage.hall.name,
-    color: vorlage.hall.color || '#16213e',
+    color: vorlage.hall.color || '#26262a',
   });
   vorlage.objects.forEach(obj => addObject(obj));
   if (vorlage.gaenge && vorlage.gaenge.length > 0) {

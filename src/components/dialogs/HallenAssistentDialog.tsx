@@ -108,7 +108,7 @@ export function HallenAssistentDialog() {
       name: config.name,
       width: config.width,
       height: config.height,
-      color: '#16213e',
+      color: '#26262a',
     });
 
     const torWidth = 3.5;
@@ -225,7 +225,7 @@ export function HallenAssistentDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 h-8">
+        <Button variant="outline" size="sm" className="gap-1.5 h-8" data-hallen-assistent-trigger>
           <Wand2 className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">Assistent</span>
         </Button>

@@ -175,7 +175,7 @@ export function loadSchmidLayout() {
     width: layout.hall.width,
     height: layout.hall.height,
     name: layout.hall.name,
-    color: '#16213e'
+    color: '#26262a'
   });
   layout.objects.forEach(obj => addObject(obj));
   setGaenge(layout.gaenge);
@@ -190,7 +190,7 @@ export const PROJEKT_GERSTHOFEN: ProjektVorlage = {
   standort: 'Gersthofen (Halle 6)',
   jahr: 2019,
   beschreibung: '85 Tore, Schnelläufer-Verteilung, 150×42m',
-  hall: { width: 151, height: 42, name: 'Halle 6 - Andreas Schmid Gersthofen', color: '#16213e' },
+  hall: { width: 151, height: 42, name: 'Halle 6 - Andreas Schmid Gersthofen', color: '#26262a' },
   objects: createSchmidHalle6().objects,
   prozessmodell: 'se_standard',
   parameterOverrides: {

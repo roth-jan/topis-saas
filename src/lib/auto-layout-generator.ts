@@ -44,7 +44,7 @@ export function generateAutoLayout(records: ScandatenRecord[]): AutoLayoutResult
     walls: [],
     offsetX: 0,
     offsetY: 0,
-    color: '#16213e',
+    color: '#26262a',
   };
 
   const objects: TopisObject[] = [];

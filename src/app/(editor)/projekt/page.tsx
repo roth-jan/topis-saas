@@ -7,6 +7,7 @@ import { Toolbar } from '@/components/editor/Toolbar';
 import { ObjectList } from '@/components/editor/ObjectList';
 import { PropertiesPanel } from '@/components/editor/PropertiesPanel';
 import { CommandPalette } from '@/components/editor/CommandPalette';
+import { WelcomeOverlay } from '@/components/editor/WelcomeOverlay';
 import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
 import { AnalyticsPanel } from '@/components/panels/AnalyticsPanel';
@@ -82,6 +83,9 @@ export default function EditorPage() {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Command Palette (Cmd+K) */}
       <CommandPalette />
+
+      {/* Erstkontakt-Overlay (nur beim ersten Öffnen des leeren Editors) */}
+      <WelcomeOverlay />
 
       {/* Guided Tour komplett entfernt — alte Schritte verwiesen auf Elemente
           die in der neuen Workflow-Phasen-Toolbar fehlen → driver.js-Overlay

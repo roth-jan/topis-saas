@@ -453,7 +453,7 @@ export const DEMO_SCENARIOS: Record<string, DemoScenario> = {
       width: 100,
       height: 50,
       name: 'Demo-Halle',
-      color: '#16213e',
+      color: '#26262a',
     },
     objects: generateStandardDemoObjects(),
     gaenge: [],

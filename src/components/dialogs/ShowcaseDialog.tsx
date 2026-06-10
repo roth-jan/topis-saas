@@ -335,7 +335,7 @@ export function ShowcaseDialog() {
         width: vorher.hall.width,
         height: vorher.hall.height,
         name: vorher.hall.name,
-        color: '#16213e'
+        color: '#26262a'
       });
 
       // Add objects with animation
@@ -440,7 +440,7 @@ export function ShowcaseDialog() {
         width: nachher.hall.width,
         height: nachher.hall.height,
         name: nachher.hall.name,
-        color: '#16213e'
+        color: '#26262a'
       });
 
       // Add optimized objects

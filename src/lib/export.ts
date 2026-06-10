@@ -186,7 +186,7 @@ export function exportToSVG(
 
     svg += `
   <!-- Hall: ${hall.name} -->
-  <rect x="${hallX}" y="${hallY}" width="${hallW}" height="${hallH}" fill="${hall.color || '#16213e'}" stroke="#4a5568" stroke-width="2"/>
+  <rect x="${hallX}" y="${hallY}" width="${hallW}" height="${hallH}" fill="${hall.color || '#26262a'}" stroke="#4a5568" stroke-width="2"/>
   <text x="${hallX + hallW / 2}" y="${hallY - 10}" text-anchor="middle" class="hall-label">${hall.name}</text>
 `;
   }
