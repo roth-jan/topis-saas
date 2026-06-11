@@ -90,6 +90,7 @@ import { HallenAssistentDialog } from '@/components/dialogs/HallenAssistentDialo
 import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog';
 import { BetriebsdatenImportDialog } from '@/components/dialogs/BetriebsdatenImportDialog';
 import { SzenarienDialog } from '@/components/dialogs/SzenarienDialog';
+import { LogoMark } from '@/components/Logo';
 import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
 import { ProzessmodellImportDialog } from '@/components/dialogs/ProzessmodellImportDialog';
 import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
@@ -617,9 +618,7 @@ export function Toolbar() {
       <div className="h-11 flex items-center px-2 gap-2 min-w-0 border-b border-border/40">
         {/* Logo */}
         <div className="flex items-center gap-2 px-1 shrink-0">
-          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground text-sm font-display" style={{ fontWeight: 900 }}>
-            T
-          </div>
+          <LogoMark size={28} />
           <span className="hidden xl:inline font-display text-[15px] tracking-tight" style={{ fontWeight: 800 }}>TOPIS</span>
           <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">SaaS</Badge>
         </div>
@@ -730,17 +729,6 @@ export function Toolbar() {
               Importieren...
               <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Halle laden (Geometrie)</DropdownMenuLabel>
-            {PROJEKT_VORLAGEN.map(vorlage => (
-              <DropdownMenuItem key={vorlage.id} onClick={() => {
-                ladeProjektVorlage(vorlage.id);
-                toast.success(`Halle "${vorlage.name} — ${vorlage.standort}" geladen`);
-              }}>
-                <Warehouse className="mr-2 h-4 w-4" />
-                {vorlage.name} — {vorlage.standort}
-              </DropdownMenuItem>
-            ))}
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Volumen-Daten generieren (aus Layout)</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => handleGenerateMonth('2026-01-01', 31, 'Januar 2026')}>
@@ -1076,7 +1064,7 @@ export function Toolbar() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-1 px-2">
-              Szenarien <ChevronDown className="h-3 w-3" />
+              Halle laden <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64">
@@ -1217,12 +1205,13 @@ export function Toolbar() {
 
         {/* ============ WEGE — Wegberechnung + Distanzmatrix + Tor-Kalkulation ============ */}
         {(phase === 'wege') && (
-        <div id="tour-wege" className="flex items-center gap-1 flex-wrap">
+        <div id="tour-wege" className="flex items-center gap-2 flex-wrap">
           {objects.length === 0 && (
-            <span className="mr-2 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+            <span className="rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
               Erst im Layout Tore, Bereiche &amp; Gänge anlegen — dann sind Wege berechenbar.
             </span>
           )}
+          <div className={`flex items-center gap-1 flex-wrap ${objects.length === 0 ? 'pointer-events-none opacity-50' : ''}`}>
           <span id="tour-matrix"><MatrixDialog /></span>
           <span id="tour-wegeberechnung"><WegeberechnungDialog /></span>
           <span id="tour-torkalkulation"><TorKalkulationDialog /></span>
@@ -1248,17 +1237,19 @@ export function Toolbar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
         )}
 
         {/* ============ AUSWERTUNG ============ */}
         {(phase === 'auswertung') && (
-        <div id="tour-analyse" className="flex items-center gap-1 flex-wrap">
+        <div id="tour-analyse" className="flex items-center gap-2 flex-wrap">
           {objects.length === 0 && (
-            <span className="mr-2 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+            <span className="rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground">
               Erst Layout aufbauen und Daten laden — dann liefern die Auswertungen Werte.
             </span>
           )}
+          <div className={`flex items-center gap-1 flex-wrap ${objects.length === 0 ? 'pointer-events-none opacity-50' : ''}`}>
           <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
           <ProzessmodellImportDialog />
           <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowMengen(true)} title="Prozess- und Mengenkategorien">
@@ -1287,6 +1278,7 @@ export function Toolbar() {
               Report
             </Button>
           )}
+          </div>
         </div>
         )}
 

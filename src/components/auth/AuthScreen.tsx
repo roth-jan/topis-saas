@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { X, ArrowRight, Loader2, Mail, CheckCircle2 } from 'lucide-react';
+import { LogoMark } from '@/components/Logo';
 
 type Tab = 'login' | 'signup' | 'magic';
 
@@ -70,8 +71,7 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
           {/* Kopf: Wortmarke + Headline (Echo des Landing-Hero) */}
           <div className="relative animate-[ts-up_.5s_.05s_both]">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-primary text-primary-foreground shadow-sm font-display"
-                   style={{ fontWeight: 800 }}>T</div>
+              <LogoMark size={36} className="shadow-sm rounded-[10px]" />
               <span className="font-display text-[15px] tracking-tight text-foreground/90"
                     style={{ fontWeight: 700 }}>TOPIS</span>
             </div>
@@ -109,8 +109,7 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
           <div className="animate-[ts-up_.5s_.1s_both]">
             {/* Mobile-Wortmarke */}
             <div className="mb-6 flex items-center gap-2 lg:hidden">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground"
-                   style={{ fontFamily: 'var(--font-display)', fontWeight: 900 }}>T</div>
+              <LogoMark size={32} />
               <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }} className="text-lg">TOPIS</span>
             </div>
 

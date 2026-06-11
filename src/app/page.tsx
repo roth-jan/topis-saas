@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { LogoMark } from '@/components/Logo';
 import { ArrowRight, LayoutGrid, Route, BarChart3, Users } from 'lucide-react';
 
 export default function Home() {
@@ -9,7 +10,7 @@ export default function Home() {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-[8px] bg-primary text-primary-foreground font-display" style={{ fontWeight: 800 }}>T</div>
+            <LogoMark size={28} />
             <span className="font-display text-[15px] tracking-tight" style={{ fontWeight: 700 }}>TOPIS</span>
           </div>
           <nav className="flex items-center gap-1.5">
@@ -153,7 +154,7 @@ export default function Home() {
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-[11px] text-primary-foreground font-display" style={{ fontWeight: 800 }}>T</div>
+            <LogoMark size={24} />
             <span className="font-display text-foreground" style={{ fontWeight: 600 }}>TOPIS</span>
             <span>© 2026 ROTH Logistikberatung</span>
           </div>

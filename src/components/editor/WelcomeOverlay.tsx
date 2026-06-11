@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { Warehouse, Wand2, PlusSquare, ArrowRight, X } from 'lucide-react';
+import { LogoMark } from '@/components/Logo';
 import { useObjects, useTopisStore } from '@/lib/store';
 import { ladeProjektVorlage } from '@/lib/projekt-vorlagen';
 
@@ -96,8 +97,7 @@ export function WelcomeOverlay() {
 
         <div className="px-8 pt-8">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[9px] bg-primary text-primary-foreground shadow-sm"
-                 style={{ fontFamily: 'var(--font-display)', fontWeight: 800 }}>T</div>
+            <LogoMark size={32} className="shadow-sm rounded-[9px]" />
             <span className="text-sm tracking-tight text-foreground/90"
                   style={{ fontFamily: 'var(--font-display)', fontWeight: 700 }}>TOPIS</span>
           </div>
