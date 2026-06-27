@@ -24,6 +24,17 @@ import {
 import { Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { OBJECT_DEFAULTS, ObjectType } from '@/types/topis';
+import { deriveWalls, torBoxFromAnchor } from '@/lib/wall-anchor';
+
+// Wand-relative Platzierung (Lastenheft 3.1.2: Tore „Wand wählen + Abstand zu
+// Eckpunkt S"). wallIndex-Konvention identisch zu deriveWalls: 0 Nord, 1 Ost,
+// 2 Süd, 3 West.
+const WAND_OPTIONEN = [
+  { value: '0', label: 'Nord (oben)' },
+  { value: '1', label: 'Ost (rechts)' },
+  { value: '2', label: 'Süd (unten)' },
+  { value: '3', label: 'West (links)' },
+];
 
 // Lastenheft 3.1.2 — Nummerierungs-Schemata für Mehrfach-Insert
 type NummernSchema = '1' | 'A1' | '1A' | 'A';
@@ -76,6 +87,11 @@ export function MultiInsertDialog() {
   const [startNum, setStartNum] = useState(1);
   // Lastenheft 3.1.2 — Nummerierungs-Schema
   const [schema, setSchema] = useState<NummernSchema>('1');
+  // Wand-relative Platzierung für Tore (Default an): Wand wählen + Startabstand
+  // vom Eckpunkt S, statt absoluter X/Y-Koordinaten.
+  const [wandModus, setWandModus] = useState(true);
+  const [wandIndex, setWandIndex] = useState(0);
+  const [startAbstand, setStartAbstand] = useState(5);
 
   const addObject = useTopisStore((s) => s.addObject);
   const hall = useTopisStore((s) => s.halls[0]);
@@ -98,28 +114,69 @@ export function MultiInsertDialog() {
       return;
     }
 
-    for (let i = 0; i < count; i++) {
-      let x: number, y: number;
+    const w = width > 0 ? width : defaults.width;
+    const h = height > 0 ? height : defaults.height;
+    const useWand = objectType === 'tor' && wandModus;
 
-      if (direction === 'horizontal') {
-        x = startX + i * spacing;
-        y = startY;
-      } else {
-        x = startX;
-        y = startY + i * spacing;
+    // Wand-relativer Modus: Tore entlang der gewählten Außenwand, beginnend bei
+    // `startAbstand` vom Eckpunkt S, im Abstand `spacing`. Jedes Tor wird per
+    // aussenwandRef fest verankert (Lastenheft 3.1.2).
+    let walls: ReturnType<typeof deriveWalls> = [];
+    let wallLength = 0;
+    if (useWand) {
+      walls = deriveWalls(hall ?? { width: 0, height: 0 });
+      const wall = walls[wandIndex];
+      if (!wall) {
+        toast.error('Keine Halle/Außenwand vorhanden — erst eine Halle anlegen.');
+        return;
       }
+      wallLength = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+    }
 
+    let platziert = 0;
+    let uebersprungen = 0;
+
+    for (let i = 0; i < count; i++) {
       const name = generateLabel(schema, prefix, startNum, i, defaults.name);
 
-      addObject({
-        type: objectType,
-        x,
-        y,
-        width: width > 0 ? width : defaults.width,
-        height: height > 0 ? height : defaults.height,
-        name,
-        nummernSchema: schema,
-      });
+      if (useWand) {
+        const abstandS = startAbstand + i * spacing;
+        if (abstandS > wallLength) {
+          uebersprungen++;
+          continue; // jenseits der Wandlänge — nicht platzierbar
+        }
+        const anchor = { wallIndex: wandIndex, abstandS, abstandE: wallLength - abstandS };
+        const box = torBoxFromAnchor(anchor, walls, w, h);
+        if (!box) {
+          uebersprungen++;
+          continue;
+        }
+        addObject({
+          type: 'tor',
+          x: box.x,
+          y: box.y,
+          width: w,
+          height: h,
+          name,
+          nummernSchema: schema,
+          aussenwandRef: anchor,
+          side: box.side ?? undefined,
+        });
+        platziert++;
+      } else {
+        const x = direction === 'horizontal' ? startX + i * spacing : startX;
+        const y = direction === 'horizontal' ? startY : startY + i * spacing;
+        addObject({
+          type: objectType,
+          x,
+          y,
+          width: w,
+          height: h,
+          name,
+          nummernSchema: schema,
+        });
+        platziert++;
+      }
     }
 
     const typeNames: Record<string, string> = {
@@ -129,8 +186,17 @@ export function MultiInsertDialog() {
       leveller: 'Leveller',
       bereich: 'Bereiche',
     };
+    const label = typeNames[objectType] || 'Objekte';
 
-    toast.success(`${count} ${typeNames[objectType] || 'Objekte'} eingefügt!`);
+    if (platziert === 0) {
+      toast.error(`Kein Tor platziert — Startabstand (${startAbstand} m) liegt jenseits der Wandlänge (${wallLength.toFixed(1)} m).`);
+      return;
+    }
+    toast.success(
+      uebersprungen > 0
+        ? `${platziert} ${label} eingefügt (${uebersprungen} außerhalb der Wand übersprungen).`
+        : `${platziert} ${label} eingefügt!`,
+    );
     setIsOpen(false);
   };
 
@@ -218,44 +284,91 @@ export function MultiInsertDialog() {
             />
           </div>
 
-          {/* Start Position */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Start X (m)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={hall?.width || 200}
-              value={startX}
-              onChange={(e) => setStartX(parseFloat(e.target.value) || 0)}
-              className="col-span-3"
-            />
-          </div>
+          {/* Platzierung — Tore wand-relativ (Lastenheft 3.1.2) */}
+          {objectType === 'tor' && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label className="text-right">Platzierung</Label>
+              <Select value={wandModus ? 'wand' : 'frei'} onValueChange={(v) => setWandModus(v === 'wand')}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wand">An Außenwand</SelectItem>
+                  <SelectItem value="frei">Frei (X/Y)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Start Y (m)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={hall?.height || 100}
-              value={startY}
-              onChange={(e) => setStartY(parseFloat(e.target.value) || 0)}
-              className="col-span-3"
-            />
-          </div>
+          {objectType === 'tor' && wandModus ? (
+            <>
+              {/* Wand-relativ: Wand wählen + Startabstand vom Eckpunkt S */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Wand</Label>
+                <Select value={String(wandIndex)} onValueChange={(v) => setWandIndex(parseInt(v))}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WAND_OPTIONEN.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Startabstand (m)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={startAbstand}
+                  onChange={(e) => setStartAbstand(parseFloat(e.target.value) || 0)}
+                  className="col-span-3"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Freie Platzierung über absolute Koordinaten */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Start X (m)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={hall?.width || 200}
+                  value={startX}
+                  onChange={(e) => setStartX(parseFloat(e.target.value) || 0)}
+                  className="col-span-3"
+                />
+              </div>
 
-          {/* Direction */}
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label className="text-right">Richtung</Label>
-            <Select value={direction} onValueChange={(v) => setDirection(v as 'horizontal' | 'vertical')}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="horizontal">Horizontal →</SelectItem>
-                <SelectItem value="vertical">Vertikal ↓</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Start Y (m)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={hall?.height || 100}
+                  value={startY}
+                  onChange={(e) => setStartY(parseFloat(e.target.value) || 0)}
+                  className="col-span-3"
+                />
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label className="text-right">Richtung</Label>
+                <Select value={direction} onValueChange={(v) => setDirection(v as 'horizontal' | 'vertical')}>
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="horizontal">Horizontal →</SelectItem>
+                    <SelectItem value="vertical">Vertikal ↓</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           {/* Naming */}
           <div className="grid grid-cols-4 items-center gap-4">

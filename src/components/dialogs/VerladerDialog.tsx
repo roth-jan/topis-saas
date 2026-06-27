@@ -111,7 +111,7 @@ export function VerladerDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Verlader-Verwaltung</DialogTitle>
         </DialogHeader>
@@ -128,7 +128,7 @@ export function VerladerDialog({ open, onOpenChange }: Props) {
               <CardTitle className="text-sm">Neuen Verlader anlegen</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-4 items-end">
                 <div className="space-y-1">
                   <Label className="text-xs">Name</Label>
                   <Input
@@ -196,7 +196,7 @@ export function VerladerDialog({ open, onOpenChange }: Props) {
           </div>
 
           {/* Tabelle */}
-          <ScrollArea className="h-[260px] rounded border">
+          <ScrollArea className="max-h-[260px] rounded border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -274,7 +274,7 @@ export function VerladerDialog({ open, onOpenChange }: Props) {
                     <CardTitle className="text-sm">Bearbeiten: {v.name}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4 items-end">
                       <div className="space-y-1">
                         <Label className="text-xs">Name</Label>
                         <Input
@@ -418,7 +418,7 @@ export function VerladerDialog({ open, onOpenChange }: Props) {
               <CardTitle className="text-sm">Bedarfs-Rechner</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3 items-end">
                 <div className="space-y-1">
                   <Label className="text-xs">Volumen (Colli/Tag)</Label>
                   <Input

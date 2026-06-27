@@ -202,7 +202,7 @@ export function MengenDialog({ open, onOpenChange }: Props) {
                 <CardTitle className="text-sm">Neue Prozesskategorie anlegen</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-end">
                   <div className="space-y-1">
                     <Label className="text-xs">Name</Label>
                     <Input
@@ -226,7 +226,7 @@ export function MengenDialog({ open, onOpenChange }: Props) {
               </CardContent>
             </Card>
 
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="max-h-[400px]">
               <div className="space-y-2">
                 {prozesskategorien.length === 0 && (
                   <p className="text-sm text-muted-foreground">
@@ -437,7 +437,7 @@ export function MengenDialog({ open, onOpenChange }: Props) {
               </span>
             </div>
 
-            <ScrollArea className="h-[300px] border rounded">
+            <ScrollArea className="max-h-[300px] border rounded">
               <Table>
                 <TableHeader>
                   <TableRow>

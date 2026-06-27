@@ -168,7 +168,7 @@ export function HallenRelationsPlanDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[min(1100px,95vw)] h-[min(85vh,800px)] flex flex-col gap-3 p-4">
+      <DialogContent className="max-w-5xl w-[min(1100px,95vw)] max-h-[min(85vh,800px)] flex flex-col gap-3 p-4">
         <DialogHeader className="shrink-0">
           <DialogTitle>Hallen-Relations-Plan</DialogTitle>
           <DialogDescription>
@@ -179,7 +179,7 @@ export function HallenRelationsPlanDialog({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         {!hasRelationen && (
-          <div className="shrink-0 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <div className="shrink-0 flex items-start gap-2 rounded-md border border-amber-400 bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200">
             <Info className="h-4 w-4 shrink-0 mt-0.5" />
             <div>
               <strong>Noch keine Relationen.</strong> Über Stellplatz-Properties
