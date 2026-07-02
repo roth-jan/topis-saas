@@ -11,7 +11,7 @@
  * verdict.
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, patchLayoutState } from './helpers/topisPage';
+import { gotoTopis, patchLayoutState, openAuswertungDialog } from './helpers/topisPage';
 
 interface AggregatRow {
   stellplatzId: number;
@@ -48,10 +48,9 @@ test.describe('CS-1 Stellplatz Füllgrad-Ampel', () => {
       await gotoTopis(page);
       await setupSeed(page, c.menge);
 
-      // Open Hallen-Relations-Plan dialog
-      await page.getByRole('button', { name: 'Lastenheft' }).click();
-      await page.getByRole('menuitem', { name: /Hallen-Relations-Plan/ }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      // Hallen-Relations-Plan: seit IA-Pass b30f5cb2 als Button in der
+      // Auswertungs-Phase (nicht mehr im "Lastenheft"-Dropdown).
+      await openAuswertungDialog(page, 'Relations-Plan');
 
       // Find the row for SP-CS1, check fuellgrad cell color/label
       const row = page.getByRole('row', { name: /SP-CS1/ });

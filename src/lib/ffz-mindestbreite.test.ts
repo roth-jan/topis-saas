@@ -11,7 +11,7 @@ describe('FFZ-Mindestbreite filtert Gänge', () => {
   } as unknown as FFZ;
 
   it('schmaler 2 m-Gang: Stapler (3.5 m Mindestbreite) findet keinen Pfad', () => {
-    const schmal: Gang[] = [{ id: 1, name: 'Schmaler Gang', points: [{ x: 0, y: 5 }, { x: 25, y: 5 }], breite: 2, color: '#000' }];
+    const schmal: Gang[] = [{ id: 1, name: 'Schmaler Gang', points: [{ x: 0, y: 5 }, { x: 25, y: 5 }], breite: 2, typ: 'hauptgang', farbe: '#000' }];
     const graph = buildGangGraph(schmal, stapler);
     expect(graph.nodes.length).toBe(0); // alle Gänge gefiltert
     const r = computeAllPaths([tor1], [tor2], schmal, stapler);
@@ -19,13 +19,13 @@ describe('FFZ-Mindestbreite filtert Gänge', () => {
   });
 
   it('breiter 4 m-Gang: Stapler findet Pfad', () => {
-    const breit: Gang[] = [{ id: 1, name: 'Breiter Gang', points: [{ x: 0, y: 5 }, { x: 25, y: 5 }], breite: 4, color: '#000' }];
+    const breit: Gang[] = [{ id: 1, name: 'Breiter Gang', points: [{ x: 0, y: 5 }, { x: 25, y: 5 }], breite: 4, typ: 'hauptgang', farbe: '#000' }];
     const r = computeAllPaths([tor1], [tor2], breit, stapler);
     expect(r[0].result).not.toBeNull();
   });
 
   it('ohne FFZ: 2 m-Gang ist OK', () => {
-    const schmal: Gang[] = [{ id: 1, name: 'Schmaler Gang', points: [{ x: 0, y: 5 }, { x: 25, y: 5 }], breite: 2, color: '#000' }];
+    const schmal: Gang[] = [{ id: 1, name: 'Schmaler Gang', points: [{ x: 0, y: 5 }, { x: 25, y: 5 }], breite: 2, typ: 'hauptgang', farbe: '#000' }];
     const r = computeAllPaths([tor1], [tor2], schmal);
     expect(r[0].result).not.toBeNull();
   });

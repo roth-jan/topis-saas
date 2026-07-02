@@ -55,8 +55,10 @@ test.describe('UC-11 Tor wall anchor', () => {
     // selectedObject wird nicht persistiert → Tor in der Liste selektieren.
     await selectObjectByName(page, 'T-Test');
 
-    // The right Eigenschaften panel should show Wand-Verankerung card with Abstand S input
-    await expect(page.getByText('Wand-Verankerung (Lastenheft 3.1.2)')).toBeVisible();
+    // The right Eigenschaften panel should show Wand-Verankerung card with Abstand S input.
+    // Kartentitel: seit IA-/Jargon-Pass b30f5cb2 nur noch "Wand-Verankerung"
+    // (Lastenheft-Referenz aus dem sichtbaren Titel entfernt).
+    await expect(page.getByText('Wand-Verankerung', { exact: true })).toBeVisible();
 
     // Change Abstand S to 30
     const sInput = inputByLabel(page, 'Abstand S');

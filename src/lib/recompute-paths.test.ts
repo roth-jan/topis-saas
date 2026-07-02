@@ -28,7 +28,7 @@ describe('Recompute paths nach pathArea-Konsolidierung', () => {
     const bereich: TopisObject = { id: 3, type: 'bereich', name: 'Lager', x: 10, y: 8, width: 6, height: 4 };
     store.setState({ objects: [tor1, tor2, bereich], objectIdCounter: 4 });
 
-    const gang: Gang = { id: 1, name: 'Hauptgang', points: [{ x: 0, y: 10 }, { x: 30, y: 10 }], breite: 4, color: '#000' };
+    const gang: Gang = { id: 1, name: 'Hauptgang', points: [{ x: 0, y: 10 }, { x: 30, y: 10 }], breite: 4, typ: 'hauptgang', farbe: '#000' };
     store.getState().setGaenge([gang]);
 
     const pa: Omit<PathArea, 'id'> = { name: 'Hauptgang Fläche', x: 0, y: 8, width: 30, height: 4, color: '#22c55e40' };

@@ -1,46 +1,84 @@
 /**
- * UC-9 — Lastenheft dropdown opens all five dialogs.
+ * UC-9 — Die fünf Lastenheft-Dialoge öffnen sich (ohne Console-Fehler).
  *
- * Requirement: top toolbar in Layout phase has a "Lastenheft" dropdown with
- * five entries. Each entry must open its dialog without console errors.
+ * Requirement (ursprünglich): eine "Lastenheft"-Dropdown mit fünf Einträgen.
+ * IA-Pass Commit b30f5cb2 hat dieses Sammel-Dropdown aufgelöst:
+ *   - Verlader-Modul + Unterflurförderkette  → "Module"-Dropdown (Layout-Phase)
+ *   - Mengen-Modell / Relations-Plan / Bereichseinteilung → eigene Buttons in
+ *     der Auswertungs-Phase (nur bedienbar, wenn Objekte im Layout sind).
+ * Der fachliche Test bleibt: jeder Dialog muss sich fehlerfrei öffnen lassen.
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, closeAnyDialog } from './helpers/topisPage';
-import { LASTENHEFT_MENU, TOOLBAR } from './helpers/selectors';
+import {
+  gotoTopis,
+  closeAnyDialog,
+  patchLayoutState,
+  openModulDialog,
+  openAuswertungDialog,
+} from './helpers/topisPage';
+import { MODULE_MENU, AUSWERTUNG_BUTTONS } from './helpers/selectors';
 
-const DIALOGS = [
-  { menu: LASTENHEFT_MENU.hallenRelationsPlan, dialogTitle: /Hallen-Relations-Plan/ },
-  { menu: LASTENHEFT_MENU.bereichsEinteilung,  dialogTitle: /Bereichseinteilung/ },
-  { menu: LASTENHEFT_MENU.mengenModell,        dialogTitle: /Prozess- und Mengenkategorien|Mengen/ },
-  { menu: LASTENHEFT_MENU.verlader,            dialogTitle: /Verlader/ },
-  { menu: LASTENHEFT_MENU.kette,               dialogTitle: /Unterflurförderkette|Kette/ },
-];
-
-test.describe('UC-9 Lastenheft dropdown', () => {
-  test.beforeEach(async ({ page }) => {
-    await gotoTopis(page);
+// Ein Objekt seeden, damit die Auswertungs-Buttons bedienbar sind (Container ist
+// bei leerem Layout pointer-events-none).
+async function seedOneObject(page: import('@playwright/test').Page) {
+  await patchLayoutState(page, (state) => {
+    const objs = (state.objects as unknown[]) || [];
+    const id = (state.objectIdCounter as number) || 1;
+    objs.push({ id, type: 'tor', name: 'T-UC9', x: 10, y: 0, width: 3.5, height: 1.5, side: 'north' });
+    (state as Record<string, unknown>).objects = objs;
+    (state as Record<string, unknown>).objectIdCounter = id + 1;
   });
+}
 
-  test('button is visible and contains five menuitems', async ({ page }) => {
-    await page.getByRole('button', { name: TOOLBAR.lastenheftDropdown }).click();
-    for (const d of DIALOGS) {
-      await expect(page.getByRole('menuitem', { name: new RegExp(d.menu) })).toBeVisible();
-    }
+test.describe('UC-9 Lastenheft-Dialoge', () => {
+  test('Module-Dropdown enthält Verlader-Modul + Unterflurförderkette', async ({ page }) => {
+    await gotoTopis(page);
+    await page.getByRole('button', { name: 'Module' }).click();
+    await expect(page.getByRole('menuitem', { name: new RegExp(MODULE_MENU.verlader) })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: new RegExp(MODULE_MENU.kette) })).toBeVisible();
     await page.keyboard.press('Escape');
   });
 
-  for (const d of DIALOGS) {
-    test(`opens dialog "${d.menu}" without console errors`, async ({ page }) => {
+  test('Auswertungs-Phase enthält Mengen-Modell, Relations-Plan, Bereichseinteilung', async ({ page }) => {
+    await gotoTopis(page);
+    await seedOneObject(page);
+    await page.getByRole('button', { name: 'Auswertung' }).click();
+    for (const name of Object.values(AUSWERTUNG_BUTTONS)) {
+      await expect(page.getByRole('button', { name })).toBeVisible();
+    }
+  });
+
+  // Module (Layout-Phase) — kein Seed nötig.
+  for (const d of [
+    { open: MODULE_MENU.verlader, title: /Verlader/ },
+    { open: MODULE_MENU.kette,    title: /Unterflurförderkette/ },
+  ]) {
+    test(`Modul "${d.open}" öffnet ohne Console-Fehler`, async ({ page }) => {
       const consoleErrors: string[] = [];
-      page.on('console', (msg) => {
-        if (msg.type() === 'error') consoleErrors.push(msg.text());
-      });
-      await page.getByRole('button', { name: TOOLBAR.lastenheftDropdown }).click();
-      await page.getByRole('menuitem', { name: new RegExp(d.menu) }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
-      await expect(page.getByRole('dialog').first()).toContainText(d.dialogTitle);
+      page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+      await gotoTopis(page);
+      await openModulDialog(page, d.open);
+      await expect(page.getByRole('dialog').first()).toContainText(d.title);
       await closeAnyDialog(page);
-      expect(consoleErrors, `console errors after opening ${d.menu}`).toEqual([]);
+      expect(consoleErrors, `console errors after opening ${d.open}`).toEqual([]);
+    });
+  }
+
+  // Analyse-Dialoge (Auswertungs-Phase) — Seed nötig.
+  for (const d of [
+    { button: AUSWERTUNG_BUTTONS.hallenRelationsPlan, title: /Hallen-Relations-Plan/ },
+    { button: AUSWERTUNG_BUTTONS.bereichsEinteilung,  title: /Bereichseinteilung/ },
+    { button: AUSWERTUNG_BUTTONS.mengenModell,        title: /Prozess- und Mengenkategorien|Mengen/ },
+  ]) {
+    test(`Analyse-Dialog "${d.button}" öffnet ohne Console-Fehler`, async ({ page }) => {
+      const consoleErrors: string[] = [];
+      page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+      await gotoTopis(page);
+      await seedOneObject(page);
+      await openAuswertungDialog(page, d.button);
+      await expect(page.getByRole('dialog').first()).toContainText(d.title);
+      await closeAnyDialog(page);
+      expect(consoleErrors, `console errors after opening ${d.button}`).toEqual([]);
     });
   }
 });

@@ -20,7 +20,9 @@ describe('parseProzessmodellSheet — synthetisches Mini-Workbook', () => {
       hilfsmittel: string;
       standardzeitSek: number;
       prozessgroesse: string;
-      anteil: number;
+      // null = leere Excel-Zelle (Mengen/Parameter-Zeile ohne Anteil). Die Row-
+      // Ausgabe ist ohnehin (string|number|null)[], daher null hier zulässig.
+      anteil: number | null;
       haeufigkeitJeTag: number;
       zeitGewichtetMinProColli: number;
     }>,

@@ -9,7 +9,7 @@
  *   100 / (50 * 8) = 0.25 → ceil = 1
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, inputByLabel } from './helpers/topisPage';
+import { gotoTopis, inputByLabel, openModulDialog } from './helpers/topisPage';
 
 const CASES = [
   { colliProTag: 500,  kapProH: 50, hours: 8, expected: 2 },
@@ -22,9 +22,8 @@ test.describe('CS-2 Verlader Bedarfs-Rechner', () => {
   for (const c of CASES) {
     test(`${c.colliProTag} Colli/Tag, ${c.kapProH} Colli/h, ${c.hours}h → ${c.expected} Verlader`, async ({ page }) => {
       await gotoTopis(page);
-      await page.getByRole('button', { name: 'Lastenheft' }).click();
-      await page.getByRole('menuitem', { name: /Verlader-Modul/ }).click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      // Verlader-Modul: seit IA-Pass b30f5cb2 im "Module"-Dropdown (Layout-Phase).
+      await openModulDialog(page, 'Verlader-Modul');
 
       // Bedarfs-Rechner inputs (Labels: "Volumen (Colli/Tag)",
       // "Kapazität pro Verlader (Colli/h)", "Arbeitsstunden pro Tag")

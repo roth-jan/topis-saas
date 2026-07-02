@@ -6,7 +6,10 @@
  * algorithmischen Kern als reine Funktion ausgekoppelt.
  */
 import { describe, expect, it } from 'vitest';
-import type { Path, TopisObject, PathResult } from '@/types/topis';
+import type { Path, TopisObject } from '@/types/topis';
+// PathResult ist seit dem Pathfinding-Refactor aus '@/lib/pathfinding' exportiert,
+// nicht mehr aus '@/types/topis'.
+import type { PathResult } from '@/lib/pathfinding';
 
 interface WegeResult { start: TopisObject; end: TopisObject; result: PathResult | null; distEuclidean: number }
 

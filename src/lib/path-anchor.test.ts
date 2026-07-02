@@ -23,7 +23,10 @@ describe('Bug A: findNearestAnchor must skip walls/doors/columns/obstacles', () 
   const tor = obj({ id: 5, type: 'tor', name: 'Tor 42', x: 15, y: 15, width: 3.75, height: 1.5 });
   const bereich = obj({ id: 6, type: 'bereich', name: 'Langgut', x: 20, y: 20, width: 10, height: 5 });
   const stellplatz = obj({ id: 7, type: 'stellplatz', name: 'SP A1', x: 30, y: 30, width: 2, height: 2 });
-  const messpunkt = obj({ id: 8, type: 'sonstiges', name: 'MP1', tags: ['messpunkt'], x: 40, y: 40, width: 0.5, height: 0.5 });
+  // 'sonstiges' wurde im ObjectType-Refactor zu 'custom' umbenannt. Die Anker-
+  // Gültigkeit hängt hier ohnehin nur am 'messpunkt'-Tag, nicht am Typ (custom
+  // ist NICHT in VALID_ANCHOR_TYPES) — Testabsicht bleibt unverändert.
+  const messpunkt = obj({ id: 8, type: 'custom', name: 'MP1', tags: ['messpunkt'], x: 40, y: 40, width: 0.5, height: 0.5 });
 
   it('rejects wand even when clicked directly on its center', () => {
     expect(isValidAnchorObject(wall)).toBe(false);

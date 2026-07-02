@@ -308,7 +308,7 @@ Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`. Stand 217 passed |
 
 ### E2E — Playwright (`npx playwright test tests/e2e`)
 - Config `playwright.config.ts`: `baseURL`/`webServer.url` = `http://localhost:3000/topis-saas/projekt/` (Root 404t wegen basePath!). `webServer` startet `npm run dev` automatisch. Live-Tests via `BASE_URL=https://roth-jan.github.io/topis-saas/projekt/`.
-- Stand: **23 passed, 2 `test.fixme`** (cs-3 Headless-Download-Capture, uc-10 Canvas-Pixel-Kalibrierung — Features im Code vorhanden, nur E2E-Mechanik offen).
+- Stand: **31 passed, 2 `test.fixme`** (cs-3 Headless-Download-Capture, uc-10 Canvas-Pixel-Kalibrierung — Features im Code vorhanden, nur E2E-Mechanik offen). Nachgezogen 02.07.2026 nach IA-/UX-Umbau: WelcomeOverlay via `addInitScript` unterdrückt, „Lastenheft"→„Module"/Auswertungs-Phase, obsoleter Root-Spec `tests/topis-saas.spec.ts` durch schlanke Smoke-Suite ersetzt. Bei belegtem Port 3000: `TOPIS_PORT=3100 npx playwright test`.
 - Use Cases: `uc-09` Lastenheft-Dropdown, `uc-10` Stellplatz-Formvarianten, `uc-11` Tor-Wandverankerung, `uc-12` Regal-Ebenen, `uc-13` Multi-Insert-Schemata, `uc-14` generische Properties; Customer-Szenarien `cs-1` Füllgrad-Ampel, `cs-2` Verlader-Bedarf, `cs-3` Bereich-CSV.
 - **Helper `tests/e2e/helpers/topisPage.ts`** (zentral für neue Tests):
   - `gotoTopis(page)` — navigiert + wartet auf Hydration.

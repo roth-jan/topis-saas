@@ -10,7 +10,7 @@
  *    Stellplatz-Anzahl=1.
  */
 import { expect, test } from '@playwright/test';
-import { gotoTopis, patchLayoutState } from './helpers/topisPage';
+import { gotoTopis, patchLayoutState, openAuswertungDialog } from './helpers/topisPage';
 
 // FIXME: CSV-Export-Funktion existiert + erzeugt korrektes Format (im Code verifiziert,
 // Anchor wird jetzt ans DOM gehängt). Test scheitert an E2E-Mechanik: der CSV-Export-
@@ -31,10 +31,8 @@ test.fixme('CS-3 BlockA with 2 gates + 1 Stellplatz → CSV row matches', async 
     (state as Record<string, unknown>).objectIdCounter = id + 3;
   });
 
-  // Open Bereichseinteilung
-  await page.getByRole('button', { name: 'Lastenheft' }).click();
-  await page.getByRole('menuitem', { name: /Bereichseinteilung/ }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
+  // Bereichseinteilung: seit IA-Pass b30f5cb2 als Button in der Auswertungs-Phase.
+  await openAuswertungDialog(page, 'Bereichseinteilung');
 
   // Create new Bereich "BlockA"
   await page.getByPlaceholder(/z\.B\. Block Nord, EZ 1/).fill('BlockA');

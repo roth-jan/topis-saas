@@ -2,7 +2,11 @@
  * The UI is German. Update here if labels are renamed in the app, not in each spec. */
 
 export const TOOLBAR = {
-  lastenheftDropdown: 'Lastenheft',
+  // IA-Pass Commit b30f5cb2: "Lastenheft"-Dropdown aufgeteilt. Verlader-Modul +
+  // Unterflurförderkette liegen jetzt im "Module"-Dropdown (Layout-Phase); die
+  // Analyse-Dialoge (Mengen-Modell / Relations-Plan / Bereichseinteilung) sind
+  // eigene Buttons in der Auswertungs-Phase.
+  moduleDropdown: 'Module',
   objekteDropdown: 'Objekte',
   bearbeitenDropdown: 'Bearbeiten',
   ansichtDropdown: 'Ansicht',
@@ -22,10 +26,16 @@ export const TOOLS = {
   messen: 'Messen',
 };
 
-export const LASTENHEFT_MENU = {
-  hallenRelationsPlan: 'Hallen-Relations-Plan',
+// Frühere "Lastenheft"-Einträge, jetzt an zwei Orten (siehe TOOLBAR-Kommentar).
+// AUSWERTUNG_BUTTONS: Buttons in der Auswertungs-Phase (Button-Text, ggf. gekürzt).
+// MODULE_MENU: Menüeinträge im "Module"-Dropdown der Layout-Phase.
+export const AUSWERTUNG_BUTTONS = {
+  hallenRelationsPlan: 'Relations-Plan',   // Button-Text (Dialog-Titel: "Hallen-Relations-Plan")
   bereichsEinteilung: 'Bereichseinteilung',
   mengenModell: 'Mengen-Modell',
+};
+
+export const MODULE_MENU = {
   verlader: 'Verlader-Modul',
   kette: 'Unterflurförderkette',
 };
