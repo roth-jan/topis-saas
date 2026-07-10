@@ -176,6 +176,11 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
       ergebnis: state.ergebnis,
       ffzMix: state.ffzMix,
     }),
+    onRehydrateStorage: () => (state) => {
+      // Persistierte Ergebnisse können mit einer älteren Rechner-Version entstanden
+      // sein (z.B. Verteilweg ohne Batch-Faktor) → nach dem Laden immer neu rechnen.
+      if (state) setTimeout(() => state.berechne(), 0);
+    },
   }
 ));
 

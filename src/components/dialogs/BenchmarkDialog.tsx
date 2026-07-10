@@ -51,7 +51,8 @@ export function BenchmarkDialog() {
             Benchmarking
           </DialogTitle>
           <DialogDescription>
-            Vergleich mit {REFERENZHALLEN.length} Referenzhallen (Min/Colli pro Abteilung).
+            Vergleich mit {REFERENZHALLEN.length} Referenzhallen (Min/Colli pro Abteilung) —
+            Rang im Feld von {REFERENZHALLEN.length + 1} inkl. Ihrer Halle.
           </DialogDescription>
         </DialogHeader>
 

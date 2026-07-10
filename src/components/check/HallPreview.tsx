@@ -114,14 +114,17 @@ export function HallPreview({
       ctx.lineWidth = 1;
       ctx.strokeRect(tl.x, tl.y, w, h);
 
-      // Label
+      // Label — nur wenn das Objekt breit genug ist, sonst überlappen sich
+      // die Beschriftungen dicht stehender Tore zu unlesbarem Text.
+      const label = obj.name.length > 12 ? obj.name.slice(0, 11) + '…' : obj.name;
       const fontSize = Math.max(8, Math.min(11, w / 5));
       ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const label = obj.name.length > 12 ? obj.name.slice(0, 11) + '…' : obj.name;
-      ctx.fillText(label, tl.x + w / 2, tl.y + h / 2);
+      if (w >= ctx.measureText(label).width + 4) {
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, tl.x + w / 2, tl.y + h / 2);
+      }
     }
 
     // === Cockpit-Route (vor Heatmap, damit Marker oben drauf liegen) ===

@@ -53,6 +53,11 @@ export function ObjectList() {
     return acc;
   }, {} as Record<string, TopisObject[]>);
 
+  // Natürliche Sortierung (Tor 1, Tor 2, … Tor 115 statt Array-Reihenfolge)
+  for (const objs of Object.values(groupedObjects)) {
+    objs.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'de', { numeric: true }));
+  }
+
   const toggleGroup = (type: string) => {
     setCollapsed(prev => ({ ...prev, [type]: !prev[type] }));
   };

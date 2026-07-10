@@ -43,6 +43,9 @@ interface WegeResult {
   distEuclidean: number;
 }
 
+const byName = (a: { name?: string }, b: { name?: string }) =>
+  (a.name || '').localeCompare(b.name || '', 'de', { numeric: true });
+
 export function WegeberechnungDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFFZId, setSelectedFFZId] = useState<string>('');
@@ -78,13 +81,13 @@ export function WegeberechnungDialog() {
   const relationZuordnungen = useBetriebsdatenStore((s) => s.relationZuordnungen);
   const hasScanData = scandatenRecords.length > 0;
 
-  // Filter objects by type + Wegpunkt-Rolle
+  // Filter objects by type + Wegpunkt-Rolle, natürlich sortiert (Tor 1, Tor 2, … Tor 115)
   const tore = useMemo(() =>
-    objects.filter(o => o.type === 'tor' && (o.wegpunktRolle ?? 'beides') !== 'keiner' && (o.wegpunktRolle ?? 'beides') !== 'ende'),
+    objects.filter(o => o.type === 'tor' && (o.wegpunktRolle ?? 'beides') !== 'keiner' && (o.wegpunktRolle ?? 'beides') !== 'ende').sort(byName),
     [objects]
   );
   const stellplaetze = useMemo(() =>
-    objects.filter(o => (o.type === 'stellplatz' || o.type === 'bereich') && (o.wegpunktRolle ?? 'beides') !== 'keiner' && (o.wegpunktRolle ?? 'beides') !== 'start'),
+    objects.filter(o => (o.type === 'stellplatz' || o.type === 'bereich') && (o.wegpunktRolle ?? 'beides') !== 'keiner' && (o.wegpunktRolle ?? 'beides') !== 'start').sort(byName),
     [objects]
   );
 

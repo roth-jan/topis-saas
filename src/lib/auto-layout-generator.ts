@@ -20,6 +20,9 @@ export interface AutoLayoutResult {
   relationZuordnungen: RelationZuordnung[];
 }
 
+/** Stellplatz-Keys wie "Tor 23" nicht erneut prefixen (sonst "Tor Tor 23"). */
+const torName = (key: string) => (/^tor\b/i.test(key.trim()) ? key.trim() : `Tor ${key}`);
+
 /**
  * Generiert ein komplettes Hallenlayout aus Scandaten-Records.
  */
@@ -28,11 +31,13 @@ export function generateAutoLayout(records: ScandatenRecord[]): AutoLayoutResult
   const stellplaetze = extractUniqueStellplaetze(records);
   const relationen = extractUniqueRelationen(records);
 
-  // 2. Hallengröße berechnen
+  // 2. Hallengröße berechnen — Tore verteilen sich auf Süd- UND Nord-Wand,
+  // die Breite bemisst sich also an den Toren pro Wand. Tiefe realer
+  // Umschlaghallen liegt bei ~30-60m, unabhängig von der Länge.
   const toreAnzahl = stellplaetze.length;
   const bereicheAnzahl = relationen.length;
-  const hallWidth = Math.max(60, toreAnzahl * 4.5);
-  const hallHeight = Math.max(30, hallWidth * 0.35);
+  const hallWidth = Math.max(60, Math.ceil(toreAnzahl / 2) * 4.5);
+  const hallHeight = Math.max(30, Math.min(60, hallWidth * 0.35));
 
   // 3. Hall erstellen
   const hall: Hall = {
@@ -67,7 +72,7 @@ export function generateAutoLayout(records: ScandatenRecord[]): AutoLayoutResult
       y: hallHeight - torHeight,
       width: torWidth,
       height: torHeight,
-      name: `Tor ${stellplaetze[i].key}`,
+      name: torName(stellplaetze[i].key),
       side: 'south',
       torNummer: i + 1,
     });
@@ -85,7 +90,7 @@ export function generateAutoLayout(records: ScandatenRecord[]): AutoLayoutResult
       y: 0,
       width: torWidth,
       height: torHeight,
-      name: `Tor ${stellplaetze[stellplatzIdx].key}`,
+      name: torName(stellplaetze[stellplatzIdx].key),
       side: 'north',
       torNummer: toreSued + i + 1,
     });

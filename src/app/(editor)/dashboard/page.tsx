@@ -316,7 +316,7 @@ export default function DashboardPage() {
                 <div className="rounded-lg border bg-card p-3">
                   <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
                     <Trophy className="h-3.5 w-3.5" />
-                    Benchmark (vs. {REFERENZHALLEN.length} Referenzhallen)
+                    Benchmark ({REFERENZHALLEN.length} Referenzhallen + Ihre Halle)
                     {benchmark && (
                       <span className="ml-auto text-primary font-bold">
                         Platz {benchmark.gesamtRanking}/{benchmark.anzahlHallen}

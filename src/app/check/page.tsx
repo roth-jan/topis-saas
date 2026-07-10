@@ -445,10 +445,10 @@ export default function CheckPage() {
                     <p className="text-sm text-muted-foreground mt-1">1 Klick — sofort sehen</p>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Ohne eigene Daten — Beispielanalyse einer Umschlaghalle mit 85 Toren
+                    Ohne eigene Daten — Beispielanalyse einer Umschlaghalle mit 115 Toren
                   </p>
                   <div className="flex flex-wrap justify-center gap-1">
-                    {['85 Tore', '15.000 Colli', 'Heatmap', 'Ampeln'].map((f) => (
+                    {['115 Tore', '4.000 Colli/Tag', 'Heatmap', 'Ampeln'].map((f) => (
                       <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
                     ))}
                   </div>

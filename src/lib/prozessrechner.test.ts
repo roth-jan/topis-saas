@@ -58,10 +58,41 @@ describe('berechneMinProColli — SE Referenz (AS Gersthofen)', () => {
     const mix = ffzToMix(nurStapler);
     const ergebnis = berechneMinProColli(PROZESSMODELL_SE, SE_STANDARD_PARAMETER, mix);
     expect(ergebnis.minProColli).toBeGreaterThan(0);
-    // Stapler ist schneller (2.86 vs 2.44) aber weniger Colli/Bewegung (1.2 vs 3.39 Batch).
-    // Ergebnis muss sich spürbar vom Baseline unterscheiden.
+    // Stapler ist schneller (2.86 vs 2.44) → Wegzeit sinkt gegenüber Baseline.
+    // Der Batch-Faktor bleibt in beiden Fällen der kalibrierte colliProFahrt (3.39).
     const baseline = berechneMinProColli(PROZESSMODELL_SE, SE_STANDARD_PARAMETER);
     expect(Math.abs(ergebnis.minProColli - baseline.minProColli)).toBeGreaterThan(0.01);
+  });
+
+  it('Mix-Pfad und Fallback-Pfad liegen bei Standardparametern nah beieinander', () => {
+    // Der Default-Mix (80% Schnelläufer / 20% Stapler) darf die Kalibrierung nicht
+    // verschieben: colliProFahrt (3.39) muss auch im Mix-Pfad als Batch-Faktor greifen.
+    // Vor dem Fix teilte der Mix-Pfad nur durch colliProBewegung (1.4/1.2) →
+    // Verteiler ~1.5 statt ~0.75 Min/Colli.
+    const mitMix = berechneMinProColli(PROZESSMODELL_SE, SE_STANDARD_PARAMETER, ffzToMix([]));
+    const ohneMix = berechneMinProColli(PROZESSMODELL_SE, SE_STANDARD_PARAMETER);
+    expect(Math.abs(mitMix.minProColli - ohneMix.minProColli)).toBeLessThan(0.05);
+  });
+
+  it('AS-2026-Demo-Parameter (Verteilweg 176m + Default-Mix) bleiben nahe der Kalibrierung', () => {
+    // Entspricht den parameterOverrides der Demo-Halle (schmid-halle6-2026.ts).
+    // Referenz 1.917 galt für 138.8m (2020); mit 176m (Anbau) sind ~2.17 plausibel.
+    // Regression-Lock gegen den Drift, bei dem die Demo 3.286 Min/Colli anzeigte.
+    const demoOverrides: Record<string, number> = {
+      colliProTag: 3970,
+      verteilweg: 176,
+      schnellaeuferGeschwindigkeit: 2.44,
+      colliProFahrt: 3.39,
+      arbeitsminProStunde: 52.9,
+      staplerGeschwindigkeit: 2.86,
+    };
+    const demoParameter = SE_STANDARD_PARAMETER.map((p) =>
+      demoOverrides[p.id] !== undefined ? { ...p, aktuellerWert: demoOverrides[p.id] } : p,
+    );
+    const ergebnis = berechneMinProColli(PROZESSMODELL_SE, demoParameter, ffzToMix([]));
+    expect(ergebnis.minProColli).toBeCloseTo(2.17, 1);
+    const verteiler = ergebnis.abteilungen.find((a) => a.abteilung === 'verteiler')!;
+    expect(verteiler.minProColli).toBeLessThan(1.0);
   });
 });
 

@@ -123,7 +123,7 @@ export function bewerteKPIs(
       label: 'Benchmark-Rang',
       wert: `Platz ${rang}`,
       einheit: `von ${anzahl}`,
-      referenz: `${anzahl} Vergleichshallen`,
+      referenz: `${anzahl - 1} Referenzhallen + Ihre Halle`,
       status,
       delta: 0,
       potenzialText: rang > 3

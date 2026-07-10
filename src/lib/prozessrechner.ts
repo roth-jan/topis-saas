@@ -48,7 +48,13 @@ export function ffzToMix(ffzListe: FFZ[]): FFZMixEintrag[] {
 /**
  * Berechnet die gewichtete Wegzeit gemäß Lastenheft-Formel.
  *
- *   Wegzeit = Σ(anteil × distanz / geschwindigkeit / colliProBewegung)
+ *   Wegzeit = Σ(anteil × distanz / geschwindigkeit / Batch-Faktor)
+ *
+ * Batch-Faktor: Der kalibrierte Parameter colliProFahrt (z.B. 3.39 bei AS Gersthofen)
+ * beschreibt, wie viele Colli eine Verteiler-Fahrt bündelt, und hat Vorrang.
+ * Das FFZ-eigene colliProBewegung (Entlade-Batch, ~1.2-1.4) greift nur, wenn kein
+ * kalibrierter colliProFahrt gesetzt ist — es ist ein anderer Prozess und darf die
+ * Verteilweg-Kalibrierung nicht ersetzen.
  *
  * Falls kein FFZ-Mix übergeben wird, wird der alte globale colliProFahrt-Fallback genutzt.
  */
@@ -56,18 +62,19 @@ function berechneGewichteteWegzeit(
   distanzM: number,
   ffzMix: FFZMixEintrag[],
   fallbackGeschwindigkeit: number = 2.44,
-  fallbackColliProFahrt: number = 1
+  colliProFahrt: number = 1
 ): number {
   if (ffzMix.length === 0) {
     const zeit = distanzM / fallbackGeschwindigkeit;
-    return fallbackColliProFahrt > 1 ? zeit / fallbackColliProFahrt : zeit;
+    return colliProFahrt > 1 ? zeit / colliProFahrt : zeit;
   }
 
   let gesamt = 0;
   for (const ffz of ffzMix) {
     if (ffz.geschwindigkeitMs <= 0) continue;
     const fahrzeit = distanzM / ffz.geschwindigkeitMs;
-    const zeitProColli = ffz.colliProBewegung > 1 ? fahrzeit / ffz.colliProBewegung : fahrzeit;
+    const batch = colliProFahrt > 1 ? colliProFahrt : ffz.colliProBewegung;
+    const zeitProColli = batch > 1 ? fahrzeit / batch : fahrzeit;
     gesamt += ffz.anteil * zeitProColli;
   }
   return gesamt;
