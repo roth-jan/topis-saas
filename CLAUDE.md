@@ -148,6 +148,7 @@ src/
 Min/Colli = Σ(zeitSek × anteil × häufigkeit) / 60
 wobei: zeitSek = verteilweg / geschwindigkeit / colliProFahrt  (bei wegAusLayout)
 ```
+**WICHTIG (Fix 12.07.2026):** Der Batch-Divisor ist `colliProFahrt` (kalibriert, 3.39) — auch im FFZ-Mix-Pfad. Das FFZ-eigene `colliProBewegung` (Entlade-Batch ~1.2-1.4, ein anderer Prozess) greift nur als Fallback, wenn kein `colliProFahrt` gesetzt ist. Vorher teilte der Mix-Pfad fälschlich durch `colliProBewegung` → AS-Demo 3.286 statt 2.165. Regression-Locks in `prozessrechner.test.ts` (Mix ≈ Fallback ±0.05).
 
 **Wichtige Parameter (aus Store, nicht hardcodiert):**
 - `arbeitsminProStunde` (52.9) — in allen MA-Berechnungen
@@ -298,7 +299,7 @@ Gewählte Richtung nach Mockup-Vergleich (siehe Memory `project_topis_design_dir
 ## Tests
 
 ### Unit/Integration — Vitest 4.1.4 (`npm test`, `npm run test:watch`)
-Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`. Stand 217 passed | 2 skipped. Kerndateien:
+Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`. Stand 219 passed | 2 skipped. Kerndateien:
 - `prozessrechner.test.ts` — SE-Baseline (2.040 als Regression-Lock + Kommentar zur 1.917-Doku-Drift), FFZ-Mix, MA-Bedarf
 - `prozessrechner-kunden.test.ts` — Geis Nürnberg + Nörpel Ulm (beide Δ 0.0%)
 - `pathfinding.test.ts` — buildGangGraph + A* + FFZ-Filter + L-förmiger Pfad
