@@ -24,6 +24,7 @@ import {
   loadProzessmodellDatei,
   deleteProzessmodellMonat,
   sortiereMonate,
+  gruppiereNachKunde,
   type CloudProzessmodellMonat,
 } from '@/lib/cloud-prozessmodelle';
 
@@ -48,6 +49,9 @@ export function AsProzessCockpitDialog() {
   const [monate, setMonate] = useState<CloudProzessmodellMonat[]>([]);
   const [monateLoading, setMonateLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const uid = session?.user?.id ?? null;
+  // Berater sehen fremde Monate → nach Kunde gruppieren (eigene zuerst).
+  const gruppen = useMemo(() => gruppiereNachKunde(monate, uid), [monate, uid]);
 
   const reset = () => {
     wbRef.current = null;
@@ -192,8 +196,8 @@ export function AsProzessCockpitDialog() {
           <div className="flex flex-col gap-3">
             <UploadArea fileRef={fileRef} onFile={handleFile} />
             {configured && session && (
-              <VerlaufListe
-                monate={monate}
+              <VerlaufGruppen
+                gruppen={gruppen}
                 loading={monateLoading}
                 onLoad={ladeMonat}
                 onDelete={loescheMonat}
@@ -267,7 +271,7 @@ export function AsProzessCockpitDialog() {
             )}
 
             {tab === 'verlauf' && (
-              <VerlaufListe monate={monate} loading={monateLoading} onLoad={ladeMonat} onDelete={loescheMonat} />
+              <VerlaufGruppen gruppen={gruppen} loading={monateLoading} onLoad={ladeMonat} onDelete={loescheMonat} />
             )}
           </div>
         )}
@@ -585,27 +589,25 @@ function fmtEdit(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Gespeicherte Monate mit Trend (Δ MA-Stunden zum Vormonat) + Laden/Löschen. */
-function VerlaufListe({
-  monate,
+/** Verlauf-Bereich: Lade-/Leerzustand + eine Monats-Tabelle je Kunden-Gruppe
+ * (Berater sehen mehrere Gruppen, normale Nutzer genau ihre eigene). */
+function VerlaufGruppen({
+  gruppen,
   loading,
   onLoad,
   onDelete,
   kompakt = false,
 }: {
-  monate: CloudProzessmodellMonat[];
+  gruppen: ReturnType<typeof gruppiereNachKunde>;
   loading: boolean;
   onLoad: (m: CloudProzessmodellMonat) => void;
   onDelete: (m: CloudProzessmodellMonat) => void;
   kompakt?: boolean;
 }) {
-  const sorted = useMemo(() => sortiereMonate(monate), [monate]);
-  const max = Math.max(...sorted.map((m) => m.kennzahlen.maStundenProzesse), 1);
-
   if (loading) {
     return <div className="text-xs text-muted-foreground px-1 py-2">Lade gespeicherte Monate…</div>;
   }
-  if (sorted.length === 0) {
+  if (gruppen.length === 0) {
     return (
       <div className="text-xs text-muted-foreground rounded border border-dashed px-3 py-3 text-center">
         Noch keine Monate gespeichert. Excel laden und oben &bdquo;Monat speichern&ldquo; klicken &mdash;
@@ -613,11 +615,50 @@ function VerlaufListe({
       </div>
     );
   }
+  const mehrere = gruppen.length > 1;
+  return (
+    <div className={mehrere && !kompakt ? 'flex flex-col gap-3 overflow-y-auto max-h-[52vh]' : 'flex flex-col gap-3'}>
+      {gruppen.map((g) => (
+        <VerlaufListe
+          key={g.ownerId}
+          monate={g.monate}
+          // Fremde Gruppen IMMER mit Kundenname beschriften — auch wenn es die
+          // einzige ist (Berater ohne eigene Monate darf nicht denken, es sei seine).
+          titel={mehrere || !g.eigene ? g.label : undefined}
+          loeschbar={g.eigene}
+          onLoad={onLoad}
+          onDelete={onDelete}
+          kompakt={kompakt || mehrere}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** Gespeicherte Monate mit Trend (Δ MA-Stunden zum Vormonat) + Laden/Löschen. */
+function VerlaufListe({
+  monate,
+  titel,
+  loeschbar,
+  onLoad,
+  onDelete,
+  kompakt = false,
+}: {
+  monate: CloudProzessmodellMonat[];
+  titel?: string;
+  loeschbar: boolean;
+  onLoad: (m: CloudProzessmodellMonat) => void;
+  onDelete: (m: CloudProzessmodellMonat) => void;
+  kompakt?: boolean;
+}) {
+  const sorted = useMemo(() => sortiereMonate(monate), [monate]);
+  const max = Math.max(...sorted.map((m) => m.kennzahlen.maStundenProzesse), 1);
+
   return (
     <div className="rounded border overflow-hidden">
       <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
         <TrendingUp className="h-3.5 w-3.5" />
-        Gespeicherte Monate ({sorted.length})
+        {titel ?? 'Gespeicherte Monate'} ({sorted.length})
       </div>
       <ScrollArea className={kompakt ? 'max-h-[26vh]' : 'h-[48vh]'}>
         <table className="w-full text-xs">
@@ -655,15 +696,17 @@ function VerlaufListe({
                       <FolderOpen className="h-3 w-3" />
                       Laden
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => onDelete(m)}
-                      aria-label={`Monat ${m.monat} löschen`}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    {loeschbar && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => onDelete(m)}
+                        aria-label={`Monat ${m.monat} löschen`}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
                   </td>
                 </tr>
               );

@@ -35,6 +35,39 @@ export interface CloudProzessmodellMonat {
   kennzahlen: ProzessKennzahlen;
   created_at: string;
   updated_at: string;
+  /** Anzeigename des Besitzers (Berater-Sicht) — clientseitig aus profiles ergänzt. */
+  owner_email?: string;
+}
+
+/** Monate eines Besitzers, für die Berater-Sicht gruppiert. */
+export interface KundenGruppe {
+  ownerId: string;
+  label: string;
+  eigene: boolean;
+  monate: CloudProzessmodellMonat[];
+}
+
+/** Gruppiert Monate nach Besitzer: eigene zuerst („Meine Monate"), dann je Kunde.
+ * Für Nicht-Berater entsteht genau eine eigene Gruppe (pure, testbar). */
+export function gruppiereNachKunde(
+  monate: CloudProzessmodellMonat[],
+  eigeneId: string | null,
+): KundenGruppe[] {
+  const map = new Map<string, CloudProzessmodellMonat[]>();
+  for (const m of monate) {
+    const arr = map.get(m.owner) ?? [];
+    arr.push(m);
+    map.set(m.owner, arr);
+  }
+  const gruppen: KundenGruppe[] = [...map.entries()].map(([ownerId, ms]) => ({
+    ownerId,
+    eigene: ownerId === eigeneId,
+    label: ownerId === eigeneId ? 'Meine Monate' : ms[0].owner_email ?? `Kunde ${ownerId.slice(0, 8)}`,
+    monate: sortiereMonate(ms),
+  }));
+  return gruppen.sort((a, b) =>
+    a.eigene === b.eigene ? a.label.localeCompare(b.label) : a.eigene ? -1 : 1,
+  );
 }
 
 /** Kompakter Kennzahlen-Snapshot aus dem gerechneten Modell (pure, testbar). */
@@ -128,13 +161,25 @@ export async function saveProzessmodellMonat(
   return data as CloudProzessmodellMonat;
 }
 
-/** Alle gespeicherten Monate des Nutzers (chronologisch, ältester zuerst). */
+/** Alle sichtbaren Monate (eigene; für Berater zusätzlich alle Kunden),
+ * chronologisch sortiert und mit Besitzer-Anzeigenamen angereichert. */
 export async function listProzessmodellMonate(): Promise<CloudProzessmodellMonat[]> {
   const sb = getSupabase();
   if (!sb) return [];
   const { data, error } = await sb.from('prozessmodelle').select('*');
   if (error) throw error;
-  return sortiereMonate((data ?? []) as CloudProzessmodellMonat[]);
+  const rows = sortiereMonate((data ?? []) as CloudProzessmodellMonat[]);
+  // Besitzer-Namen für die Berater-Gruppierung nachladen (profiles sind lesbar).
+  const owners = [...new Set(rows.map((r) => r.owner))];
+  if (owners.length > 0) {
+    const { data: profs } = await sb.from('profiles').select('id, email, display_name').in('id', owners);
+    const byId = new Map((profs ?? []).map((p) => [p.id as string, p]));
+    for (const r of rows) {
+      const p = byId.get(r.owner);
+      if (p) r.owner_email = (p.display_name as string | null) || (p.email as string);
+    }
+  }
+  return rows;
 }
 
 /** Original-Excel eines Monats herunterladen (zum erneuten Parsen/Editieren). */

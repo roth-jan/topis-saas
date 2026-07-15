@@ -4,6 +4,7 @@ import {
   monatSortKey,
   sortiereMonate,
   berechneTrend,
+  gruppiereNachKunde,
   type CloudProzessmodellMonat,
   type ProzessKennzahlen,
 } from './cloud-prozessmodelle';
@@ -38,16 +39,17 @@ function modellStub(maStunden: number, monat = '06/2026'): AsProzessModell {
   };
 }
 
-function monatStub(monat: string, maStunden: number): CloudProzessmodellMonat {
+function monatStub(monat: string, maStunden: number, owner = 'u1', ownerEmail?: string): CloudProzessmodellMonat {
   return {
-    id: monat,
-    owner: 'u1',
+    id: `${owner}-${monat}`,
+    owner,
     monat,
     dateiname: `${monat}.xlsx`,
-    datei_pfad: `u1/${monat.replace('/', '-')}.xlsx`,
+    datei_pfad: `${owner}/${monat.replace('/', '-')}.xlsx`,
     kennzahlen: { maStundenProzesse: maStunden } as ProzessKennzahlen,
     created_at: '',
     updated_at: '',
+    owner_email: ownerEmail,
   };
 }
 
@@ -91,5 +93,32 @@ describe('berechneTrend', () => {
     expect(trend[0]).toEqual({ monat: '06/2026', maStunden: 6375.9, deltaVormonat: null });
     expect(trend[1].monat).toBe('07/2026');
     expect(trend[1].deltaVormonat).toBeCloseTo(-275.9, 5);
+  });
+});
+
+describe('gruppiereNachKunde (Berater-Sicht)', () => {
+  it('eigene Gruppe zuerst, Kunden alphabetisch danach', () => {
+    const gruppen = gruppiereNachKunde(
+      [
+        monatStub('06/2026', 100, 'kunde-b', 'zeta@kunde.de'),
+        monatStub('06/2026', 200, 'ich'),
+        monatStub('06/2026', 300, 'kunde-a', 'alpha@kunde.de'),
+      ],
+      'ich',
+    );
+    expect(gruppen.map((g) => g.label)).toEqual(['Meine Monate', 'alpha@kunde.de', 'zeta@kunde.de']);
+    expect(gruppen[0].eigene).toBe(true);
+  });
+
+  it('Nicht-Berater: genau eine eigene Gruppe', () => {
+    const gruppen = gruppiereNachKunde([monatStub('06/2026', 1, 'ich'), monatStub('07/2026', 2, 'ich')], 'ich');
+    expect(gruppen).toHaveLength(1);
+    expect(gruppen[0].eigene).toBe(true);
+    expect(gruppen[0].monate.map((m) => m.monat)).toEqual(['06/2026', '07/2026']);
+  });
+
+  it('fehlende E-Mail → Kunden-Kürzel statt Crash', () => {
+    const gruppen = gruppiereNachKunde([monatStub('06/2026', 1, 'abcdef1234567890')], 'ich');
+    expect(gruppen[0].label).toBe('Kunde abcdef12');
   });
 });
