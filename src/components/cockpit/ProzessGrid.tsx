@@ -3,21 +3,30 @@
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, Search, ListTree, UnfoldVertical, FoldVertical } from 'lucide-react';
+import {
+  ChevronRight, ChevronDown, Search, ListTree, UnfoldVertical, FoldVertical, Plus, Trash2,
+} from 'lucide-react';
 import type { ModellBlock, ModellGroesse, ModellSchritt } from '@/lib/prozessmodell-excel-modell';
+import type { SchrittFeld } from '@/lib/prozessmodell-nativ';
 
 /**
- * Excel-artiges Grid über ALLE Prozessblöcke: je Block eine auf-/zuklappbare
- * Gruppe, darunter eine Zeile pro Größe (Menge/Parameter) mit direkt
- * editierbarer Wert-Zelle. Tastatur wie im Spreadsheet: ↑/↓ wechselt die
- * Zelle, Enter übernimmt und springt weiter. Jede Änderung rechnet live.
+ * Excel-artiges Grid über ALLE Prozessblöcke des NATIVEN Modells:
+ * Größen (Mengen/Parameter) UND Prozessschritte direkt editierbar,
+ * Schritte anleg-/löschbar. Tastatur wie im Spreadsheet: ↑/↓ wechselt
+ * die Zelle, Enter übernimmt und springt weiter. Alles rechnet live.
  */
 export function ProzessGrid({
   bloecke,
   onEdit,
+  onSchrittEdit,
+  onSchrittNeu,
+  onSchrittLoeschen,
 }: {
   bloecke: ModellBlock[];
   onEdit: (g: ModellGroesse, value: number) => void;
+  onSchrittEdit: (s: ModellSchritt, feld: SchrittFeld, wert: string | number | null) => void;
+  onSchrittNeu: (blockNativId: string, nachSchrittNativId?: string) => void;
+  onSchrittLoeschen: (s: ModellSchritt) => void;
 }) {
   const [suche, setSuche] = useState('');
   const [offen, setOffen] = useState<Set<number>>(() => new Set([0]));
@@ -26,7 +35,6 @@ export function ProzessGrid({
   const filter = suche.trim().toLowerCase();
   const treffer = useMemo(() => {
     if (!filter) return null;
-    // Blöcke mit passenden Größen (oder passendem Blocknamen) + gefilterte Größen
     const map = new Map<number, ModellGroesse[]>();
     bloecke.forEach((b, i) => {
       if (b.name.toLowerCase().includes(filter)) {
@@ -39,20 +47,18 @@ export function ProzessGrid({
     return map;
   }, [filter, bloecke]);
 
-  const toggle = (i: number) => {
+  const toggle = (i: number) =>
     setOffen((prev) => {
       const s = new Set(prev);
       if (s.has(i)) s.delete(i); else s.add(i);
       return s;
     });
-  };
-  const toggleSchritte = (i: number) => {
+  const toggleSchritte = (i: number) =>
     setSchritteOffen((prev) => {
       const s = new Set(prev);
       if (s.has(i)) s.delete(i); else s.add(i);
       return s;
     });
-  };
 
   return (
     <div className="rounded-lg border overflow-hidden bg-card">
@@ -86,7 +92,7 @@ export function ProzessGrid({
           const istOffen = treffer ? true : offen.has(i);
           const groessen = gefilterte ?? [...b.mengen, ...b.parameter];
           return (
-            <div key={i}>
+            <div key={b.nativId ?? i}>
               {/* Block-Kopfzeile */}
               <button
                 onClick={() => toggle(i)}
@@ -99,7 +105,7 @@ export function ProzessGrid({
                 )}
                 <span className="font-medium text-sm truncate flex-1">{b.name}</span>
                 <span className="text-[11px] text-muted-foreground hidden md:inline">
-                  {b.mengen.length + b.parameter.length} Größen · {b.schritte.length} Schritte
+                  {groessen.length} Größen · {b.schritte.length} Schritte
                 </span>
                 <span className="font-mono text-sm font-semibold tabular-nums w-20 text-right">
                   {b.minProColli.toFixed(4)}
@@ -112,19 +118,27 @@ export function ProzessGrid({
                   <table className="w-full text-xs">
                     <tbody>
                       {groessen.map((g) => (
-                        <GroesseZeile key={g.row} groesse={g} onEdit={onEdit} />
+                        <GroesseZeile key={g.nativId ?? g.row} groesse={g} onEdit={onEdit} />
                       ))}
                     </tbody>
                   </table>
-                  {/* Schritte (read-only) einblendbar */}
                   <button
                     onClick={() => toggleSchritte(i)}
                     className="w-full flex items-center gap-1.5 px-9 py-1.5 text-[11px] text-muted-foreground hover:text-foreground border-t transition-colors"
                   >
                     <ListTree className="h-3 w-3" />
-                    {schritteOffen.has(i) ? 'Prozessschritte ausblenden' : `Prozessschritte anzeigen (${b.schritte.length})`}
+                    {schritteOffen.has(i)
+                      ? 'Prozessschritte ausblenden'
+                      : `Prozessschritte bearbeiten (${b.schritte.length})`}
                   </button>
-                  {schritteOffen.has(i) && <SchritteTabelle schritte={b.schritte} />}
+                  {schritteOffen.has(i) && (
+                    <SchritteTabelle
+                      block={b}
+                      onSchrittEdit={onSchrittEdit}
+                      onSchrittNeu={onSchrittNeu}
+                      onSchrittLoeschen={onSchrittLoeschen}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -158,21 +172,7 @@ function GroesseZeile({ groesse: g, onEdit }: { groesse: ModellGroesse; onEdit: 
       </td>
       <td className="px-3 py-1 text-right w-32">
         {g.editierbar ? (
-          <input
-            type="number"
-            step="any"
-            data-grid-cell
-            key={`${g.row}-${g.wert}`}
-            defaultValue={fmtWert(g.wert)}
-            onKeyDown={handleGridKeys}
-            onBlur={(e) => {
-              const v = parseFloat(e.target.value);
-              if (Number.isFinite(v) && Math.abs(v - g.wert) > 1e-9) onEdit(g, v);
-            }}
-            className="h-6 w-28 rounded border border-transparent bg-transparent px-1.5 text-right font-mono text-xs tabular-nums
-              hover:border-input focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring/40
-              [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-          />
+          <ZahlZelle wert={g.wert} breit onCommit={(v) => onEdit(g, v)} />
         ) : (
           <span className="inline-block w-28 px-1.5 text-right font-mono text-xs tabular-nums text-muted-foreground" title="abgeleitet (Formel)">
             {fmtWert(g.wert).toLocaleString('de-DE')}
@@ -180,6 +180,47 @@ function GroesseZeile({ groesse: g, onEdit }: { groesse: ModellGroesse; onEdit: 
         )}
       </td>
     </tr>
+  );
+}
+
+/** Editierbare Zahlen-Zelle mit Spreadsheet-Tastatur. */
+function ZahlZelle({
+  wert,
+  onCommit,
+  breit = false,
+  leerErlaubt = false,
+  onLeer,
+  title,
+}: {
+  wert: number | null;
+  onCommit: (v: number) => void;
+  breit?: boolean;
+  leerErlaubt?: boolean;
+  onLeer?: () => void;
+  title?: string;
+}) {
+  return (
+    <input
+      type="number"
+      step="any"
+      data-grid-cell
+      key={wert == null ? 'leer' : fmtWert(wert)}
+      defaultValue={wert == null ? '' : fmtWert(wert)}
+      title={title}
+      onKeyDown={handleGridKeys}
+      onBlur={(e) => {
+        const roh = e.target.value.trim();
+        if (roh === '') {
+          if (leerErlaubt && wert != null) onLeer?.();
+          return;
+        }
+        const v = parseFloat(roh);
+        if (Number.isFinite(v) && (wert == null || Math.abs(v - wert) > 1e-9)) onCommit(v);
+      }}
+      className={`h-6 ${breit ? 'w-28' : 'w-16'} rounded border border-transparent bg-transparent px-1.5 text-right font-mono text-xs tabular-nums
+        hover:border-input focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring/40
+        [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+    />
   );
 }
 
@@ -195,9 +236,6 @@ function handleGridKeys(e: React.KeyboardEvent<HTMLInputElement>) {
     cells[idx - 1]?.select();
     return;
   }
-  // Enter/ArrowDown: übernehmen (blur triggert onEdit) und zur nächsten Zelle.
-  // Nach dem Recompute rendert React die Inputs neu → Ziel-Zelle über den Index
-  // im nächsten Frame neu suchen.
   e.currentTarget.blur();
   requestAnimationFrame(() => {
     const neu = [...document.querySelectorAll<HTMLInputElement>('input[data-grid-cell]')];
@@ -206,7 +244,22 @@ function handleGridKeys(e: React.KeyboardEvent<HTMLInputElement>) {
   });
 }
 
-function SchritteTabelle({ schritte }: { schritte: ModellSchritt[] }) {
+/** Voll editierbare Schritt-Tabelle: Zeiten, Wege, Anteile, Name, Abteilung + anlegen/löschen. */
+function SchritteTabelle({
+  block,
+  onSchrittEdit,
+  onSchrittNeu,
+  onSchrittLoeschen,
+}: {
+  block: ModellBlock;
+  onSchrittEdit: (s: ModellSchritt, feld: SchrittFeld, wert: string | number | null) => void;
+  onSchrittNeu: (blockNativId: string, nachSchrittNativId?: string) => void;
+  onSchrittLoeschen: (s: ModellSchritt) => void;
+}) {
+  const abteilungen = useMemo(
+    () => [...new Set(block.schritte.map((s) => s.abteilung))].filter(Boolean),
+    [block.schritte],
+  );
   return (
     <div className="border-t overflow-x-auto">
       <table className="w-full text-[11px]">
@@ -215,24 +268,91 @@ function SchritteTabelle({ schritte }: { schritte: ModellSchritt[] }) {
             <th className="pl-9 pr-2 py-1 font-medium">Nr.</th>
             <th className="px-2 py-1 font-medium">Schritt</th>
             <th className="px-2 py-1 font-medium">Abteilung</th>
+            <th className="px-2 py-1 font-medium text-right" title="Weg in Metern">Weg m</th>
+            <th className="px-2 py-1 font-medium text-right" title="Geschwindigkeit m/s">m/s</th>
+            <th className="px-2 py-1 font-medium text-right" title="Standardzeit in Sekunden">Sek</th>
             <th className="px-2 py-1 font-medium text-right">Anteil</th>
             <th className="px-2 py-1 font-medium text-right">Häuf./Tag</th>
-            <th className="px-3 py-1 font-medium text-right">Min/Colli</th>
+            <th className="px-2 py-1 font-medium text-right">Min/Colli</th>
+            <th className="px-2 py-1" />
           </tr>
         </thead>
         <tbody>
-          {schritte.map((s) => (
-            <tr key={s.row} className="border-t hover:bg-muted/20">
-              <td className="pl-9 pr-2 py-1 font-mono tabular-nums text-muted-foreground">{s.nr || ''}</td>
-              <td className="px-2 py-1 max-w-[360px] truncate" title={s.name}>{s.name}</td>
-              <td className="px-2 py-1 whitespace-nowrap text-muted-foreground">{s.abteilung}</td>
-              <td className="px-2 py-1 text-right font-mono tabular-nums">{s.anteil.toFixed(2)}</td>
-              <td className="px-2 py-1 text-right font-mono tabular-nums text-muted-foreground">{s.haeufigkeitJeTag.toFixed(1)}</td>
-              <td className="px-3 py-1 text-right font-mono tabular-nums font-medium">{s.minProColli.toFixed(5)}</td>
+          {block.schritte.map((s) => (
+            <tr key={s.nativId ?? s.row} className="border-t hover:bg-muted/20 group">
+              <td className="pl-9 pr-2 py-0.5 font-mono tabular-nums text-muted-foreground">{s.nr || ''}</td>
+              <td className="px-1 py-0.5 min-w-[220px]">
+                <input
+                  type="text"
+                  defaultValue={s.name}
+                  key={s.name}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && v !== s.name) onSchrittEdit(s, 'name', v);
+                  }}
+                  className="w-full max-w-[340px] h-6 rounded border border-transparent bg-transparent px-1.5 text-[11px]
+                    hover:border-input focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring/40 truncate"
+                  title={s.name}
+                />
+              </td>
+              <td className="px-1 py-0.5">
+                <input
+                  type="text"
+                  list={`abt-${block.nativId}`}
+                  defaultValue={s.abteilung}
+                  key={s.abteilung}
+                  onBlur={(e) => {
+                    const v = e.target.value.trim();
+                    if (v && v !== s.abteilung) onSchrittEdit(s, 'abteilung', v);
+                  }}
+                  className="w-24 h-6 rounded border border-transparent bg-transparent px-1.5 text-[11px]
+                    hover:border-input focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring/40"
+                />
+              </td>
+              <td className="px-1 py-0.5 text-right">
+                <ZahlZelle wert={s.wegM} leerErlaubt onLeer={() => onSchrittEdit(s, 'wegM', null)} onCommit={(v) => onSchrittEdit(s, 'wegM', v)} />
+              </td>
+              <td className="px-1 py-0.5 text-right">
+                <ZahlZelle wert={s.geschwMs} leerErlaubt onLeer={() => onSchrittEdit(s, 'geschwMs', null)} onCommit={(v) => onSchrittEdit(s, 'geschwMs', v)} />
+              </td>
+              <td className="px-1 py-0.5 text-right">
+                <ZahlZelle wert={s.standardSek} onCommit={(v) => onSchrittEdit(s, 'standardSek', v)} />
+              </td>
+              <td className="px-1 py-0.5 text-right">
+                <ZahlZelle wert={s.anteil} onCommit={(v) => onSchrittEdit(s, 'anteil', v)} />
+              </td>
+              <td className="px-2 py-0.5 text-right font-mono tabular-nums text-muted-foreground">
+                {s.haeufigkeitJeTag.toFixed(1)}
+              </td>
+              <td className="px-2 py-0.5 text-right font-mono tabular-nums font-medium">{s.minProColli.toFixed(5)}</td>
+              <td className="px-1 py-0.5 text-right whitespace-nowrap">
+                <button
+                  onClick={() => onSchrittLoeschen(s)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-0.5 transition-opacity"
+                  aria-label={`Schritt ${s.name} löschen`}
+                  title="Schritt löschen"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <datalist id={`abt-${block.nativId}`}>
+        {abteilungen.map((a) => (
+          <option key={a} value={a} />
+        ))}
+      </datalist>
+      {block.nativId && (
+        <button
+          onClick={() => onSchrittNeu(block.nativId!, block.schritte[block.schritte.length - 1]?.nativId)}
+          className="w-full flex items-center gap-1.5 px-9 py-1.5 text-[11px] text-muted-foreground hover:text-foreground border-t transition-colors"
+        >
+          <Plus className="h-3 w-3" />
+          Prozessschritt hinzufügen
+        </button>
+      )}
     </div>
   );
 }

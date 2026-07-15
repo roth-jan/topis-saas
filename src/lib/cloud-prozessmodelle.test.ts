@@ -47,6 +47,7 @@ function monatStub(monat: string, maStunden: number, owner = 'u1', ownerEmail?: 
     dateiname: `${monat}.xlsx`,
     datei_pfad: `${owner}/${monat.replace('/', '-')}.xlsx`,
     kennzahlen: { maStundenProzesse: maStunden } as ProzessKennzahlen,
+    modell: null,
     created_at: '',
     updated_at: '',
     owner_email: ownerEmail,

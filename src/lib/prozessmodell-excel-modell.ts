@@ -25,6 +25,8 @@ export interface ModellGroesse {
   origin: ZellReferenz | null;
   editierbar: boolean;
   abgeleitet: boolean; // Wert kommt aus Formel (z.B. Colli mit Stapler = Colli − …)
+  /** Gesetzt, wenn die Größe aus dem NATIVEN Modell stammt (Editier-Ziel). */
+  nativId?: string;
 }
 
 export interface ModellSchritt {
@@ -39,6 +41,8 @@ export interface ModellSchritt {
   zeitJeSchrittMin: number;
   minProColli: number;
   row: number;
+  /** Gesetzt, wenn der Schritt aus dem NATIVEN Modell stammt (Editier-Ziel). */
+  nativId?: string;
 }
 
 export interface ModellBlock {
@@ -52,6 +56,8 @@ export interface ModellBlock {
   minProColli: number;
   /** Min/Colli je Abteilung (Entlader / Scanner / Verteiler …). */
   proAbteilung: Record<string, number>;
+  /** Gesetzt, wenn der Block aus dem NATIVEN Modell stammt. */
+  nativId?: string;
 }
 
 export interface UebersichtProzess {

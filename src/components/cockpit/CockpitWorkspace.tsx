@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,19 @@ import {
 import { useAuth } from '@/lib/auth';
 import { CloudMenu } from '@/components/auth/CloudMenu';
 import { ProzessWorkbook } from '@/lib/prozessmodell-excel-engine';
-import { buildAsModell, type AsProzessModell, type ModellGroesse } from '@/lib/prozessmodell-excel-modell';
+import type { ModellGroesse, ModellSchritt } from '@/lib/prozessmodell-excel-modell';
+import { konvertiereExcelZuNativ } from '@/lib/prozessmodell-konverter';
+import {
+  rechneNativesModell,
+  setzeKnotenWert,
+  setzeSchrittFeld,
+  neuerSchritt,
+  loescheSchritt,
+  exportDiffs,
+  hatStrukturAenderung,
+  type NativesProzessmodell,
+  type SchrittFeld,
+} from '@/lib/prozessmodell-nativ';
 import { exportiereMitOverrides, downloadXlsx } from '@/lib/prozessmodell-excel-export';
 import {
   saveProzessmodellMonat,
@@ -25,27 +37,41 @@ import { UebersichtPanel } from './UebersichtPanel';
 import { VerlaufPanel } from './VerlaufPanel';
 
 /**
- * Prozessmodell-Cockpit als VOLLSEITEN-Workspace (kein Modal — Council 15.07.):
- * links Übersicht (MA-Stunden) + Verlauf, rechts das editierbare Grid über
- * alle Blöcke. Excel-Roundtrip: Original laden → Werte ändern → zurück-
- * exportieren (Formeln + Formatierung bleiben erhalten).
+ * Prozessmodell-Cockpit: TOPIS als BESSERE Excel.
+ *
+ * Das Modell lebt NATIV in TOPIS (Knoten + Blöcke + Schritte, voll editierbar
+ * inkl. Schritte anlegen/löschen). Die Excel ist nur ein Importweg — einmal
+ * migriert (Gate: 18/18 Δ=0), danach ist TOPIS die Quelle der Wahrheit.
+ * Export zurück in die Original-Datei bleibt als Ausstiegs-Sicherheit.
  */
 export function CockpitWorkspace() {
-  const wbRef = useRef<ProzessWorkbook | null>(null);
+  const [nativ, setNativ] = useState<NativesProzessmodell | null>(null);
+  const importStandRef = useRef<NativesProzessmodell | null>(null);
   const rawFileRef = useRef<ArrayBuffer | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [modell, setModell] = useState<AsProzessModell | null>(null);
   const [fileName, setFileName] = useState('');
-  const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const { session, configured } = useAuth();
   const [monate, setMonate] = useState<CloudProzessmodellMonat[]>([]);
   const [monateLoading, setMonateLoading] = useState(false);
   const uid = session?.user?.id ?? null;
 
-  const rebuild = useCallback(() => {
-    if (wbRef.current) setModell(buildAsModell(wbRef.current));
-  }, []);
+  // Live-Rechnung: jede Modell-Änderung rechnet den ganzen Graph neu.
+  const ergebnis = useMemo(() => (nativ ? rechneNativesModell(nativ) : null), [nativ]);
+  const view = ergebnis?.modell ?? null;
+  useEffect(() => {
+    if (ergebnis && ergebnis.warnungen.length > 0) {
+      console.warn('Prozessmodell-Warnungen:', ergebnis.warnungen);
+    }
+  }, [ergebnis]);
+
+  const dirty = useMemo(() => {
+    if (!nativ || !importStandRef.current) return false;
+    return (
+      hatStrukturAenderung(nativ, importStandRef.current) ||
+      exportDiffs(nativ, importStandRef.current).length > 0
+    );
+  }, [nativ]);
 
   const refreshMonate = useCallback(async () => {
     if (!session) return;
@@ -64,18 +90,18 @@ export function CockpitWorkspace() {
     else setMonate([]);
   }, [session, refreshMonate]);
 
-  const uebernehmen = (buf: ArrayBuffer, name: string): boolean => {
+  const uebernehmenAusDatei = (buf: ArrayBuffer, name: string): boolean => {
     const wb = ProzessWorkbook.fromArrayBuffer(buf);
-    const m = buildAsModell(wb);
-    if (m.bloecke.length === 0) {
+    const { modell, warnungen } = konvertiereExcelZuNativ(wb, name.replace(/\.xlsx$/i, ''));
+    if (modell.bloecke.length === 0) {
       toast.error('Keine Prozessblöcke gefunden. Erwartet: Sheet „Prozessmodell" mit SE:/SA:-Blöcken.');
       return false;
     }
-    wbRef.current = wb;
+    if (warnungen.length > 0) console.warn('Import-Warnungen:', warnungen);
     rawFileRef.current = buf;
-    setModell(m);
+    importStandRef.current = structuredClone(modell);
+    setNativ(modell);
     setFileName(name);
-    setDirty(false);
     return true;
   };
 
@@ -84,8 +110,8 @@ export function CockpitWorkspace() {
     if (!file) return;
     try {
       const buf = await file.arrayBuffer();
-      if (uebernehmen(buf, file.name)) {
-        toast.success(`${buildAsModell(wbRef.current!).bloecke.length} Prozessblöcke geladen`);
+      if (uebernehmenAusDatei(buf, file.name)) {
+        toast.success('Excel in natives TOPIS-Modell übernommen — ab jetzt voll editierbar.');
       }
     } catch (err) {
       toast.error('Import fehlgeschlagen: ' + (err as Error).message);
@@ -94,54 +120,65 @@ export function CockpitWorkspace() {
     }
   };
 
+  // --- Editier-Handler (natives Modell) ---
   const editGroesse = (g: ModellGroesse, value: number) => {
-    if (!wbRef.current || !g.origin) return;
-    wbRef.current.setOverride(g.origin.sheet, g.origin.addr, value);
-    setDirty(true);
-    rebuild();
+    if (!g.nativId) return;
+    setNativ((m) => (m ? setzeKnotenWert(m, g.nativId!, value) : m));
+  };
+  const editSchritt = (s: ModellSchritt, feld: SchrittFeld, wert: string | number | null) => {
+    if (!s.nativId) return;
+    setNativ((m) => (m ? setzeSchrittFeld(m, s.nativId!, feld, wert) : m));
+  };
+  const schrittNeu = (blockNativId: string, nachSchrittNativId?: string) => {
+    setNativ((m) => (m ? neuerSchritt(m, blockNativId, nachSchrittNativId) : m));
+  };
+  const schrittWeg = (s: ModellSchritt) => {
+    if (!s.nativId) return;
+    setNativ((m) => (m ? loescheSchritt(m, s.nativId!) : m));
+    toast.success(`Schritt „${s.name}" gelöscht`);
   };
 
   const resetEdits = () => {
-    if (!wbRef.current) return;
-    wbRef.current.clearOverrides();
-    setDirty(false);
-    rebuild();
+    if (importStandRef.current) setNativ(structuredClone(importStandRef.current));
   };
 
-  /** Excel-Roundtrip: geänderte Werte in die Original-Datei zurückschreiben. */
+  /** Excel-Roundtrip: Wert-Änderungen in die Original-Datei zurückschreiben. */
   const exportieren = () => {
-    if (!rawFileRef.current || !wbRef.current) return;
+    if (!nativ) return;
+    if (!rawFileRef.current || !importStandRef.current) {
+      toast.error('Keine Original-Excel vorhanden (Modell wurde ohne Datei geladen).');
+      return;
+    }
     try {
-      const { datei, ersetzteZellen, nichtGefunden } = exportiereMitOverrides(
-        rawFileRef.current,
-        wbRef.current.listOverrides(),
-      );
+      const diffs = exportDiffs(nativ, importStandRef.current);
+      const { datei, ersetzteZellen, nichtGefunden } = exportiereMitOverrides(rawFileRef.current, diffs);
       if (nichtGefunden.length > 0) {
         toast.warning(`${nichtGefunden.length} Zelle(n) konnten nicht zurückgeschrieben werden.`);
       }
       const basis = fileName.replace(/\.xlsx$/i, '') || 'prozessmodell';
       downloadXlsx(datei, ersetzteZellen > 0 ? `${basis}_TOPIS.xlsx` : `${basis}.xlsx`);
+      const struktur = hatStrukturAenderung(nativ, importStandRef.current);
       toast.success(
         ersetzteZellen > 0
-          ? `Excel exportiert — ${ersetzteZellen} geänderte Werte, Formeln und Formatierung bleiben erhalten.`
+          ? `Excel exportiert — ${ersetzteZellen} geänderte Werte, Formeln bleiben erhalten.`
           : 'Original-Excel unverändert heruntergeladen.',
       );
+      if (struktur) {
+        toast.info('Hinweis: Geänderte/neue Prozessschritte leben im TOPIS-Modell — die Excel-Datei enthält nur Wert-Änderungen.');
+      }
     } catch (err) {
       toast.error('Export fehlgeschlagen: ' + (err as Error).message);
     }
   };
 
   const speichernMonat = async () => {
-    if (!rawFileRef.current || !modell) return;
+    if (!nativ || !view) return;
     setSaving(true);
     try {
-      // Kennzahlen immer aus dem ORIGINAL-Stand der Datei — Datei und
-      // Trend-Wert bleiben konsistent, auch wenn Testwerte aktiv sind.
-      const frisch = buildAsModell(ProzessWorkbook.fromArrayBuffer(rawFileRef.current));
-      const saved = await saveProzessmodellMonat(rawFileRef.current, fileName, frisch);
-      toast.success(
-        `Monat ${saved.monat} gespeichert` + (dirty ? ' (Original-Stand der Datei, ohne Ihre Testwerte)' : ''),
-      );
+      // Das NATIVE Modell (aktueller Stand inkl. Ihrer Änderungen) ist die
+      // gespeicherte Wahrheit; die Original-Datei geht als Beleg mit.
+      const saved = await saveProzessmodellMonat(rawFileRef.current, fileName, view, nativ);
+      toast.success(`Monat ${saved.monat} gespeichert (TOPIS-Modell${rawFileRef.current ? ' + Original-Datei' : ''})`);
       await refreshMonate();
     } catch (err) {
       toast.error('Speichern fehlgeschlagen: ' + (err as Error).message);
@@ -152,9 +189,26 @@ export function CockpitWorkspace() {
 
   const ladeMonat = async (m: CloudProzessmodellMonat) => {
     try {
-      const buf = await loadProzessmodellDatei(m.datei_pfad);
-      if (uebernehmen(buf, m.dateiname || `${m.monat}.xlsx`)) {
-        toast.success(`Monat ${m.monat} geladen`);
+      if (m.modell) {
+        // Natives Modell ist die Wahrheit; Datei (falls da) nur für Export nachladen.
+        setNativ(m.modell);
+        importStandRef.current = structuredClone(m.modell);
+        setFileName(m.dateiname || `${m.monat}.xlsx`);
+        rawFileRef.current = null;
+        if (m.datei_pfad) {
+          try {
+            rawFileRef.current = await loadProzessmodellDatei(m.datei_pfad);
+          } catch {
+            /* Export dann eben nicht möglich — Modell rechnet trotzdem */
+          }
+        }
+        toast.success(`Monat ${m.monat} geladen (TOPIS-Modell)`);
+      } else {
+        // Alt-Zeile ohne natives Modell: Datei laden + konvertieren
+        const buf = await loadProzessmodellDatei(m.datei_pfad);
+        if (uebernehmenAusDatei(buf, m.dateiname || `${m.monat}.xlsx`)) {
+          toast.success(`Monat ${m.monat} aus Datei konvertiert`);
+        }
       }
     } catch (err) {
       toast.error('Laden fehlgeschlagen: ' + (err as Error).message);
@@ -185,13 +239,13 @@ export function CockpitWorkspace() {
           <div className="flex items-center gap-2 min-w-0">
             <Calculator className="h-4 w-4 text-primary shrink-0" />
             <h1 className="font-display font-semibold text-sm truncate">Prozessmodell-Cockpit</h1>
-            {modell && (
-              <Badge variant="secondary" className="font-normal shrink-0">{modell.monat || fileName}</Badge>
+            {view && (
+              <Badge variant="secondary" className="font-normal shrink-0">{view.monat || fileName}</Badge>
             )}
             {dirty && <Badge className="font-normal shrink-0">geändert</Badge>}
           </div>
           <div className="ml-auto flex items-center gap-1.5">
-            {modell && (
+            {view && (
               <>
                 {dirty && (
                   <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={resetEdits}>
@@ -199,14 +253,16 @@ export function CockpitWorkspace() {
                     Zurücksetzen
                   </Button>
                 )}
-                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportieren}>
-                  <FileDown className="h-3.5 w-3.5" />
-                  Excel exportieren
-                </Button>
+                {rawFileRef.current && (
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportieren}>
+                    <FileDown className="h-3.5 w-3.5" />
+                    Excel exportieren
+                  </Button>
+                )}
                 {configured && session && (
                   <Button size="sm" className="gap-1 text-xs" onClick={speichernMonat} disabled={saving}>
                     <CloudUpload className="h-3.5 w-3.5" />
-                    {saving ? 'Speichert…' : `Monat ${modell.monat || '?'} speichern`}
+                    {saving ? 'Speichert…' : `Monat ${view.monat || '?'} speichern`}
                   </Button>
                 )}
                 <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => fileRef.current?.click()}>
@@ -223,7 +279,7 @@ export function CockpitWorkspace() {
       <input ref={fileRef} type="file" accept=".xlsx" className="hidden" onChange={handleFile} />
 
       <main className="mx-auto max-w-[1400px] w-full px-4 py-4 flex-1">
-        {!modell ? (
+        {!view ? (
           <StartBereich
             onWaehlen={() => fileRef.current?.click()}
             angemeldet={Boolean(configured && session)}
@@ -238,15 +294,16 @@ export function CockpitWorkspace() {
           <div className="flex flex-col gap-4">
             {/* KPI-Zeile */}
             <div className="flex flex-wrap items-stretch gap-2">
-              <Kpi label="MA-Stundenbedarf (Prozesse)" wert={`${modell.maStundenProzesse.toLocaleString('de-DE', { maximumFractionDigits: 0 })} h`} sub="je Monat" highlight />
-              <Kpi label="Prozessblöcke" wert={String(modell.bloecke.length)} sub="im Modell" />
-              <Kpi label="Arbeitsminuten je Stunde" wert={modell.arbeitsminutenJeStunde.toLocaleString('de-DE', { maximumFractionDigits: 1 })} sub="inkl. Verteilzeit" />
+              <Kpi label="MA-Stundenbedarf (Prozesse)" wert={`${view.maStundenProzesse.toLocaleString('de-DE', { maximumFractionDigits: 0 })} h`} sub="je Monat" highlight />
+              <Kpi label="Prozessblöcke" wert={String(view.bloecke.length)} sub="im Modell" />
+              <Kpi label="Arbeitsminuten je Stunde" wert={view.arbeitsminutenJeStunde.toLocaleString('de-DE', { maximumFractionDigits: 1 })} sub="inkl. Verteilzeit" />
+              <Kpi label="Arbeitstage" wert={String(nativ?.arbeitstage ?? '')} sub="im Monat" />
             </div>
 
             {/* Zwei Spalten: links Übersicht + Verlauf, rechts Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-4 items-start">
               <div className="flex flex-col gap-4 xl:sticky xl:top-[60px]">
-                <UebersichtPanel modell={modell} />
+                <UebersichtPanel modell={view} />
                 {configured && session && (
                   <VerlaufPanel
                     monate={monate}
@@ -262,7 +319,13 @@ export function CockpitWorkspace() {
                   </p>
                 )}
               </div>
-              <ProzessGrid bloecke={modell.bloecke} onEdit={editGroesse} />
+              <ProzessGrid
+                bloecke={view.bloecke}
+                onEdit={editGroesse}
+                onSchrittEdit={editSchritt}
+                onSchrittNeu={schrittNeu}
+                onSchrittLoeschen={schrittWeg}
+              />
             </div>
           </div>
         )}
@@ -305,10 +368,10 @@ function StartBereich({
       <div className="flex flex-col items-center justify-center gap-4 py-14 border-2 border-dashed rounded-xl bg-card">
         <Calculator className="h-12 w-12 text-muted-foreground" />
         <div className="text-center">
-          <p className="text-sm font-medium">Prozessmodell-Excel laden</p>
+          <p className="text-sm font-medium">Prozessmodell-Excel importieren</p>
           <p className="text-xs text-muted-foreground mt-1">
-            .xlsx mit Sheets &bdquo;Prozessmodell&ldquo; + &bdquo;Dateneingabe&ldquo; &mdash; das Modell rechnet live,
-            alle Werte bleiben in Ihrem Browser.
+            Ihre Excel wird EINMAL in ein natives TOPIS-Modell übernommen (auf den Cent nachgerechnet) &mdash;
+            danach editieren Sie direkt in TOPIS: Mengen, Parameter und Prozessschritte.
           </p>
         </div>
         <Button onClick={onWaehlen} size="sm" className="gap-1">

@@ -1,5 +1,6 @@
 import { getSupabase } from './supabase';
 import type { AsProzessModell } from './prozessmodell-excel-modell';
+import type { NativesProzessmodell } from './prozessmodell-nativ';
 
 /**
  * Cloud-Persistenz für Prozessmodell-Monate (Hallencockpit-Abo-Kern).
@@ -33,6 +34,8 @@ export interface CloudProzessmodellMonat {
   dateiname: string;
   datei_pfad: string;
   kennzahlen: ProzessKennzahlen;
+  /** Das NATIVE Modell (Quelle der Wahrheit seit Etappe 1); ältere Zeilen: null → Datei re-konvertieren. */
+  modell: NativesProzessmodell | null;
   created_at: string;
   updated_at: string;
   /** Anzeigename des Besitzers (Berater-Sicht) — clientseitig aus profiles ergänzt. */
@@ -122,25 +125,29 @@ function storagePfad(uid: string, monat: string): string {
   return `${uid}/${monat.replace(/\//g, '-')}.xlsx`;
 }
 
-/** Monat speichern (Datei + Kennzahlen), überschreibt denselben Monat (Upsert). */
+/** Monat speichern: natives Modell (Quelle der Wahrheit) + Kennzahlen + Original-Datei (Beleg).
+ * Überschreibt denselben Monat (Upsert). */
 export async function saveProzessmodellMonat(
-  datei: ArrayBuffer,
+  datei: ArrayBuffer | null,
   dateiname: string,
-  modell: AsProzessModell,
+  view: AsProzessModell,
+  modell: NativesProzessmodell,
 ): Promise<CloudProzessmodellMonat> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase nicht konfiguriert');
   const { data: userData } = await sb.auth.getUser();
   const uid = userData.user?.id;
   if (!uid) throw new Error('Nicht eingeloggt');
-  const monat = modell.monat || 'unbekannt';
+  const monat = modell.monat || view.monat || 'unbekannt';
   const pfad = storagePfad(uid, monat);
 
-  const { error: upErr } = await sb.storage.from('prozessmodelle').upload(pfad, datei, {
-    upsert: true,
-    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-  if (upErr) throw upErr;
+  if (datei) {
+    const { error: upErr } = await sb.storage.from('prozessmodelle').upload(pfad, datei, {
+      upsert: true,
+      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    if (upErr) throw upErr;
+  }
 
   const { data, error } = await sb
     .from('prozessmodelle')
@@ -149,8 +156,9 @@ export async function saveProzessmodellMonat(
         owner: uid,
         monat,
         dateiname,
-        datei_pfad: pfad,
-        kennzahlen: extractKennzahlen(modell),
+        datei_pfad: datei ? pfad : '',
+        kennzahlen: extractKennzahlen(view),
+        modell,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'owner,monat' },
@@ -197,5 +205,5 @@ export async function deleteProzessmodellMonat(m: CloudProzessmodellMonat): Prom
   if (!sb) throw new Error('Supabase nicht konfiguriert');
   const { error } = await sb.from('prozessmodelle').delete().eq('id', m.id);
   if (error) throw error;
-  await sb.storage.from('prozessmodelle').remove([m.datei_pfad]);
+  if (m.datei_pfad) await sb.storage.from('prozessmodelle').remove([m.datei_pfad]);
 }

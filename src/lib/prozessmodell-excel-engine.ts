@@ -201,15 +201,37 @@ export function num(v: CellValue | number | string): number {
   return 0;
 }
 
+/**
+ * Wertet einen NATIVEN Ausdruck aus (Excel-Syntax, aber ausschließlich benannte
+ * Referenzen wie `_g6`/`_s50`/`_AT` statt Zellbezügen). Trifft der Parser doch
+ * auf einen Zellbezug, wirft er — das ist dann ein Konvertierungsfehler, der
+ * laut werden soll, statt still falsch zu rechnen.
+ */
+export function evalAusdruck(expr: string, named: NamedResolver): number {
+  const p = new Parser(expr, '', null, named);
+  const v = p.parseExpression();
+  p.expectEnd();
+  return num(v);
+}
+
 // ---------------------------------------------------------------------------
 // Parser / Tokenizer
 // ---------------------------------------------------------------------------
 
 type RangeRef = { __range: true; sheet: string; a: string; b: string };
 
+/** Auflöser für benannte Referenzen (natives Modell: `_g6`, `_s50`, `_AT`).
+ * Gibt `undefined` zurück, wenn der Name unbekannt ist (→ normale Zell-/Funktions-Auflösung). */
+export type NamedResolver = (name: string) => number | undefined;
+
 class Parser {
   private i = 0;
-  constructor(private s: string, private sheet: string, private wb: ProzessWorkbook) {}
+  constructor(
+    private s: string,
+    private sheet: string,
+    private wb: ProzessWorkbook | null,
+    private named?: NamedResolver,
+  ) {}
 
   private ws() {
     while (this.i < this.s.length && /\s/.test(this.s[this.i])) this.i++;
@@ -378,11 +400,18 @@ class Parser {
     // Buchstaben-Kette
     const idMatch = /^[A-Za-zÄÖÜäöüß_][A-Za-zÄÖÜäöüß_0-9. ]*/.exec(this.s.slice(this.i));
     if (idMatch) {
-      // Könnte Funktion, TRUE/FALSE, Cross-Sheet-Ref oder Zellref sein.
-      // Zellref hat Form COL+ROW ohne folgende '(' oder '!'.
+      // Könnte benannte Referenz, Funktion, TRUE/FALSE, Cross-Sheet-Ref oder Zellref sein.
       const after = this.i + idMatch[0].length;
       const nextNonWs = this.s.slice(after).match(/^\s*(.)/);
       const nextCh = nextNonWs ? nextNonWs[1] : '';
+      // Benannte Referenz (natives Modell: _g6, _s50, _AT)?
+      if (this.named && nextCh !== '(' && nextCh !== '!') {
+        const v = this.named(idMatch[0].trim());
+        if (v !== undefined) {
+          this.i = after;
+          return v;
+        }
+      }
       // Funktion?
       const upperName = idMatch[0].trim().toUpperCase();
       if (nextCh === '(') {
@@ -419,11 +448,13 @@ class Parser {
       this.i++;
       this.readAddr();
     }
+    if (!this.wb) throw new Error(`Unaufgelöster Zellbezug ${sheet}!${first} im nativen Ausdruck "${this.s}"`);
     return this.wb.resolve(sheet, first);
   }
 
   private parseCellRef(sheet: string): number | string {
     const addr = this.readAddr();
+    if (!this.wb) throw new Error(`Unaufgelöster Zellbezug ${addr} im nativen Ausdruck "${this.s}"`);
     return this.wb.resolve(sheet, addr);
   }
 
@@ -445,6 +476,7 @@ class Parser {
       const b = this.readAddr();
       return { __range: true, sheet, a, b };
     }
+    if (!this.wb) throw new Error(`Unaufgelöster Zellbezug ${a} im nativen Ausdruck "${this.s}"`);
     return this.wb.resolve(sheet, a);
   }
 
@@ -609,14 +641,15 @@ function safeDiv(a: number, b: number): number {
   return a / b;
 }
 
-function flat(arg: RangeRef | number | string, wb: ProzessWorkbook): (number | string)[] {
+function flat(arg: RangeRef | number | string, wb: ProzessWorkbook | null): (number | string)[] {
   if (arg && typeof arg === 'object' && '__range' in arg) {
+    if (!wb) throw new Error(`Unaufgelöster Range-Bezug ${arg.a}:${arg.b} im nativen Ausdruck`);
     return wb.rangeValues(arg.sheet, arg.a, arg.b);
   }
   return [arg];
 }
 
-function applyFunction(name: string, args: (RangeRef | number | string)[], wb: ProzessWorkbook): number | string {
+function applyFunction(name: string, args: (RangeRef | number | string)[], wb: ProzessWorkbook | null): number | string {
   switch (name) {
     case 'SUM': {
       let t = 0;
@@ -680,9 +713,10 @@ function applyFunction(name: string, args: (RangeRef | number | string)[], wb: P
   }
 }
 
-function scalar(arg: RangeRef | number | string | undefined, wb: ProzessWorkbook): number | string {
+function scalar(arg: RangeRef | number | string | undefined, wb: ProzessWorkbook | null): number | string {
   if (arg === undefined) return 0;
   if (arg && typeof arg === 'object' && '__range' in arg) {
+    if (!wb) throw new Error(`Unaufgelöster Range-Bezug ${arg.a}:${arg.b} im nativen Ausdruck`);
     const vs = wb.rangeValues(arg.sheet, arg.a, arg.b);
     return vs[0] ?? 0;
   }
