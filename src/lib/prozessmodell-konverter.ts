@@ -144,6 +144,28 @@ export function konvertiereExcelZuNativ(wb: ProzessWorkbook, name = 'Prozessmode
     return id;
   };
 
+  // Sprechende Namen für Dateneingabe-Zeilen: "SE: Beladung kleiner NV · Colli"
+  // (Abschnitts-Überschrift Spalte A + Zeilen-Label Spalte B).
+  let deLabels: Map<number, string> | null = null;
+  const dateneingabeLabel = (row: number): string | null => {
+    if (!deLabels) {
+      deLabels = new Map();
+      if (wb.hasSheet('Dateneingabe')) {
+        let sektion = '';
+        const deMax = wb.maxRow('Dateneingabe');
+        for (let r = 1; r <= deMax; r++) {
+          const a = wb.rawCell('Dateneingabe', `A${r}`).v;
+          if (typeof a === 'string' && a.trim()) sektion = a.trim();
+          const b = wb.rawCell('Dateneingabe', `B${r}`).v;
+          if (typeof b === 'string' && b.trim()) {
+            deLabels.set(r, sektion && !sektion.startsWith('Monatliche') ? `${sektion} · ${b.trim()}` : b.trim());
+          }
+        }
+      }
+    }
+    return deLabels.get(row) ?? null;
+  };
+
   /** Dateneingabe-Zelle → Eingabe-Knoten (die echten monatlichen Eingabefelder). */
   const dateneingabeKnoten = (col: string, row: number): string => {
     if (col === 'E' && row === 3) return '_AT'; // Arbeitstage global
@@ -151,7 +173,7 @@ export function konvertiereExcelZuNativ(wb: ProzessWorkbook, name = 'Prozessmode
     if (!knoten.has(id)) {
       knoten.set(id, {
         id,
-        name: null,
+        name: dateneingabeLabel(row),
         region: 'intern',
         blockId: null,
         wert: wb.resolveNum('Dateneingabe', `${col}${row}`),

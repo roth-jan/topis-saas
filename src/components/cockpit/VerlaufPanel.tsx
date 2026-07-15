@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, FolderOpen, Trash2 } from 'lucide-react';
+import { TrendingUp, FolderOpen, Trash2, History } from 'lucide-react';
 import {
   sortiereMonate,
   gruppiereNachKunde,
@@ -16,12 +16,14 @@ export function VerlaufPanel({
   loading,
   onLoad,
   onDelete,
+  onVersionen,
 }: {
   monate: CloudProzessmodellMonat[];
   eigeneId: string | null;
   loading: boolean;
   onLoad: (m: CloudProzessmodellMonat) => void;
   onDelete: (m: CloudProzessmodellMonat) => void;
+  onVersionen?: (m: CloudProzessmodellMonat) => void;
 }) {
   const gruppen = useMemo(() => gruppiereNachKunde(monate, eigeneId), [monate, eigeneId]);
 
@@ -47,6 +49,7 @@ export function VerlaufPanel({
           loeschbar={g.eigene}
           onLoad={onLoad}
           onDelete={onDelete}
+          onVersionen={onVersionen}
         />
       ))}
     </div>
@@ -59,12 +62,14 @@ function MonatsListe({
   loeschbar,
   onLoad,
   onDelete,
+  onVersionen,
 }: {
   monate: CloudProzessmodellMonat[];
   titel?: string;
   loeschbar: boolean;
   onLoad: (m: CloudProzessmodellMonat) => void;
   onDelete: (m: CloudProzessmodellMonat) => void;
+  onVersionen?: (m: CloudProzessmodellMonat) => void;
 }) {
   const sorted = useMemo(() => sortiereMonate(monate), [monate]);
   const max = Math.max(...sorted.map((m) => m.kennzahlen.maStundenProzesse), 1);
@@ -110,6 +115,18 @@ function MonatsListe({
                     <FolderOpen className="h-3 w-3" />
                     Laden
                   </Button>
+                  {onVersionen && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-muted-foreground"
+                      onClick={() => onVersionen(m)}
+                      aria-label={`Versionen von ${m.monat}`}
+                      title="Versionshistorie"
+                    >
+                      <History className="h-3 w-3" />
+                    </Button>
+                  )}
                   {loeschbar && (
                     <Button
                       variant="ghost"

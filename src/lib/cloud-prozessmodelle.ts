@@ -149,6 +149,7 @@ export async function saveProzessmodellMonat(
     if (upErr) throw upErr;
   }
 
+  const kennzahlen = extractKennzahlen(view);
   const { data, error } = await sb
     .from('prozessmodelle')
     .upsert(
@@ -157,7 +158,7 @@ export async function saveProzessmodellMonat(
         monat,
         dateiname,
         datei_pfad: datei ? pfad : '',
-        kennzahlen: extractKennzahlen(view),
+        kennzahlen,
         modell,
         updated_at: new Date().toISOString(),
       },
@@ -166,7 +167,45 @@ export async function saveProzessmodellMonat(
     .select('*')
     .single();
   if (error) throw error;
-  return data as CloudProzessmodellMonat;
+  const row = data as CloudProzessmodellMonat;
+
+  // Versionshistorie: jeder Speicherstand wird festgehalten (wer, wann, Kennzahlen, Modell).
+  const { error: verErr } = await sb.from('prozessmodell_versionen').insert({
+    monat_id: row.id,
+    owner: uid,
+    gespeichert_von: uid,
+    gespeichert_von_email: userData.user?.email ?? '',
+    kennzahlen,
+    modell,
+  });
+  if (verErr) console.warn('Version konnte nicht protokolliert werden:', verErr.message);
+
+  return row;
+}
+
+// ============ Versionen ============
+
+export interface ProzessmodellVersion {
+  id: string;
+  monat_id: string;
+  gespeichert_von_email: string;
+  kennzahlen: ProzessKennzahlen;
+  modell: NativesProzessmodell | null;
+  created_at: string;
+}
+
+/** Versionshistorie eines Monats (neueste zuerst). */
+export async function listVersionen(monatId: string): Promise<ProzessmodellVersion[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from('prozessmodell_versionen')
+    .select('id, monat_id, gespeichert_von_email, kennzahlen, modell, created_at')
+    .eq('monat_id', monatId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []) as ProzessmodellVersion[];
 }
 
 /** Alle sichtbaren Monate (eigene; für Berater zusätzlich alle Kunden),

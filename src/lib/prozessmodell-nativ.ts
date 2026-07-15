@@ -311,6 +311,57 @@ export function loescheSchritt(m: NativesProzessmodell, schrittId: string): Nati
   };
 }
 
+// ---------------------------------------------------------------------------
+// Monats-Rhythmus: neuer Monat ohne Datei (Mengen-Formular)
+// ---------------------------------------------------------------------------
+
+/** Ein monatliches Eingabefeld — ggf. von mehreren Knoten geteilt (gleiche Herkunftszelle). */
+export interface MonatsEingabe {
+  key: string;
+  name: string;
+  wert: number;
+  knotenIds: string[];
+}
+
+/** Alle monatlichen Eingaben des Modells (Mengen + Dateneingabe-Herkünfte),
+ * dedupliziert über die Herkunftszelle. Zeitaufnahme-Parameter gehören NICHT
+ * dazu — die ändern sich nicht monatlich. */
+export function listeMonatsEingaben(m: NativesProzessmodell): MonatsEingabe[] {
+  const gruppen = new Map<string, MonatsEingabe>();
+  for (const k of m.knoten) {
+    if (k.expr != null || k.wert == null) continue;
+    const monatlich = k.region === 'menge' || k.origin?.sheet === 'Dateneingabe';
+    if (!monatlich) continue;
+    const key = k.origin ? `${k.origin.sheet}!${k.origin.addr}` : k.id;
+    const g = gruppen.get(key);
+    if (g) {
+      g.knotenIds.push(k.id);
+      if (k.name && (g.name.startsWith('_') || g.name.includes('!'))) g.name = k.name;
+    } else {
+      gruppen.set(key, { key, name: k.name ?? key, wert: k.wert, knotenIds: [k.id] });
+    }
+  }
+  return [...gruppen.values()];
+}
+
+/** Neuen Monat aus dem aktuellen Modell erzeugen: gleiche Struktur und
+ * Parameter, neue Mengen + Monat + Arbeitstage. Herkunft: kein Datei-Upload. */
+export function neuerMonatAusEingaben(
+  m: NativesProzessmodell,
+  monat: string,
+  arbeitstage: number,
+  eingaben: { knotenIds: string[]; wert: number }[],
+): NativesProzessmodell {
+  const neueWerte = new Map<string, number>();
+  for (const e of eingaben) for (const id of e.knotenIds) neueWerte.set(id, e.wert);
+  return {
+    ...m,
+    monat,
+    arbeitstage,
+    knoten: m.knoten.map((k) => (neueWerte.has(k.id) ? { ...k, wert: neueWerte.get(k.id)! } : k)),
+  };
+}
+
 /** Wert-Diffs für den Excel-Export: geänderte Eingabe-Knoten mit Original-Zelle. */
 export function exportDiffs(
   m: NativesProzessmodell,

@@ -35,6 +35,9 @@ import {
 import { ProzessGrid } from './ProzessGrid';
 import { UebersichtPanel } from './UebersichtPanel';
 import { VerlaufPanel } from './VerlaufPanel';
+import { StartTueren } from './StartTueren';
+import { NeuerMonatDialog } from './NeuerMonatDialog';
+import { VersionenDialog } from './VersionenDialog';
 
 /**
  * Prozessmodell-Cockpit: TOPIS als BESSERE Excel.
@@ -54,6 +57,7 @@ export function CockpitWorkspace() {
   const { session, configured } = useAuth();
   const [monate, setMonate] = useState<CloudProzessmodellMonat[]>([]);
   const [monateLoading, setMonateLoading] = useState(false);
+  const [versionenMonat, setVersionenMonat] = useState<CloudProzessmodellMonat | null>(null);
   const uid = session?.user?.id ?? null;
 
   // Live-Rechnung: jede Modell-Änderung rechnet den ganzen Graph neu.
@@ -103,6 +107,14 @@ export function CockpitWorkspace() {
     setNativ(modell);
     setFileName(name);
     return true;
+  };
+
+  /** Modell direkt übernehmen (Vorlage, leeres Modell, neuer Monat, Version). */
+  const uebernehmenNativ = (m: NativesProzessmodell, alsBasis = true) => {
+    rawFileRef.current = null;
+    setFileName('');
+    if (alsBasis) importStandRef.current = structuredClone(m);
+    setNativ(m);
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -259,6 +271,15 @@ export function CockpitWorkspace() {
                     Excel exportieren
                   </Button>
                 )}
+                {nativ && (
+                  <NeuerMonatDialog
+                    modell={nativ}
+                    onNeuerMonat={(m) => {
+                      uebernehmenNativ(m);
+                      toast.success(`Monat ${m.monat} angelegt — Mengen prüfen, dann speichern.`);
+                    }}
+                  />
+                )}
                 {configured && session && (
                   <Button size="sm" className="gap-1 text-xs" onClick={speichernMonat} disabled={saving}>
                     <CloudUpload className="h-3.5 w-3.5" />
@@ -267,7 +288,7 @@ export function CockpitWorkspace() {
                 )}
                 <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => fileRef.current?.click()}>
                   <Upload className="h-3.5 w-3.5" />
-                  Andere Excel
+                  Excel
                 </Button>
               </>
             )}
@@ -280,16 +301,32 @@ export function CockpitWorkspace() {
 
       <main className="mx-auto max-w-[1400px] w-full px-4 py-4 flex-1">
         {!view ? (
-          <StartBereich
-            onWaehlen={() => fileRef.current?.click()}
-            angemeldet={Boolean(configured && session)}
-            configured={configured}
-            monate={monate}
-            monateLoading={monateLoading}
-            uid={uid}
-            onLoad={ladeMonat}
-            onDelete={loescheMonat}
-          />
+          <div className="flex flex-col gap-4">
+            <StartTueren
+              onExcel={() => fileRef.current?.click()}
+              onModell={(m) => {
+                uebernehmenNativ(m);
+                toast.success(`Modell „${m.name}" erzeugt — Mengen, Parameter und Schritte sind frei anpassbar.`);
+              }}
+            />
+            <div className="mx-auto w-full max-w-3xl">
+              {configured && session && (
+                <VerlaufPanel
+                  monate={monate}
+                  eigeneId={uid}
+                  loading={monateLoading}
+                  onLoad={ladeMonat}
+                  onDelete={loescheMonat}
+                  onVersionen={setVersionenMonat}
+                />
+              )}
+              {configured && !session && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Tipp: Angemeldet können Sie Monate speichern und den Verlauf (Trend) sehen — oben rechts anmelden.
+                </p>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col gap-4">
             {/* KPI-Zeile */}
@@ -311,6 +348,7 @@ export function CockpitWorkspace() {
                     loading={monateLoading}
                     onLoad={ladeMonat}
                     onDelete={loescheMonat}
+                    onVersionen={setVersionenMonat}
                   />
                 )}
                 {configured && !session && (
@@ -330,6 +368,18 @@ export function CockpitWorkspace() {
           </div>
         )}
       </main>
+
+      <VersionenDialog
+        monat={versionenMonat}
+        onClose={() => setVersionenMonat(null)}
+        onWiederherstellen={(m, v) => {
+          uebernehmenNativ(m);
+          setVersionenMonat(null);
+          toast.success(
+            `Version vom ${new Date(v.created_at).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })} geladen — „Monat speichern" macht sie zur aktuellen.`,
+          );
+        }}
+      />
     </div>
   );
 }
@@ -340,53 +390,6 @@ function Kpi({ label, wert, sub, highlight = false }: { label: string; wert: str
       <div className={`text-[10px] uppercase tracking-wide ${highlight ? 'opacity-80' : 'text-muted-foreground'}`}>{label}</div>
       <div className="font-mono text-lg font-semibold tabular-nums leading-tight">{wert}</div>
       <div className={`text-[10px] ${highlight ? 'opacity-80' : 'text-muted-foreground'}`}>{sub}</div>
-    </div>
-  );
-}
-
-function StartBereich({
-  onWaehlen,
-  angemeldet,
-  configured,
-  monate,
-  monateLoading,
-  uid,
-  onLoad,
-  onDelete,
-}: {
-  onWaehlen: () => void;
-  angemeldet: boolean;
-  configured: boolean;
-  monate: CloudProzessmodellMonat[];
-  monateLoading: boolean;
-  uid: string | null;
-  onLoad: (m: CloudProzessmodellMonat) => void;
-  onDelete: (m: CloudProzessmodellMonat) => void;
-}) {
-  return (
-    <div className="mx-auto max-w-2xl flex flex-col gap-4 pt-8">
-      <div className="flex flex-col items-center justify-center gap-4 py-14 border-2 border-dashed rounded-xl bg-card">
-        <Calculator className="h-12 w-12 text-muted-foreground" />
-        <div className="text-center">
-          <p className="text-sm font-medium">Prozessmodell-Excel importieren</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Ihre Excel wird EINMAL in ein natives TOPIS-Modell übernommen (auf den Cent nachgerechnet) &mdash;
-            danach editieren Sie direkt in TOPIS: Mengen, Parameter und Prozessschritte.
-          </p>
-        </div>
-        <Button onClick={onWaehlen} size="sm" className="gap-1">
-          <Upload className="h-4 w-4" />
-          Excel wählen
-        </Button>
-      </div>
-      {angemeldet && (
-        <VerlaufPanel monate={monate} eigeneId={uid} loading={monateLoading} onLoad={onLoad} onDelete={onDelete} />
-      )}
-      {configured && !angemeldet && (
-        <p className="text-xs text-muted-foreground text-center">
-          Tipp: Angemeldet können Sie Monate speichern und den Verlauf (Trend) sehen — oben rechts anmelden.
-        </p>
-      )}
     </div>
   );
 }
