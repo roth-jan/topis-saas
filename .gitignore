@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 test-results/
+
+# Playwright MCP session artifacts (screenshots, snapshots — never commit)
+.playwright-mcp/
