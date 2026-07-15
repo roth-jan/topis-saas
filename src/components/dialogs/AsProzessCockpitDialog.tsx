@@ -13,7 +13,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Calculator, Upload, ArrowLeft, RotateCcw, TrendingUp, CloudUpload, FolderOpen, Trash2 } from 'lucide-react';
+import { Calculator, Upload, ArrowLeft, RotateCcw, TrendingUp, CloudUpload, FolderOpen, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProzessWorkbook } from '@/lib/prozessmodell-excel-engine';
 import { buildAsModell, type AsProzessModell, type ModellBlock, type ModellGroesse } from '@/lib/prozessmodell-excel-modell';
@@ -180,17 +180,20 @@ export function AsProzessCockpitDialog() {
           Prozess-Cockpit
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[88vh]">
-        <DialogHeader>
+      {/* WICHTIG: flex-col + overflow-hidden — der Inhalt scrollt INNEN,
+          statt auf kleinen Bildschirmen unten aus dem Dialog zu laufen. */}
+      <DialogContent className="max-w-5xl max-h-[88vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             Prozessmodell-Cockpit
             {modell && <Badge variant="secondary" className="font-normal">{modell.monat || fileName}</Badge>}
           </DialogTitle>
           <DialogDescription>
-            Rechnet das AS-Prozessmodell live aus den Rohdaten — Mengen editierbar, alles rechnet neu.
-            Verifiziert gegen die Referenz (18 Blöcke, MA-Stundenbedarf exakt).
+            Rechnet das Prozessmodell live aus den Rohdaten — Mengen und Parameter editierbar, alles rechnet neu.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
 
         {!modell && (
           <div className="flex flex-col gap-3">
@@ -251,7 +254,10 @@ export function AsProzessCockpitDialog() {
                 Cockpit (MA-Stunden)
               </SegBtn>
               <SegBtn active={tab === 'bloecke'} onClick={() => setTab('bloecke')}>
-                Prozessblöcke
+                <span className="inline-flex items-center gap-1">
+                  <Pencil className="h-3 w-3" />
+                  Prozessblöcke bearbeiten
+                </span>
               </SegBtn>
               {configured && session && (
                 <SegBtn active={tab === 'verlauf'} onClick={() => { setTab('verlauf'); setSelectedIdx(null); }}>
@@ -260,7 +266,19 @@ export function AsProzessCockpitDialog() {
               )}
             </div>
 
-            {tab === 'cockpit' && <CockpitView modell={modell} />}
+            {tab === 'cockpit' && (
+              <>
+                <CockpitView modell={modell} />
+                <button
+                  onClick={() => setTab('bloecke')}
+                  className="text-xs text-muted-foreground hover:text-foreground rounded border border-dashed px-3 py-2 text-left transition-colors"
+                >
+                  <Pencil className="h-3 w-3 inline mr-1.5" />
+                  Mengen oder Parameter ändern? <span className="underline">Prozessblöcke bearbeiten</span> —
+                  Block anklicken, Werte ändern, alles rechnet sofort neu.
+                </button>
+              </>
+            )}
 
             {tab === 'bloecke' && !selected && (
               <BlockListView bloecke={modell.bloecke} onSelect={(i) => setSelectedIdx(i)} />
@@ -275,6 +293,7 @@ export function AsProzessCockpitDialog() {
             )}
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -309,7 +328,7 @@ function UploadArea({
 
 function CockpitView({ modell }: { modell: AsProzessModell }) {
   return (
-    <ScrollArea className="h-[52vh] rounded border">
+    <div className="rounded border overflow-hidden">
       <div className="divide-y">
         {modell.uebersicht.map((sek, si) => (
           <div key={si}>
@@ -349,14 +368,14 @@ function CockpitView({ modell }: { modell: AsProzessModell }) {
           </div>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
 function BlockListView({ bloecke, onSelect }: { bloecke: ModellBlock[]; onSelect: (i: number) => void }) {
   const max = Math.max(...bloecke.map((b) => Math.abs(b.minProColli)), 1);
   return (
-    <ScrollArea className="h-[52vh] rounded border">
+    <div className="rounded border overflow-hidden">
       <div className="divide-y">
         {bloecke.map((b, i) => (
           <button
@@ -380,10 +399,11 @@ function BlockListView({ bloecke, onSelect }: { bloecke: ModellBlock[]; onSelect
               <div className="font-mono text-sm font-semibold tabular-nums">{b.minProColli.toFixed(4)}</div>
               <div className="text-[10px] text-muted-foreground">Min/Colli</div>
             </div>
+            <Pencil className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           </button>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -434,14 +454,14 @@ function BlockDetailView({
             leer="Keine Mengen in diesem Block."
             groessen={block.mengen}
             onEdit={onEdit}
-            hoehe="h-[17vh]"
+            hoehe="max-h-[24vh]"
           />
           <GroessenPanel
             titel="Parameter (Zeitaufnahme, editierbar)"
             leer="Keine Parameter in diesem Block."
             groessen={block.parameter}
             onEdit={onEdit}
-            hoehe="h-[17vh]"
+            hoehe="max-h-[24vh]"
           />
         </div>
 
@@ -505,11 +525,11 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className={`rounded-md border px-3 py-2 min-w-[130px] ${highlight ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
+    <div className={`rounded-md border px-2.5 py-1.5 min-w-[104px] ${highlight ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
       <div className={`text-[10px] uppercase tracking-wide ${highlight ? 'opacity-80' : 'text-muted-foreground'}`}>
         {label}
       </div>
-      <div className="font-mono text-lg font-semibold tabular-nums leading-tight">{value}</div>
+      <div className="font-mono text-base font-semibold tabular-nums leading-tight">{value}</div>
       <div className={`text-[10px] ${highlight ? 'opacity-80' : 'text-muted-foreground'}`}>{unit}</div>
     </div>
   );
@@ -660,7 +680,7 @@ function VerlaufListe({
         <TrendingUp className="h-3.5 w-3.5" />
         {titel ?? 'Gespeicherte Monate'} ({sorted.length})
       </div>
-      <ScrollArea className={kompakt ? 'max-h-[26vh]' : 'h-[48vh]'}>
+      <ScrollArea className={kompakt ? 'max-h-[26vh]' : undefined}>
         <table className="w-full text-xs">
           <thead className="text-muted-foreground">
             <tr className="text-left">
