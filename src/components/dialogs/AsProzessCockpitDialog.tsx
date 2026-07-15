@@ -71,7 +71,7 @@ export function AsProzessCockpitDialog() {
     }
   };
 
-  const editMenge = (g: ModellGroesse, value: number) => {
+  const editGroesse = (g: ModellGroesse, value: number) => {
     if (!wbRef.current || !g.origin) return;
     wbRef.current.setOverride(g.origin.sheet, g.origin.addr, value);
     setDirty(true);
@@ -153,7 +153,7 @@ export function AsProzessCockpitDialog() {
             )}
 
             {tab === 'bloecke' && selected && (
-              <BlockDetailView block={selected} onBack={() => setSelectedIdx(null)} onEditMenge={editMenge} />
+              <BlockDetailView block={selected} onBack={() => setSelectedIdx(null)} onEdit={editGroesse} />
             )}
           </div>
         )}
@@ -279,11 +279,11 @@ const ABT_FARBEN: Record<string, string> = {
 function BlockDetailView({
   block,
   onBack,
-  onEditMenge,
+  onEdit,
 }: {
   block: ModellBlock;
   onBack: () => void;
-  onEditMenge: (g: ModellGroesse, value: number) => void;
+  onEdit: (g: ModellGroesse, value: number) => void;
 }) {
   const abteilungen = useMemo(
     () => Object.entries(block.proAbteilung).sort((a, b) => b[1] - a[1]),
@@ -309,43 +309,22 @@ function BlockDetailView({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,300px)_1fr] gap-3">
-        {/* Editierbare Mengen */}
-        <div className="rounded border overflow-hidden">
-          <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium">Mengen (editierbar)</div>
-          <ScrollArea className="h-[36vh]">
-            <div className="divide-y">
-              {block.mengen.length === 0 && (
-                <div className="px-3 py-3 text-xs text-muted-foreground">Keine Mengen in diesem Block.</div>
-              )}
-              {block.mengen.map((g) => (
-                <div key={g.row} className="px-3 py-2 flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs truncate" title={g.name}>{g.name}</div>
-                    {g.abgeleitet && <div className="text-[10px] text-muted-foreground">abgeleitet</div>}
-                  </div>
-                  {g.editierbar ? (
-                    <Input
-                      type="number"
-                      defaultValue={round(g.wert)}
-                      key={`${g.row}-${g.wert}`}
-                      className="h-7 w-24 text-right font-mono text-xs tabular-nums"
-                      onBlur={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (Number.isFinite(v) && v !== round(g.wert)) onEditMenge(g, v);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                      }}
-                    />
-                  ) : (
-                    <div className="w-24 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                      {round(g.wert).toLocaleString('de-DE')}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+        {/* Editierbare Mengen + Parameter */}
+        <div className="flex flex-col gap-3">
+          <GroessenPanel
+            titel="Mengen (monatlich, editierbar)"
+            leer="Keine Mengen in diesem Block."
+            groessen={block.mengen}
+            onEdit={onEdit}
+            hoehe="h-[17vh]"
+          />
+          <GroessenPanel
+            titel="Parameter (Zeitaufnahme, editierbar)"
+            leer="Keine Parameter in diesem Block."
+            groessen={block.parameter}
+            onEdit={onEdit}
+            hoehe="h-[17vh]"
+          />
         </div>
 
         {/* Schritte */}
@@ -431,6 +410,63 @@ function SegBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function round(n: number): number {
+/** Editierbare Größen-Liste (Mengen oder Parameter) mit Live-Recompute. */
+function GroessenPanel({
+  titel,
+  leer,
+  groessen,
+  onEdit,
+  hoehe,
+}: {
+  titel: string;
+  leer: string;
+  groessen: ModellGroesse[];
+  onEdit: (g: ModellGroesse, value: number) => void;
+  hoehe: string;
+}) {
+  return (
+    <div className="rounded border overflow-hidden">
+      <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium">{titel}</div>
+      <ScrollArea className={hoehe}>
+        <div className="divide-y">
+          {groessen.length === 0 && <div className="px-3 py-3 text-xs text-muted-foreground">{leer}</div>}
+          {groessen.map((g) => (
+            <div key={g.row} className="px-3 py-1.5 flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="text-xs truncate" title={g.name}>{g.name}</div>
+                {g.abgeleitet && <div className="text-[10px] text-muted-foreground">abgeleitet</div>}
+              </div>
+              {g.editierbar ? (
+                <Input
+                  type="number"
+                  defaultValue={fmtEdit(g.wert)}
+                  key={`${g.row}-${g.wert}`}
+                  className="h-7 w-24 text-right font-mono text-xs tabular-nums"
+                  onBlur={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (Number.isFinite(v) && Math.abs(v - g.wert) > 1e-9) onEdit(g, v);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                  }}
+                />
+              ) : (
+                <div className="w-24 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                  {fmtEdit(g.wert).toLocaleString('de-DE')}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+/** Zahl für Anzeige/Edit: genug Präzision für kleine Parameter (0.002), knapp für große Mengen. */
+function fmtEdit(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const abs = Math.abs(n);
+  if (abs !== 0 && abs < 10) return Number(n.toPrecision(4));
   return Math.round(n * 100) / 100;
 }
