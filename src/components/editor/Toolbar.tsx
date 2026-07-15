@@ -93,7 +93,7 @@ import { SzenarienDialog } from '@/components/dialogs/SzenarienDialog';
 import { LogoMark } from '@/components/Logo';
 import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
 import { ProzessmodellImportDialog } from '@/components/dialogs/ProzessmodellImportDialog';
-import { AsProzessCockpitDialog } from '@/components/dialogs/AsProzessCockpitDialog';
+import Link from 'next/link';
 import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
 import { BenchmarkDialog } from '@/components/dialogs/BenchmarkDialog';
 import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
@@ -1253,7 +1253,12 @@ export function Toolbar() {
           <div className={`flex items-center gap-1 flex-wrap ${objects.length === 0 ? 'pointer-events-none opacity-50' : ''}`}>
           <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
           <ProzessmodellImportDialog />
-          <AsProzessCockpitDialog />
+          <Link href="/cockpit/">
+            <Button variant="outline" size="sm" className="gap-1 text-xs" title="Prozessmodell-Cockpit (Vollseite): Excel laden, Mengen/Parameter editieren, Trend">
+              <Calculator className="h-3.5 w-3.5" />
+              Prozess-Cockpit
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowMengen(true)} title="Prozess- und Mengenkategorien">
             <Package className="h-3.5 w-3.5" />
             Mengen-Modell

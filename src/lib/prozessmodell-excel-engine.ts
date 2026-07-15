@@ -117,6 +117,18 @@ export class ProzessWorkbook {
     return this.overrides.get(`${sheet}!${addr}`);
   }
 
+  /** Alle aktiven Overrides (für Excel-Export: geänderte Werte zurückschreiben). */
+  listOverrides(): { sheet: string; addr: string; value: CellValue }[] {
+    return [...this.overrides.entries()].map(([key, value]) => {
+      const i = key.indexOf('!');
+      return { sheet: key.slice(0, i), addr: key.slice(i + 1), value };
+    });
+  }
+
+  hasOverrides(): boolean {
+    return this.overrides.size > 0;
+  }
+
   /** Löst eine Zelle auf (Formel evaluieren / Wert / Override). Rückgabe Zahl oder String. */
   resolve(sheet: string, addr: string): number | string {
     const key = `${sheet}!${addr}`;
