@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,10 +13,19 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Calculator, Upload, ArrowLeft, RotateCcw, TrendingUp } from 'lucide-react';
+import { Calculator, Upload, ArrowLeft, RotateCcw, TrendingUp, CloudUpload, FolderOpen, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProzessWorkbook } from '@/lib/prozessmodell-excel-engine';
 import { buildAsModell, type AsProzessModell, type ModellBlock, type ModellGroesse } from '@/lib/prozessmodell-excel-modell';
+import { useAuth } from '@/lib/auth';
+import {
+  saveProzessmodellMonat,
+  listProzessmodellMonate,
+  loadProzessmodellDatei,
+  deleteProzessmodellMonat,
+  sortiereMonate,
+  type CloudProzessmodellMonat,
+} from '@/lib/cloud-prozessmodelle';
 
 /**
  * Rechnendes, EDITIERBARES Prozessmodell-Cockpit (AS / Beintner).
@@ -28,15 +37,21 @@ import { buildAsModell, type AsProzessModell, type ModellBlock, type ModellGroes
 export function AsProzessCockpitDialog() {
   const [open, setOpen] = useState(false);
   const wbRef = useRef<ProzessWorkbook | null>(null);
+  const rawFileRef = useRef<ArrayBuffer | null>(null);
   const [modell, setModell] = useState<AsProzessModell | null>(null);
   const [fileName, setFileName] = useState('');
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [tab, setTab] = useState<'cockpit' | 'bloecke'>('cockpit');
+  const [tab, setTab] = useState<'cockpit' | 'bloecke' | 'verlauf'>('cockpit');
   const [dirty, setDirty] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { session, configured } = useAuth();
+  const [monate, setMonate] = useState<CloudProzessmodellMonat[]>([]);
+  const [monateLoading, setMonateLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const reset = () => {
     wbRef.current = null;
+    rawFileRef.current = null;
     setModell(null);
     setFileName('');
     setSelectedIdx(null);
@@ -49,25 +64,91 @@ export function AsProzessCockpitDialog() {
     if (wbRef.current) setModell(buildAsModell(wbRef.current));
   }, []);
 
+  const refreshMonate = useCallback(async () => {
+    if (!session) return;
+    setMonateLoading(true);
+    try {
+      setMonate(await listProzessmodellMonate());
+    } catch (err) {
+      toast.error('Gespeicherte Monate konnten nicht geladen werden: ' + (err as Error).message);
+    } finally {
+      setMonateLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (open && session) void refreshMonate();
+  }, [open, session, refreshMonate]);
+
+  const uebernehmen = (buf: ArrayBuffer, name: string) => {
+    const wb = ProzessWorkbook.fromArrayBuffer(buf);
+    const m = buildAsModell(wb);
+    if (m.bloecke.length === 0) {
+      toast.error('Keine Prozessblöcke gefunden. Erwartet: Sheet „Prozessmodell" mit SE:/SA:-Blöcken.');
+      return false;
+    }
+    wbRef.current = wb;
+    rawFileRef.current = buf;
+    setModell(m);
+    setFileName(name);
+    setSelectedIdx(null);
+    setDirty(false);
+    return true;
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const buf = await file.arrayBuffer();
-      const wb = ProzessWorkbook.fromArrayBuffer(buf);
-      const m = buildAsModell(wb);
-      if (m.bloecke.length === 0) {
-        toast.error('Keine Prozessblöcke gefunden. Erwartet: Sheet „Prozessmodell" mit SE:/SA:-Blöcken.');
-        return;
+      if (uebernehmen(buf, file.name)) {
+        setTab('cockpit');
+        toast.success(`${buildAsModell(wbRef.current!).bloecke.length} Prozessblöcke geladen`);
       }
-      wbRef.current = wb;
-      setModell(m);
-      setFileName(file.name);
-      setSelectedIdx(null);
-      setDirty(false);
-      toast.success(`${m.bloecke.length} Prozessblöcke geladen — ${m.maStundenProzesse.toFixed(0)} MA-h/Monat`);
     } catch (err) {
       toast.error('Import fehlgeschlagen: ' + (err as Error).message);
+    }
+  };
+
+  const speichernMonat = async () => {
+    if (!rawFileRef.current || !modell) return;
+    setSaving(true);
+    try {
+      // Kennzahlen immer aus dem ORIGINAL-Stand der Datei rechnen — so bleiben
+      // gespeicherte Datei und gespeicherter Trend-Wert garantiert konsistent,
+      // auch wenn gerade Testwerte (Overrides) aktiv sind.
+      const frisch = buildAsModell(ProzessWorkbook.fromArrayBuffer(rawFileRef.current));
+      const saved = await saveProzessmodellMonat(rawFileRef.current, fileName, frisch);
+      toast.success(
+        `Monat ${saved.monat} gespeichert` + (dirty ? ' (Original-Stand der Datei, ohne Ihre Testwerte)' : ''),
+      );
+      await refreshMonate();
+    } catch (err) {
+      toast.error('Speichern fehlgeschlagen: ' + (err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const ladeMonat = async (m: CloudProzessmodellMonat) => {
+    try {
+      const buf = await loadProzessmodellDatei(m.datei_pfad);
+      if (uebernehmen(buf, m.dateiname || `${m.monat}.xlsx`)) {
+        setTab('cockpit');
+        toast.success(`Monat ${m.monat} geladen`);
+      }
+    } catch (err) {
+      toast.error('Laden fehlgeschlagen: ' + (err as Error).message);
+    }
+  };
+
+  const loescheMonat = async (m: CloudProzessmodellMonat) => {
+    try {
+      await deleteProzessmodellMonat(m);
+      toast.success(`Monat ${m.monat} gelöscht`);
+      await refreshMonate();
+    } catch (err) {
+      toast.error('Löschen fehlgeschlagen: ' + (err as Error).message);
     }
   };
 
@@ -107,7 +188,25 @@ export function AsProzessCockpitDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        {!modell && <UploadArea fileRef={fileRef} onFile={handleFile} />}
+        {!modell && (
+          <div className="flex flex-col gap-3">
+            <UploadArea fileRef={fileRef} onFile={handleFile} />
+            {configured && session && (
+              <VerlaufListe
+                monate={monate}
+                loading={monateLoading}
+                onLoad={ladeMonat}
+                onDelete={loescheMonat}
+                kompakt
+              />
+            )}
+            {configured && !session && (
+              <p className="text-xs text-muted-foreground text-center">
+                Tipp: Angemeldet können Sie Monate speichern und den Verlauf (Trend) sehen.
+              </p>
+            )}
+          </div>
+        )}
 
         {modell && (
           <div className="flex flex-col gap-4">
@@ -132,6 +231,12 @@ export function AsProzessCockpitDialog() {
                     Änderungen zurücksetzen
                   </Button>
                 )}
+                {configured && session && (
+                  <Button size="sm" onClick={speichernMonat} disabled={saving} className="gap-1 text-xs">
+                    <CloudUpload className="h-3.5 w-3.5" />
+                    {saving ? 'Speichert…' : `Monat ${modell.monat || '?'} speichern`}
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={reset}>Andere Datei</Button>
               </div>
             </div>
@@ -144,6 +249,11 @@ export function AsProzessCockpitDialog() {
               <SegBtn active={tab === 'bloecke'} onClick={() => setTab('bloecke')}>
                 Prozessblöcke
               </SegBtn>
+              {configured && session && (
+                <SegBtn active={tab === 'verlauf'} onClick={() => { setTab('verlauf'); setSelectedIdx(null); }}>
+                  Verlauf
+                </SegBtn>
+              )}
             </div>
 
             {tab === 'cockpit' && <CockpitView modell={modell} />}
@@ -154,6 +264,10 @@ export function AsProzessCockpitDialog() {
 
             {tab === 'bloecke' && selected && (
               <BlockDetailView block={selected} onBack={() => setSelectedIdx(null)} onEdit={editGroesse} />
+            )}
+
+            {tab === 'verlauf' && (
+              <VerlaufListe monate={monate} loading={monateLoading} onLoad={ladeMonat} onDelete={loescheMonat} />
             )}
           </div>
         )}
@@ -469,4 +583,94 @@ function fmtEdit(n: number): number {
   const abs = Math.abs(n);
   if (abs !== 0 && abs < 10) return Number(n.toPrecision(4));
   return Math.round(n * 100) / 100;
+}
+
+/** Gespeicherte Monate mit Trend (Δ MA-Stunden zum Vormonat) + Laden/Löschen. */
+function VerlaufListe({
+  monate,
+  loading,
+  onLoad,
+  onDelete,
+  kompakt = false,
+}: {
+  monate: CloudProzessmodellMonat[];
+  loading: boolean;
+  onLoad: (m: CloudProzessmodellMonat) => void;
+  onDelete: (m: CloudProzessmodellMonat) => void;
+  kompakt?: boolean;
+}) {
+  const sorted = useMemo(() => sortiereMonate(monate), [monate]);
+  const max = Math.max(...sorted.map((m) => m.kennzahlen.maStundenProzesse), 1);
+
+  if (loading) {
+    return <div className="text-xs text-muted-foreground px-1 py-2">Lade gespeicherte Monate…</div>;
+  }
+  if (sorted.length === 0) {
+    return (
+      <div className="text-xs text-muted-foreground rounded border border-dashed px-3 py-3 text-center">
+        Noch keine Monate gespeichert. Excel laden und oben &bdquo;Monat speichern&ldquo; klicken &mdash;
+        ab dem zweiten Monat sehen Sie hier den Trend.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded border overflow-hidden">
+      <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium flex items-center gap-1.5">
+        <TrendingUp className="h-3.5 w-3.5" />
+        Gespeicherte Monate ({sorted.length})
+      </div>
+      <ScrollArea className={kompakt ? 'max-h-[26vh]' : 'h-[48vh]'}>
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr className="text-left">
+              <th className="px-3 py-1.5 font-medium">Monat</th>
+              <th className="px-2 py-1.5 font-medium text-right">MA-Std. (Prozesse)</th>
+              <th className="px-2 py-1.5 font-medium text-right">Δ Vormonat</th>
+              <th className="px-2 py-1.5 font-medium hidden sm:table-cell" aria-label="Verhältnis" />
+              <th className="px-3 py-1.5 font-medium text-right">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((m, i) => {
+              const delta = i > 0 ? m.kennzahlen.maStundenProzesse - sorted[i - 1].kennzahlen.maStundenProzesse : null;
+              return (
+                <tr key={m.id} className="border-t hover:bg-muted/30">
+                  <td className="px-3 py-1.5 font-medium">{m.monat}</td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums">
+                    {m.kennzahlen.maStundenProzesse.toLocaleString('de-DE', { maximumFractionDigits: 1 })}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono tabular-nums text-muted-foreground">
+                    {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta.toLocaleString('de-DE', { maximumFractionDigits: 1 })}`}
+                  </td>
+                  <td className="px-2 py-1.5 hidden sm:table-cell">
+                    <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full bg-primary/70"
+                        style={{ width: `${Math.min(100, (m.kennzahlen.maStundenProzesse / max) * 100)}%` }}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => onLoad(m)}>
+                      <FolderOpen className="h-3 w-3" />
+                      Laden
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                      onClick={() => onDelete(m)}
+                      aria-label={`Monat ${m.monat} löschen`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </ScrollArea>
+    </div>
+  );
 }
