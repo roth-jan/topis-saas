@@ -132,7 +132,7 @@ export async function saveProzessmodellMonat(
   dateiname: string,
   view: AsProzessModell,
   modell: NativesProzessmodell,
-): Promise<CloudProzessmodellMonat> {
+): Promise<{ row: CloudProzessmodellMonat; versionFehler: string | null }> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase nicht konfiguriert');
   const { data: userData } = await sb.auth.getUser();
@@ -150,17 +150,21 @@ export async function saveProzessmodellMonat(
   }
 
   const kennzahlen = extractKennzahlen(view);
+  // WICHTIG (Review-Fund #3/#5/#9): Datei-Felder NUR mitsenden, wenn wirklich
+  // eine Datei dabei ist — ein Upsert mit '' würde beim erneuten Speichern
+  // ohne Datei (z.B. nach Versions-Wiederherstellung) den vorhandenen
+  // Excel-Beleg der Zeile verwaisen. Partial Update erhält den Alt-Wert;
+  // Neu-Inserts ohne Datei greifen auf die DB-Defaults ('') zurück.
   const { data, error } = await sb
     .from('prozessmodelle')
     .upsert(
       {
         owner: uid,
         monat,
-        dateiname,
-        datei_pfad: datei ? pfad : '',
         kennzahlen,
         modell,
         updated_at: new Date().toISOString(),
+        ...(datei ? { dateiname, datei_pfad: pfad } : {}),
       },
       { onConflict: 'owner,monat' },
     )
@@ -170,6 +174,9 @@ export async function saveProzessmodellMonat(
   const row = data as CloudProzessmodellMonat;
 
   // Versionshistorie: jeder Speicherstand wird festgehalten (wer, wann, Kennzahlen, Modell).
+  // Fehler hier werden NICHT verschluckt (Review-Fund #20: Audit-Lücke),
+  // sondern dem Aufrufer gemeldet — der Nutzer muss wissen, dass die
+  // Historie für diesen Stand fehlt.
   const { error: verErr } = await sb.from('prozessmodell_versionen').insert({
     monat_id: row.id,
     owner: uid,
@@ -178,9 +185,8 @@ export async function saveProzessmodellMonat(
     kennzahlen,
     modell,
   });
-  if (verErr) console.warn('Version konnte nicht protokolliert werden:', verErr.message);
 
-  return row;
+  return { row, versionFehler: verErr ? verErr.message : null };
 }
 
 // ============ Versionen ============

@@ -58,7 +58,15 @@ export function CockpitWorkspace() {
   const [monateLoading, setMonateLoading] = useState(false);
   const [versionenMonat, setVersionenMonat] = useState<CloudProzessmodellMonat | null>(null);
   const [vorbelegung, setVorbelegung] = useState<CockpitVorbelegung | null>(null);
+  /** Herkunft eines aus der Cloud geladenen Monats (Review-Fund #2: Berater
+   * dürfen Kundendaten nicht unbemerkt ins eigene Konto kopieren). */
+  const [geladenVon, setGeladenVon] = useState<{ owner: string; label: string } | null>(null);
+  /** Spiegel von rawFileRef fürs Rendering (Fund #19: Ref triggert keinen Re-Render). */
+  const [hatDatei, setHatDatei] = useState(false);
+  /** Import-/Konvertierungs-Warnungen — zusammen mit Rechenkern-Warnungen im UI sichtbar (Fund #14). */
+  const [importWarnungen, setImportWarnungen] = useState<string[]>([]);
   const uid = session?.user?.id ?? null;
+  const fremdGeladen = Boolean(geladenVon && uid && geladenVon.owner !== uid);
 
   // Eckdaten-Übergabe aus dem /check-Funnel (einmalig konsumieren).
   // setState asynchron (Microtask), damit der Effect keinen Kaskaden-Render auslöst.
@@ -76,11 +84,11 @@ export function CockpitWorkspace() {
   // Live-Rechnung: jede Modell-Änderung rechnet den ganzen Graph neu.
   const ergebnis = useMemo(() => (nativ ? rechneNativesModell(nativ) : null), [nativ]);
   const view = ergebnis?.modell ?? null;
-  useEffect(() => {
-    if (ergebnis && ergebnis.warnungen.length > 0) {
-      console.warn('Prozessmodell-Warnungen:', ergebnis.warnungen);
-    }
-  }, [ergebnis]);
+  // Alle Warnungen (Import + Rechenkern) — im UI sichtbar (Review-Fund #14)
+  const alleWarnungen = useMemo(
+    () => [...importWarnungen, ...(ergebnis?.warnungen ?? [])],
+    [importWarnungen, ergebnis],
+  );
 
   const dirty = useMemo(() => {
     if (!nativ || !importStandRef.current) return false;
@@ -89,6 +97,35 @@ export function CockpitWorkspace() {
       exportDiffs(nativ, importStandRef.current).length > 0
     );
   }, [nativ]);
+
+  // --- Verlust-Schutz (Review-Fund #6): Reload/Schließen + interne Navigation ---
+  useEffect(() => {
+    if (!dirty) return;
+    const beforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    // SPA-Navigation (AppNav-Links) löst kein beforeunload aus → Klicks auf
+    // Links abfangen und nachfragen.
+    const clickGuard = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement).closest?.('a[href]');
+      if (!a) return;
+      if (!window.confirm('Ungespeicherte Änderungen gehen verloren. Seite wirklich verlassen?')) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    document.addEventListener('click', clickGuard, true);
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      document.removeEventListener('click', clickGuard, true);
+    };
+  }, [dirty]);
+
+  /** true = weitermachen erlaubt (nichts dirty oder Nutzer hat bestätigt). */
+  const verlustOk = (aktion: string): boolean =>
+    !dirty || window.confirm(`Ungespeicherte Änderungen gehen verloren (${aktion}). Fortfahren?`);
 
   const refreshMonate = useCallback(async () => {
     if (!session) return;
@@ -114,8 +151,11 @@ export function CockpitWorkspace() {
       toast.error('Keine Prozessblöcke gefunden. Erwartet: Sheet „Prozessmodell" mit SE:/SA:-Blöcken.');
       return false;
     }
-    if (warnungen.length > 0) console.warn('Import-Warnungen:', warnungen);
+    if (warnungen.length > 0) setImportWarnungen(warnungen);
+    else setImportWarnungen([]);
     rawFileRef.current = buf;
+    setHatDatei(true);
+    setGeladenVon(null); // eigene Arbeit
     importStandRef.current = structuredClone(modell);
     setNativ(modell);
     setFileName(name);
@@ -125,6 +165,9 @@ export function CockpitWorkspace() {
   /** Modell direkt übernehmen (Vorlage, leeres Modell, neuer Monat, Version). */
   const uebernehmenNativ = (m: NativesProzessmodell, alsBasis = true) => {
     rawFileRef.current = null;
+    setHatDatei(false);
+    setGeladenVon(null);
+    setImportWarnungen([]);
     setFileName('');
     if (alsBasis) importStandRef.current = structuredClone(m);
     setNativ(m);
@@ -133,6 +176,10 @@ export function CockpitWorkspace() {
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!verlustOk('neue Excel importieren')) {
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     try {
       const buf = await file.arrayBuffer();
       if (uebernehmenAusDatei(buf, file.name)) {
@@ -198,12 +245,30 @@ export function CockpitWorkspace() {
 
   const speichernMonat = async () => {
     if (!nativ || !view) return;
+    // Review-Fund #2: Ein als Berater geladener KUNDEN-Monat darf nicht
+    // unbemerkt als Kopie ins eigene Konto wandern (und dort ggf. den
+    // eigenen gleichnamigen Monat überschreiben).
+    if (fremdGeladen) {
+      const ok = window.confirm(
+        `ACHTUNG: Dieser Monat gehört ${geladenVon?.label ?? 'einem Kunden'}.\n\n` +
+          `„Speichern" legt eine KOPIE in IHREM Konto an (ein eigener Monat ${view.monat} würde überschrieben) — ` +
+          `der Kunde erhält Ihre Änderung NICHT.\n\nTrotzdem als eigene Kopie speichern?`,
+      );
+      if (!ok) return;
+    }
     setSaving(true);
     try {
       // Das NATIVE Modell (aktueller Stand inkl. Ihrer Änderungen) ist die
       // gespeicherte Wahrheit; die Original-Datei geht als Beleg mit.
-      const saved = await saveProzessmodellMonat(rawFileRef.current, fileName, view, nativ);
-      toast.success(`Monat ${saved.monat} gespeichert (TOPIS-Modell${rawFileRef.current ? ' + Original-Datei' : ''})`);
+      const { row, versionFehler } = await saveProzessmodellMonat(rawFileRef.current, fileName, view, nativ);
+      toast.success(`Monat ${row.monat} gespeichert (TOPIS-Modell${rawFileRef.current ? ' + Original-Datei' : ''})`);
+      if (versionFehler) {
+        toast.warning(`Achtung: Versionshistorie konnte nicht geschrieben werden (${versionFehler}) — dieser Stand fehlt im Verlauf.`);
+      }
+      // Gespeichert = neuer Basis-Stand (dirty zurücksetzen), Herkunft jetzt eigene
+      importStandRef.current = structuredClone(nativ);
+      setNativ((m) => (m ? { ...m } : m));
+      setGeladenVon(null);
       await refreshMonate();
     } catch (err) {
       toast.error('Speichern fehlgeschlagen: ' + (err as Error).message);
@@ -213,16 +278,23 @@ export function CockpitWorkspace() {
   };
 
   const ladeMonat = async (m: CloudProzessmodellMonat) => {
+    if (!verlustOk(`Monat ${m.monat} laden`)) return;
     try {
       if (m.modell) {
         // Natives Modell ist die Wahrheit; Datei (falls da) nur für Export nachladen.
         setNativ(m.modell);
         importStandRef.current = structuredClone(m.modell);
         setFileName(m.dateiname || `${m.monat}.xlsx`);
+        setImportWarnungen([]);
+        // Herkunft merken (Berater-Sicht: fremder Kunde!)
+        setGeladenVon({ owner: m.owner, label: m.owner_email ?? 'Kunde' });
         rawFileRef.current = null;
+        setHatDatei(false);
         if (m.datei_pfad) {
           try {
-            rawFileRef.current = await loadProzessmodellDatei(m.datei_pfad);
+            const buf = await loadProzessmodellDatei(m.datei_pfad);
+            rawFileRef.current = buf;
+            setHatDatei(true);
           } catch {
             /* Export dann eben nicht möglich — Modell rechnet trotzdem */
           }
@@ -232,6 +304,7 @@ export function CockpitWorkspace() {
         // Alt-Zeile ohne natives Modell: Datei laden + konvertieren
         const buf = await loadProzessmodellDatei(m.datei_pfad);
         if (uebernehmenAusDatei(buf, m.dateiname || `${m.monat}.xlsx`)) {
+          setGeladenVon({ owner: m.owner, label: m.owner_email ?? 'Kunde' });
           toast.success(`Monat ${m.monat} aus Datei konvertiert`);
         }
       }
@@ -241,6 +314,7 @@ export function CockpitWorkspace() {
   };
 
   const loescheMonat = async (m: CloudProzessmodellMonat) => {
+    if (!window.confirm(`Monat ${m.monat} endgültig löschen?\nOriginal-Datei und Versionshistorie werden mit entfernt.`)) return;
     try {
       await deleteProzessmodellMonat(m);
       toast.success(`Monat ${m.monat} gelöscht`);
@@ -263,7 +337,21 @@ export function CockpitWorkspace() {
               {view && (
                 <Badge variant="secondary" className="font-normal shrink-0">{view.monat || fileName}</Badge>
               )}
+              {fremdGeladen && (
+                <Badge variant="destructive" className="font-normal shrink-0" title="Dieser Monat wurde aus einem Kunden-Konto geladen — Speichern legt nur eine Kopie in Ihrem Konto an.">
+                  Kunde: {geladenVon?.label}
+                </Badge>
+              )}
               {dirty && <Badge className="font-normal shrink-0">geändert</Badge>}
+              {view && alleWarnungen.length > 0 && (
+                <Badge
+                  variant="outline"
+                  className="font-normal shrink-0 border-amber-500/60 text-amber-600 dark:text-amber-400 cursor-help"
+                  title={alleWarnungen.slice(0, 12).join('\n')}
+                >
+                  ⚠ {alleWarnungen.length} Warnung{alleWarnungen.length > 1 ? 'en' : ''}
+                </Badge>
+              )}
             </div>
             <div className="ml-auto flex items-center gap-1.5 flex-wrap">
               {view && (
@@ -274,7 +362,7 @@ export function CockpitWorkspace() {
                       Zurücksetzen
                     </Button>
                   )}
-                  {rawFileRef.current && (
+                  {hatDatei && (
                     <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportieren}>
                       <FileDown className="h-3.5 w-3.5" />
                       Excel exportieren
@@ -284,6 +372,7 @@ export function CockpitWorkspace() {
                     <NeuerMonatDialog
                       modell={nativ}
                       onNeuerMonat={(m) => {
+                        if (!verlustOk(`neuen Monat ${m.monat} anlegen`)) return;
                         uebernehmenNativ(m);
                         toast.success(`Monat ${m.monat} angelegt — Mengen prüfen, dann speichern.`);
                       }}
@@ -383,6 +472,7 @@ export function CockpitWorkspace() {
         monat={versionenMonat}
         onClose={() => setVersionenMonat(null)}
         onWiederherstellen={(m, v) => {
+          if (!verlustOk('Version wiederherstellen')) return;
           uebernehmenNativ(m);
           setVersionenMonat(null);
           toast.success(

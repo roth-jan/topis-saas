@@ -212,7 +212,13 @@ function GroesseZeile({ groesse: g, onEdit }: { groesse: ModellGroesse; onEdit: 
   );
 }
 
-/** Editierbare Zahlen-Zelle mit Spreadsheet-Tastatur. */
+/** Editierbare Zahlen-Zelle mit Spreadsheet-Tastatur.
+ *
+ * WICHTIG (Review-Fund #4/#11/#23): Die Anzeige ist GERUNDET — committen darf
+ * nur eine ECHTE Nutzer-Eingabe, nie der zurückgelesene Anzeigewert. Deshalb
+ * merkt sich onFocus den Ausgangstext; ist er beim Verlassen unverändert,
+ * passiert nichts (Durchtabben bleibt verlustfrei). Ein geleertes Pflichtfeld
+ * wird auf den Modellwert zurückgesetzt, statt still auseinanderzulaufen. */
 function ZahlZelle({
   wert,
   onCommit,
@@ -237,14 +243,22 @@ function ZahlZelle({
       defaultValue={wert == null ? '' : fmtWert(wert)}
       title={title}
       onKeyDown={handleGridKeys}
+      onFocus={(e) => {
+        e.currentTarget.dataset.ausgang = e.currentTarget.value;
+      }}
       onBlur={(e) => {
         const roh = e.target.value.trim();
+        // Unverändert (nur durchgetabbt/angeklickt) → NIE committen,
+        // sonst würde der gerundete Anzeigewert die Präzision zerstören.
+        if (roh === (e.target.dataset.ausgang ?? '').trim()) return;
         if (roh === '') {
           if (leerErlaubt && wert != null) onLeer?.();
+          else e.target.value = wert == null ? '' : String(fmtWert(wert)); // Pflichtfeld: zurücksetzen
           return;
         }
         const v = parseFloat(roh);
         if (Number.isFinite(v) && (wert == null || Math.abs(v - wert) > 1e-9)) onCommit(v);
+        else if (!Number.isFinite(v)) e.target.value = wert == null ? '' : String(fmtWert(wert));
       }}
       className={`h-6 ${breit ? 'w-28' : 'w-16'} rounded border border-transparent bg-transparent px-1.5 text-right font-mono text-xs tabular-nums
         hover:border-input focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring/40

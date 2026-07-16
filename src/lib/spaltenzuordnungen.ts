@@ -33,8 +33,8 @@ export const SPALTEN_PROFILE: Spaltenzuordnung[] = [
   },
   {
     id: 'AS_2019',
-    name: 'Andreas Schmid 2019',
-    beschreibung: 'SE-Scandaten Gersthofen (Stellplatz = Tor-Nr)',
+    name: 'Speditions-WMS A (2019)',
+    beschreibung: 'SE-Scandaten, Stellplatz = Tor-Nr',
     delimiter: ';',
     datumsformat: 'DD.MM.YYYY',
     mapping: {

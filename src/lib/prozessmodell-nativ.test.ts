@@ -85,6 +85,40 @@ describe('rechneNativesModell (synthetisch)', () => {
     expect(rechneNativesModell(m).modell.bloecke[0].schritte[0].minProColli).toBeCloseTo(1.6, 10);
   });
 
+  it('Schritt löschen friert Referenzen ein statt still 0 zu rechnen (Review-Fund #1)', () => {
+    let m = miniModell();
+    // Schritt 2 bezieht seinen Anteil per Referenz von Schritt 1 (wie im echten AS-Import)
+    m = setzeSchrittFeld(m, '_s51', 'anteil', '_s50');
+    const vorher = rechneNativesModell(m);
+    expect(vorher.warnungen).toEqual([]);
+    const anteilS51Vorher = vorher.modell.bloecke[0].schritte[1].anteil; // = 0.8 (von _s50)
+
+    m = loescheSchritt(m, '_s50');
+    const nachher = rechneNativesModell(m);
+    // KEINE Warnungen (Referenz wurde eingefroren) und der Anteil bleibt 0.8
+    expect(nachher.warnungen).toEqual([]);
+    expect(nachher.modell.bloecke[0].schritte[0].anteil).toBeCloseTo(anteilS51Vorher, 10);
+    expect(nachher.modell.bloecke[0].schritte[0].minProColli).toBeGreaterThan(0);
+  });
+
+  it('Zahlgrenze beim Einfrieren: _s5 trifft nicht _s50', () => {
+    let m = miniModell();
+    // Kunstfall: Ausdruck enthält _s50 UND einen längeren Namen _s501 existiert nicht —
+    // prüfe dass Ersetzen von _s50 den Teilstring in _s51 (andere ID) nicht anfasst.
+    m = setzeSchrittFeld(m, '_s51', 'anteil', '_s50+0.1');
+    m = loescheSchritt(m, '_s50');
+    const s = m.bloecke[0].schritte[0];
+    expect(s.anteil).toBe('(0.8)+0.1');
+  });
+
+  it('Block ohne Basis warnt statt still 0 (Review-Fund #25)', () => {
+    const m = miniModell();
+    m.bloecke[0].basisExpr = null;
+    const erg = rechneNativesModell(m);
+    expect(erg.modell.bloecke[0].minProColli).toBe(0);
+    expect(erg.warnungen.some((w) => w.includes('keine Mengen-Basis'))).toBe(true);
+  });
+
   it('Schritt anlegen + löschen', () => {
     let m = neuerSchritt(miniModell(), 'b0', '_s50');
     expect(m.bloecke[0].schritte).toHaveLength(3);

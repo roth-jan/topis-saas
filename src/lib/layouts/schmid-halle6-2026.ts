@@ -75,8 +75,8 @@ export const HALLE6_2026_META = layoutJson.meta;
  */
 export const PROJEKT_GERSTHOFEN_2026: ProjektVorlage = {
   id: 'as_gersthofen_2026',
-  name: 'Andreas Schmid',
-  standort: 'Gersthofen (Halle 6 + Anbau 2026)',
+  name: 'Demo-Umschlaghalle',
+  standort: 'reales Projekt, anonymisiert (Erweiterung 2026)',
   jahr: 2026,
   beschreibung: '115 Tore (Süd 1-52, Nord 61-115), 198,1×58m, Anbau +3.600 m²',
   hall: {

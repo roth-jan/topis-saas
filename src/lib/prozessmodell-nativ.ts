@@ -150,6 +150,13 @@ export function rechneNativesModell(m: NativesProzessmodell): NativErgebnis {
   // J=(G/H+I)/60 bzw. I/60 · M=Häufigkeits-Ausdruck · N=J·M/Basis)
   const uiBloecke: ModellBlock[] = m.bloecke.map((b, bi) => {
     const basis = b.basisExpr ? evalExpr(b.basisExpr, `Basis ${b.name}`) : 0;
+    // Silent-Failure-Schutz: Ein Block mit echten Schrittzeiten aber ohne
+    // Basis-Divisor würde still 0 liefern — das MUSS der Nutzer sehen.
+    if (basis === 0 && b.schritte.some((s) => (typeof s.standardSek === 'number' && s.standardSek > 0) || s.wegM != null)) {
+      warnungen.push(
+        `Block „${b.name}": keine Mengen-Basis (Colli je Tag) ${b.basisExpr ? 'berechenbar (= 0)' : 'erkannt'} — Min/Colli wird 0 gerechnet.`,
+      );
+    }
     const schritte: ModellSchritt[] = [];
     const proAbteilung: Record<string, number> = {};
     let sum = 0;
@@ -304,10 +311,44 @@ export function neuerSchritt(m: NativesProzessmodell, blockId: string, nachSchri
   };
 }
 
+/** Ersetzt `_s{id}`-Referenzen (mit Zahlgrenze, damit _s20 nicht _s200 trifft)
+ * in einem Ausdruck durch den eingefrorenen Zahlenwert. */
+function ersetzeSchrittRef(expr: string, schrittId: string, wert: number): string {
+  const re = new RegExp(schrittId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![0-9])', 'g');
+  return expr.replace(re, `(${wert})`);
+}
+
 export function loescheSchritt(m: NativesProzessmodell, schrittId: string): NativesProzessmodell {
+  // Andere Ausdrücke können den Anteil dieses Schritts referenzieren (der
+  // Konverter erzeugt solche `_s`-Bezüge systematisch aus L-Zellrefs).
+  // Excel-Semantik beim Löschen: Referenzen werden durch den letzten WERT
+  // ersetzt (Formel → Wert), statt still auf 0 zu fallen.
+  const erg = rechneNativesModell(m);
+  let anteilWert = 0;
+  for (const b of erg.modell.bloecke) {
+    const s = b.schritte.find((x) => x.nativId === schrittId);
+    if (s) { anteilWert = s.anteil; break; }
+  }
+  const fix = (f: number | string | null): number | string | null =>
+    typeof f === 'string' ? ersetzeSchrittRef(f, schrittId, anteilWert) : f;
+
   return {
     ...m,
-    bloecke: m.bloecke.map((b) => ({ ...b, schritte: b.schritte.filter((s) => s.id !== schrittId) })),
+    knoten: m.knoten.map((k) => (k.expr != null ? { ...k, expr: ersetzeSchrittRef(k.expr, schrittId, anteilWert) } : k)),
+    bloecke: m.bloecke.map((b) => ({
+      ...b,
+      basisExpr: b.basisExpr != null ? ersetzeSchrittRef(b.basisExpr, schrittId, anteilWert) : b.basisExpr,
+      schritte: b.schritte
+        .filter((s) => s.id !== schrittId)
+        .map((s) => ({
+          ...s,
+          anteil: typeof s.anteil === 'string' ? ersetzeSchrittRef(s.anteil, schrittId, anteilWert) : s.anteil,
+          haeufigkeitExpr: ersetzeSchrittRef(s.haeufigkeitExpr, schrittId, anteilWert),
+          wegM: fix(s.wegM),
+          geschwMs: fix(s.geschwMs),
+          standardSek: fix(s.standardSek),
+        })),
+    })),
   };
 }
 

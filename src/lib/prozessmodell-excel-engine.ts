@@ -142,7 +142,13 @@ export class ProzessWorkbook {
     try {
       const c = this.cell(sheet, addr);
       if (c && typeof c.f === 'string') {
-        val = this.evalFormula(sheet, c.f);
+        try {
+          val = this.evalFormula(sheet, c.f);
+        } catch {
+          // Referenzpfad bleibt tolerant: #DIV/0! u.ä. → 0, exakt das alte
+          // safeDiv-Verhalten (Null-Blöcke der echten Datei hängen daran).
+          val = 0;
+        }
       } else if (c && (typeof c.v === 'number')) {
         val = c.v;
       } else if (c && typeof c.v === 'string') {
@@ -481,6 +487,33 @@ class Parser {
   }
 
   private parseFunction(name: string): number | string {
+    // IFERROR lazy: wirft die Auswertung von Arg 1 (oder liefert NaN/∞),
+    // greift der Fallback — sonst würde der Fehler die ganze Formel killen.
+    if (name === 'IFERROR') {
+      const start = this.i;
+      let wert: number | string | null = null;
+      let fehler = false;
+      try {
+        wert = this.parseExpression();
+        if (typeof wert === 'number' && !Number.isFinite(wert)) fehler = true;
+      } catch {
+        fehler = true;
+        // Arg 1 syntaktisch überspringen (ab Startposition)
+        this.i = start;
+        this.skipExpression();
+      }
+      if (this.peek() === ',') {
+        this.i++;
+        if (fehler) {
+          const fallback = this.parseExpression();
+          this.expectClose();
+          return fallback;
+        }
+        this.skipExpression();
+      }
+      this.expectClose();
+      return fehler ? 0 : (wert as number | string);
+    }
     // Argumente lesen (lazy für IF)
     if (name === 'IF') {
       const cond = this.parseExpression();
@@ -637,7 +670,11 @@ function isArgBoundary(ch: string): boolean {
 }
 
 function safeDiv(a: number, b: number): number {
-  if (b === 0) return 0; // Excel #DIV/0! → wir behandeln als 0 (kommt in diesem Modell nicht vor)
+  // Excel-Semantik: Division durch 0 ist ein FEHLER (#DIV/0!), kein stilles 0.
+  // IFERROR fängt ihn; der native Rechner meldet ihn als sichtbare Warnung;
+  // nur der adressbasierte Referenzpfad (ProzessWorkbook.resolve) bleibt
+  // tolerant und liefert 0 (siehe dort).
+  if (b === 0) throw new Error('Division durch 0 (#DIV/0!)');
   return a / b;
 }
 
@@ -706,8 +743,7 @@ function applyFunction(name: string, args: (RangeRef | number | string)[], wb: P
       }
       return t;
     }
-    case 'IFERROR':
-      return scalar(args[0], wb);
+    // IFERROR wird lazy in parseFunction behandelt (siehe dort).
     default:
       throw new Error(`Funktion ${name} nicht implementiert`);
   }

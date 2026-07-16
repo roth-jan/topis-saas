@@ -41,6 +41,18 @@ const ERWARTET_MIN_COLLI: [string, number][] = [
   ['Beladung Kunden-WAB', 40.456573],
 ];
 
+describe('evalAusdruck (native Ausdrücke, CI-sicher)', () => {
+  it('IFERROR liefert den Fallback bei Auswertungsfehlern (Review-Fund #15)', async () => {
+    const { evalAusdruck } = await import('./prozessmodell-excel-engine');
+    // _x wirft (unbekannter Name → Zellref-Pfad → wb=null-Fehler)
+    expect(evalAusdruck('IFERROR(FOO123,42)', () => undefined)).toBe(42);
+    // Kein Fehler → erster Zweig
+    expect(evalAusdruck('IFERROR(1+2,42)', () => undefined)).toBe(3);
+    // Verschachtelt mit benannter Referenz
+    expect(evalAusdruck('IFERROR(_a/_b,7)', (n) => (n === '_a' ? 10 : n === '_b' ? 0 : undefined))).toBe(10 / 0 === Infinity ? 7 : 7);
+  });
+});
+
 describe.skipIf(!XLSX_PATH)('AS-Prozessmodell-Engine (rechnet aus Rohdaten)', () => {
   const load = () => ProzessWorkbook.fromArrayBuffer(toArrayBuffer(readFileSync(XLSX_PATH!)));
 
