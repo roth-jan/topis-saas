@@ -362,13 +362,16 @@ export interface MonatsEingabe {
   name: string;
   wert: number;
   knotenIds: string[];
+  blockId?: string;
 }
 
 /** Alle monatlichen Eingaben des Modells (Mengen + Dateneingabe-Herkünfte),
  * dedupliziert über die Herkunftszelle. Zeitaufnahme-Parameter gehören NICHT
  * dazu — die ändern sich nicht monatlich. */
 export function listeMonatsEingaben(m: NativesProzessmodell): MonatsEingabe[] {
+  const blockName = new Map(m.bloecke.map((b) => [b.id, b.name]));
   const gruppen = new Map<string, MonatsEingabe>();
+  const namenZaehler = new Map<string, number>();
   for (const k of m.knoten) {
     if (k.expr != null || k.wert == null) continue;
     const monatlich = k.region === 'menge' || k.origin?.sheet === 'Dateneingabe';
@@ -379,10 +382,29 @@ export function listeMonatsEingaben(m: NativesProzessmodell): MonatsEingabe[] {
       g.knotenIds.push(k.id);
       if (k.name && (g.name.startsWith('_') || g.name.includes('!'))) g.name = k.name;
     } else {
-      gruppen.set(key, { key, name: k.name ?? key, wert: k.wert, knotenIds: [k.id] });
+      // Mehrdeutige Namen (z.B. beide SE+SA haben „Colli je Monat", Fund #13)
+      // mit dem Blocknamen disambiguieren.
+      const name = k.name ?? key;
+      if (k.name && k.blockId) {
+        namenZaehler.set(k.name, (namenZaehler.get(k.name) ?? 0) + 1);
+      }
+      gruppen.set(key, { key, name, wert: k.wert, knotenIds: [k.id], blockId: k.blockId ?? undefined });
     }
   }
-  return [...gruppen.values()];
+  const eingaben = [...gruppen.values()];
+  // Nur wo derselbe Name mehrfach vorkommt: Blockname voranstellen.
+  const mehrfach = new Set([...namenZaehler.entries()].filter(([, n]) => n > 1).map(([n]) => n));
+  return eingaben.map((e) =>
+    mehrfach.has(e.name) && e.blockId
+      ? { ...e, name: `${kurz(blockName.get(e.blockId) ?? '')} · ${e.name}` }
+      : e,
+  );
+}
+
+/** Blockname für die Anzeige kürzen: „SE: Entladung …" → „SE". */
+function kurz(name: string): string {
+  const m = /^(SE|SA|SI|SG|AMAZON)\b/i.exec(name);
+  return m ? m[1].toUpperCase() : name.slice(0, 14);
 }
 
 /** Neuen Monat aus dem aktuellen Modell erzeugen: gleiche Struktur und
@@ -422,6 +444,21 @@ export function exportDiffs(
     out.push({ sheet: 'Dateneingabe', addr: 'E3', value: m.arbeitstage });
   }
   return out;
+}
+
+/** Irgendeine WERT-Änderung (Knoten oder Arbeitstage) gegenüber dem Basis-Stand?
+ * Anders als exportDiffs unabhängig von einer Excel-Herkunft — greift also auch
+ * bei Vorlagen- und Leer-Modellen (Review-Fund #22). */
+export function hatWertAenderung(m: NativesProzessmodell, basis: NativesProzessmodell): boolean {
+  if (Math.abs(m.arbeitstage - basis.arbeitstage) > 1e-12) return true;
+  const alt = new Map(basis.knoten.map((k) => [k.id, k.wert]));
+  for (const k of m.knoten) {
+    if (k.expr != null) continue;
+    const v = alt.get(k.id);
+    if (v == null && k.wert == null) continue;
+    if (v == null || k.wert == null || Math.abs(v - k.wert) > 1e-12) return true;
+  }
+  return false;
 }
 
 /** Strukturänderung (Schritte) gegenüber dem Importstand? → Export-Hinweis. */

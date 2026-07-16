@@ -144,10 +144,12 @@ function VorlagenFormular({
   const [arbeitstage, setArbeitstage] = useState(String(vorbelegung?.arbeitstage ?? 21));
   const [verteilweg, setVerteilweg] = useState('');
 
+  const c = parseFloat(colli);
+  const at = parseFloat(arbeitstage);
+  const kannErzeugen = Number.isFinite(c) && c > 0 && Number.isFinite(at) && at > 0 && at <= 31;
+
   const erzeugen = () => {
-    const c = parseFloat(colli);
-    const at = parseFloat(arbeitstage);
-    if (!Number.isFinite(c) || c <= 0 || !Number.isFinite(at) || at <= 0) return;
+    if (!kannErzeugen) return;
     const vw = parseFloat(verteilweg);
     onModell(
       erzeugeModellAusVorlage(typ, {
@@ -204,7 +206,7 @@ function VorlagenFormular({
         <p className="text-[11px] text-muted-foreground">
           Standardzeiten und Anteile stammen aus der ROTH-Zeitaufnahme — danach im Grid frei anpassbar.
         </p>
-        <Button size="sm" className="gap-1 text-xs shrink-0" onClick={erzeugen}>
+        <Button size="sm" className="gap-1 text-xs shrink-0" onClick={erzeugen} disabled={!kannErzeugen}>
           <ArrowRight className="h-3.5 w-3.5" />
           Modell erzeugen
         </Button>

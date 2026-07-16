@@ -71,6 +71,16 @@ describe('extractKennzahlen', () => {
   });
 });
 
+describe('normalisiereMonat (Review-Fund #21)', () => {
+  it('füllt einstellige Monate auf, trimmt, lässt Unklares unverändert', async () => {
+    const { normalisiereMonat } = await import('./cloud-prozessmodelle');
+    expect(normalisiereMonat('7/2026')).toBe('07/2026');
+    expect(normalisiereMonat(' 07/2026 ')).toBe('07/2026');
+    expect(normalisiereMonat('12/2026')).toBe('12/2026');
+    expect(normalisiereMonat('Q3')).toBe('Q3');
+  });
+});
+
 describe('monatSortKey / sortiereMonate', () => {
   it('sortiert MM/YYYY chronologisch über Jahresgrenzen', () => {
     const sorted = sortiereMonate([monatStub('01/2027', 1), monatStub('06/2026', 2), monatStub('12/2026', 3)]);

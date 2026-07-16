@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { erzeugeModellAusVorlage, erzeugeLeeresModell } from './prozessmodell-vorlagen';
-import { rechneNativesModell, listeMonatsEingaben, neuerMonatAusEingaben, setzeSchrittFeld } from './prozessmodell-nativ';
+import { rechneNativesModell, listeMonatsEingaben, neuerMonatAusEingaben, setzeSchrittFeld, setzeKnotenWert, hatWertAenderung } from './prozessmodell-nativ';
 import { berechneMinProColli } from './prozessrechner';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from './data/prozessmodell-se';
 import { PROZESSMODELL_SA, SA_STANDARD_PARAMETER } from './data/prozessmodell-sa';
@@ -52,6 +52,16 @@ describe('ROTH-Vorlagen → natives Modell (Gate gegen den alten kalibrierten Re
   });
 });
 
+describe('hatWertAenderung — dirty auch ohne Excel-Herkunft (Review-Fund #22)', () => {
+  it('erkennt Wertänderung in einem Vorlagen-Modell (Knoten ohne origin)', () => {
+    const basis = erzeugeModellAusVorlage('se', ECK);
+    expect(hatWertAenderung(basis, basis)).toBe(false);
+    const colli = listeMonatsEingaben(basis)[0];
+    const geaendert = setzeKnotenWert(basis, colli.knotenIds[0], basis.knoten.find((k) => k.id === colli.knotenIds[0])!.wert! + 1000);
+    expect(hatWertAenderung(geaendert, basis)).toBe(true);
+  });
+});
+
 describe('Leeres Modell', () => {
   it('rechnet ohne Warnungen und ist bearbeitbar', () => {
     let m = erzeugeLeeresModell('07/2026');
@@ -69,6 +79,17 @@ describe('Monats-Rhythmus (Mengen-Formular)', () => {
     const eingaben = listeMonatsEingaben(m);
     expect(eingaben.map((e) => e.name)).toContain('Colli je Monat');
     expect(eingaben.map((e) => e.name)).not.toContain('ø Verteilweg');
+  });
+
+  it('SE+SA: gleichnamige Mengen werden mit Blockname disambiguiert (Review-Fund #13)', () => {
+    const m = erzeugeModellAusVorlage('se_sa', ECK);
+    const eingaben = listeMonatsEingaben(m);
+    const colliFelder = eingaben.filter((e) => e.name.includes('Colli je Monat'));
+    expect(colliFelder).toHaveLength(2);
+    // Nicht mehr identisch beschriftet:
+    expect(new Set(colliFelder.map((e) => e.name)).size).toBe(2);
+    expect(colliFelder.some((e) => e.name.startsWith('SE'))).toBe(true);
+    expect(colliFelder.some((e) => e.name.startsWith('SA'))).toBe(true);
   });
 
   it('neuer Monat übernimmt Struktur + Parameter, ersetzt Mengen/Monat/Arbeitstage', () => {

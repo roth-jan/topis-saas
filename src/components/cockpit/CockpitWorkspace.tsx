@@ -20,6 +20,8 @@ import {
   loescheSchritt,
   exportDiffs,
   hatStrukturAenderung,
+  hatWertAenderung,
+  setzeArbeitstage,
   type NativesProzessmodell,
   type SchrittFeld,
 } from '@/lib/prozessmodell-nativ';
@@ -37,6 +39,7 @@ import { VerlaufPanel } from './VerlaufPanel';
 import { StartTueren, type CockpitVorbelegung } from './StartTueren';
 import { NeuerMonatDialog } from './NeuerMonatDialog';
 import { VersionenDialog } from './VersionenDialog';
+import { VerteilwegBruecke } from './VerteilwegBruecke';
 
 /**
  * Prozessmodell-Cockpit: TOPIS als BESSERE Excel.
@@ -69,6 +72,7 @@ export function CockpitWorkspace() {
   const ladeSeqRef = useRef(0);
   /** ID des zuletzt aus der Cloud geladenen Monats (für die Überschreib-Warnung #24). */
   const [zuletztGeladenId, setZuletztGeladenId] = useState<string | null>(null);
+  const [brueckeZu, setBrueckeZu] = useState(false);
   const uid = session?.user?.id ?? null;
   const fremdGeladen = Boolean(geladenVon && uid && geladenVon.owner !== uid);
 
@@ -98,7 +102,7 @@ export function CockpitWorkspace() {
     if (!nativ || !importStandRef.current) return false;
     return (
       hatStrukturAenderung(nativ, importStandRef.current) ||
-      exportDiffs(nativ, importStandRef.current).length > 0
+      hatWertAenderung(nativ, importStandRef.current)
     );
   }, [nativ]);
 
@@ -162,6 +166,7 @@ export function CockpitWorkspace() {
     setGeladenVon(null); // eigene Arbeit
     setZuletztGeladenId(null);
     importStandRef.current = structuredClone(modell);
+    setBrueckeZu(false);
     setNativ(modell);
     setFileName(name);
     return true;
@@ -176,6 +181,7 @@ export function CockpitWorkspace() {
     setImportWarnungen([]);
     setFileName('');
     if (alsBasis) importStandRef.current = structuredClone(m);
+    setBrueckeZu(false);
     setNativ(m);
   };
 
@@ -196,6 +202,19 @@ export function CockpitWorkspace() {
     } finally {
       if (fileRef.current) fileRef.current.value = '';
     }
+  };
+
+  /** UX-Paket 2: Layout-Verteilweg in alle „ø Verteilweg"-Knoten übernehmen. */
+  const verteilwegUebernehmen = (wegM: number) => {
+    setNativ((m) => {
+      if (!m) return m;
+      let neu = m;
+      for (const k of m.knoten) {
+        if (k.expr == null && /verteilweg/i.test(k.name ?? '')) neu = setzeKnotenWert(neu, k.id, wegM);
+      }
+      return neu;
+    });
+    toast.success(`ø Verteilweg auf ${wegM.toLocaleString('de-DE', { maximumFractionDigits: 1 })} m gesetzt (aus Hallen-Layout).`);
   };
 
   // --- Editier-Handler (natives Modell) ---
@@ -334,8 +353,9 @@ export function CockpitWorkspace() {
   const loescheMonat = async (m: CloudProzessmodellMonat) => {
     if (!window.confirm(`Monat ${m.monat} endgültig löschen?\nOriginal-Datei und Versionshistorie werden mit entfernt.`)) return;
     try {
-      await deleteProzessmodellMonat(m);
+      const { storageWarnung } = await deleteProzessmodellMonat(m);
       toast.success(`Monat ${m.monat} gelöscht`);
+      if (storageWarnung) toast.warning(`Hinweis: Die Original-Datei konnte nicht entfernt werden (${storageWarnung}).`);
       await refreshMonate();
     } catch (err) {
       toast.error('Löschen fehlgeschlagen: ' + (err as Error).message);
@@ -453,12 +473,25 @@ export function CockpitWorkspace() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
+            {/* UX-Paket 2: Verteilweg-Datenbrücke Layout → Cockpit */}
+            {!brueckeZu && (
+              <VerteilwegBruecke
+                modell={view}
+                onUebernehmen={verteilwegUebernehmen}
+                onSchliessen={() => setBrueckeZu(true)}
+              />
+            )}
             {/* KPI-Zeile */}
             <div className="flex flex-wrap items-stretch gap-2">
               <Kpi label="MA-Stundenbedarf (Prozesse)" wert={`${view.maStundenProzesse.toLocaleString('de-DE', { maximumFractionDigits: 0 })} h`} sub="je Monat" highlight />
               <Kpi label="Prozessblöcke" wert={String(view.bloecke.length)} sub="im Modell" />
               <Kpi label="Arbeitsminuten je Stunde" wert={view.arbeitsminutenJeStunde.toLocaleString('de-DE', { maximumFractionDigits: 1 })} sub="inkl. Verteilzeit" />
-              <Kpi label="Arbeitstage" wert={String(nativ?.arbeitstage ?? '')} sub="im Monat" />
+              <KpiEditierbar
+                label="Arbeitstage"
+                wert={nativ?.arbeitstage ?? 0}
+                sub="im Monat (klicken zum Ändern)"
+                onCommit={(v) => setNativ((m) => (m ? setzeArbeitstage(m, v) : m))}
+              />
             </div>
 
             {/* Zwei Spalten: links Übersicht + Verlauf, rechts Grid */}
@@ -481,13 +514,16 @@ export function CockpitWorkspace() {
                   </p>
                 )}
               </div>
-              <ProzessGrid
-                bloecke={view.bloecke}
-                onEdit={editGroesse}
-                onSchrittEdit={editSchritt}
-                onSchrittNeu={schrittNeu}
-                onSchrittLoeschen={schrittWeg}
-              />
+              <div className="flex flex-col gap-3">
+                <CockpitHilfe />
+                <ProzessGrid
+                  bloecke={view.bloecke}
+                  onEdit={editGroesse}
+                  onSchrittEdit={editSchritt}
+                  onSchrittNeu={schrittNeu}
+                  onSchrittLoeschen={schrittWeg}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -509,12 +545,69 @@ export function CockpitWorkspace() {
   );
 }
 
+/** Leichtes Onboarding (UX-Paket 2): einmaliger, wegklickbarer Erste-Schritte-Hinweis
+ * im Grid — merkt sich das Schließen in localStorage. */
+function CockpitHilfe() {
+  const [zu, setZu] = useState<boolean | null>(null); // null = noch nicht gelesen (nichts rendern)
+  useEffect(() => {
+    let v = false;
+    try { v = localStorage.getItem('topis-cockpit-hilfe-zu') === '1'; } catch { /* ignore */ }
+    queueMicrotask(() => setZu(v));
+  }, []);
+  if (zu !== false) return null;
+  return (
+    <div className="rounded-lg border bg-muted/40 px-3 py-2.5 text-xs flex items-start gap-3">
+      <div className="flex-1 space-y-1">
+        <p className="font-medium">So arbeiten Sie im Cockpit:</p>
+        <ul className="text-muted-foreground space-y-0.5 list-disc pl-4">
+          <li><b>Block aufklappen</b> → Mengen &amp; Parameter direkt in der Zeile ändern (Enter springt zur nächsten Zelle).</li>
+          <li><b>&bdquo;Prozessschritte bearbeiten&ldquo;</b> öffnet die Zeit-Tabelle — Zeiten anpassen, Schritte anlegen/löschen.</li>
+          <li>Alles rechnet <b>sofort neu</b> (MA-Stunden oben, Übersicht links). Oben <b>&bdquo;Monat speichern&ldquo;</b> baut den Trend auf.</li>
+        </ul>
+      </div>
+      <button
+        onClick={() => { try { localStorage.setItem('topis-cockpit-hilfe-zu', '1'); } catch { /* ignore */ } setZu(true); }}
+        className="text-muted-foreground hover:text-foreground shrink-0 text-[11px]"
+      >
+        verstanden ✕
+      </button>
+    </div>
+  );
+}
+
 function Kpi({ label, wert, sub, highlight = false }: { label: string; wert: string; sub: string; highlight?: boolean }) {
   return (
     <div className={`rounded-lg border px-3 py-2 min-w-[150px] ${highlight ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>
       <div className={`text-[10px] uppercase tracking-wide ${highlight ? 'opacity-80' : 'text-muted-foreground'}`}>{label}</div>
       <div className="font-mono text-lg font-semibold tabular-nums leading-tight">{wert}</div>
       <div className={`text-[10px] ${highlight ? 'opacity-80' : 'text-muted-foreground'}`}>{sub}</div>
+    </div>
+  );
+}
+
+/** KPI-Kachel mit inline editierbarem Zahlenwert (Review-Fund #28: Arbeitstage
+ * müssen nach dem Anlegen korrigierbar sein). */
+function KpiEditierbar({ label, wert, sub, onCommit }: { label: string; wert: number; sub: string; onCommit: (v: number) => void }) {
+  return (
+    <div className="rounded-lg border px-3 py-2 min-w-[150px] bg-card focus-within:ring-1 focus-within:ring-ring">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <input
+        type="number"
+        min={1}
+        step={1}
+        defaultValue={wert}
+        key={wert}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={(e) => {
+          const v = parseInt(e.target.value, 10);
+          if (Number.isFinite(v) && v > 0 && v !== wert) onCommit(v);
+          else e.target.value = String(wert);
+        }}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="w-full bg-transparent font-mono text-lg font-semibold tabular-nums leading-tight outline-none
+          [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+      />
+      <div className="text-[10px] text-muted-foreground">{sub}</div>
     </div>
   );
 }

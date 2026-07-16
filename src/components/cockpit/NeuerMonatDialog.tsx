@@ -34,9 +34,14 @@ export function NeuerMonatDialog({
     setWerte({});
   };
 
+  const monatGueltig = /^\d{1,2}\s*\/\s*\d{4}$/.test(monat.trim());
+  const atNum = parseFloat(arbeitstage);
+  const atGueltig = Number.isFinite(atNum) && atNum > 0 && atNum <= 31;
+  const kannAnlegen = monatGueltig && atGueltig;
+
   const anlegen = () => {
-    const at = parseFloat(arbeitstage);
-    if (!monat.trim() || !Number.isFinite(at) || at <= 0) return;
+    if (!kannAnlegen) return; // Button ist disabled — dieser Guard ist nur Absicherung
+    const at = atNum;
     const neu = eingaben
       .map((e) => {
         const roh = werte[e.key];
@@ -75,7 +80,13 @@ export function NeuerMonatDialog({
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium">Monat</span>
-              <Input value={monat} onChange={(e) => setMonat(e.target.value)} className="h-8 text-xs" placeholder="07/2026" />
+              <Input
+                value={monat}
+                onChange={(e) => setMonat(e.target.value)}
+                className={`h-8 text-xs ${monat && !monatGueltig ? 'border-destructive' : ''}`}
+                placeholder="07/2026"
+              />
+              {monat && !monatGueltig && <span className="text-[10px] text-destructive">Format MM/JJJJ</span>}
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-medium">Arbeitstage</span>
@@ -83,8 +94,9 @@ export function NeuerMonatDialog({
                 type="number"
                 value={arbeitstage}
                 onChange={(e) => setArbeitstage(e.target.value)}
-                className="h-8 text-xs text-right font-mono"
+                className={`h-8 text-xs text-right font-mono ${arbeitstage && !atGueltig ? 'border-destructive' : ''}`}
               />
+              {arbeitstage && !atGueltig && <span className="text-[10px] text-destructive">1–31</span>}
             </label>
           </div>
           <div className="rounded border overflow-hidden">
@@ -108,7 +120,7 @@ export function NeuerMonatDialog({
           </div>
         </div>
         <div className="shrink-0 flex justify-end pt-2">
-          <Button size="sm" className="gap-1 text-xs" onClick={anlegen}>
+          <Button size="sm" className="gap-1 text-xs" onClick={anlegen} disabled={!kannAnlegen}>
             <ArrowRight className="h-3.5 w-3.5" />
             Monat anlegen
           </Button>

@@ -96,6 +96,15 @@ export function extractKennzahlen(modell: AsProzessModell): ProzessKennzahlen {
   };
 }
 
+/** Monat vereinheitlichen: '7/2026' → '07/2026'. Leeres/unklares Format bleibt
+ * wie eingegeben (getrimmt) — NICHT still auf 'unbekannt' mappen, das würde
+ * verschiedene Modelle in einer Cloud-Zeile kollidieren lassen (Review-Fund #21). */
+export function normalisiereMonat(roh: string): string {
+  const t = (roh ?? '').trim();
+  const m = /^(\d{1,2})\s*\/\s*(\d{4})$/.exec(t);
+  return m ? `${m[1].padStart(2, '0')}/${m[2]}` : t;
+}
+
 /** 'MM/YYYY' → 'YYYY-MM' für chronologische Sortierung; unbekanntes Format ans Ende. */
 export function monatSortKey(monat: string): string {
   const m = /^(\d{1,2})\s*\/\s*(\d{4})$/.exec(monat.trim());
@@ -122,7 +131,9 @@ export function berechneTrend(
 
 /** Dateipfad im Bucket: uid/monat.xlsx ('/' im Monat → '-'). */
 function storagePfad(uid: string, monat: string): string {
-  return `${uid}/${monat.replace(/\//g, '-')}.xlsx`;
+  // Storage-Key nur mit unbedenklichen Zeichen (Sonderzeichen im Monat → '_').
+  const safe = monat.replace(/\//g, '-').replace(/[^A-Za-z0-9._-]/g, '_') || 'unbekannt';
+  return `${uid}/${safe}.xlsx`;
 }
 
 /** Monat speichern: natives Modell (Quelle der Wahrheit) + Kennzahlen + Original-Datei (Beleg).
@@ -138,7 +149,7 @@ export async function saveProzessmodellMonat(
   const { data: userData } = await sb.auth.getUser();
   const uid = userData.user?.id;
   if (!uid) throw new Error('Nicht eingeloggt');
-  const monat = modell.monat || view.monat || 'unbekannt';
+  const monat = normalisiereMonat(modell.monat || view.monat || 'unbekannt');
   const pfad = storagePfad(uid, monat);
 
   if (datei) {
@@ -245,10 +256,16 @@ export async function loadProzessmodellDatei(pfad: string): Promise<ArrayBuffer>
 }
 
 /** Monat löschen (Zeile + Datei). */
-export async function deleteProzessmodellMonat(m: CloudProzessmodellMonat): Promise<void> {
+/** Löscht einen Monat. Rückgabe: Warnung, falls die DB-Zeile weg ist, aber die
+ * Storage-Datei nicht entfernt werden konnte (Review-Fund #31 — verwaiste Datei). */
+export async function deleteProzessmodellMonat(m: CloudProzessmodellMonat): Promise<{ storageWarnung: string | null }> {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase nicht konfiguriert');
   const { error } = await sb.from('prozessmodelle').delete().eq('id', m.id);
   if (error) throw error;
-  if (m.datei_pfad) await sb.storage.from('prozessmodelle').remove([m.datei_pfad]);
+  if (m.datei_pfad) {
+    const { error: sErr } = await sb.storage.from('prozessmodelle').remove([m.datei_pfad]);
+    if (sErr) return { storageWarnung: sErr.message };
+  }
+  return { storageWarnung: null };
 }
