@@ -12,6 +12,7 @@ import type { AbteilungDefinition } from '@/types/prozessmodell';
 import { HallPreview } from './HallPreview';
 import { AmpelCard } from './AmpelCard';
 import { BeratungCTA } from './BeratungCTA';
+import { appUrl } from '@/lib/base-path';
 import { StundenChart } from '@/components/dashboard/StundenChart';
 import { BenchmarkRadar } from '@/components/dashboard/BenchmarkRadar';
 import { Info, Upload } from 'lucide-react';
@@ -224,7 +225,26 @@ export function KundenCheckResults({
 
       {/* Section 5: CTA */}
       <section>
-        <BeratungCTA bewertung={ampelBewertung} onOpenEditor={onOpenEditor} />
+        <BeratungCTA
+          bewertung={ampelBewertung}
+          onOpenEditor={onOpenEditor}
+          onOpenCockpit={() => {
+            // Eckdaten-Übergabe an die ROTH-Vorlagen-Tür des Cockpits:
+            // Colli/Tag aus der Analyse × 21 Standard-Arbeitstage als
+            // VORSCHLAG (im Formular editierbar, nichts wird erfunden).
+            try {
+              sessionStorage.setItem(
+                'topis-cockpit-vorbelegung',
+                JSON.stringify({
+                  colliProMonat: Math.round(ergebnis.colliProTag * 21),
+                  arbeitstage: 21,
+                  quelle: 'check',
+                }),
+              );
+            } catch { /* Storage gesperrt → Formular startet leer */ }
+            window.location.href = appUrl('/cockpit/');
+          }}
+        />
       </section>
     </div>
   );

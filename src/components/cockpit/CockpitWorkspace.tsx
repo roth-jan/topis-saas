@@ -35,7 +35,7 @@ import {
 import { ProzessGrid } from './ProzessGrid';
 import { UebersichtPanel } from './UebersichtPanel';
 import { VerlaufPanel } from './VerlaufPanel';
-import { StartTueren } from './StartTueren';
+import { StartTueren, type CockpitVorbelegung } from './StartTueren';
 import { NeuerMonatDialog } from './NeuerMonatDialog';
 import { VersionenDialog } from './VersionenDialog';
 
@@ -58,7 +58,21 @@ export function CockpitWorkspace() {
   const [monate, setMonate] = useState<CloudProzessmodellMonat[]>([]);
   const [monateLoading, setMonateLoading] = useState(false);
   const [versionenMonat, setVersionenMonat] = useState<CloudProzessmodellMonat | null>(null);
+  const [vorbelegung, setVorbelegung] = useState<CockpitVorbelegung | null>(null);
   const uid = session?.user?.id ?? null;
+
+  // Eckdaten-Übergabe aus dem /check-Funnel (einmalig konsumieren).
+  // setState asynchron (Microtask), damit der Effect keinen Kaskaden-Render auslöst.
+  useEffect(() => {
+    try {
+      const roh = sessionStorage.getItem('topis-cockpit-vorbelegung');
+      if (roh) {
+        sessionStorage.removeItem('topis-cockpit-vorbelegung');
+        const parsed = JSON.parse(roh) as CockpitVorbelegung;
+        queueMicrotask(() => setVorbelegung(parsed));
+      }
+    } catch { /* egal — Türen starten dann unbefüllt */ }
+  }, []);
 
   // Live-Rechnung: jede Modell-Änderung rechnet den ganzen Graph neu.
   const ergebnis = useMemo(() => (nativ ? rechneNativesModell(nativ) : null), [nativ]);
@@ -242,12 +256,19 @@ export function CockpitWorkspace() {
       {/* Kopfleiste */}
       <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
         <div className="mx-auto max-w-[1400px] px-4 py-2.5 flex items-center gap-3">
-          <Link href="/projekt/" className="shrink-0">
-            <Button variant="ghost" size="sm" className="gap-1 text-xs">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Editor
-            </Button>
-          </Link>
+          <div className="flex items-center shrink-0">
+            <Link href="/projekt/">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Editor
+              </Button>
+            </Link>
+            <Link href="/dashboard/">
+              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
+                Kennzahlen
+              </Button>
+            </Link>
+          </div>
           <div className="flex items-center gap-2 min-w-0">
             <Calculator className="h-4 w-4 text-primary shrink-0" />
             <h1 className="font-display font-semibold text-sm truncate">Prozessmodell-Cockpit</h1>
@@ -303,6 +324,7 @@ export function CockpitWorkspace() {
         {!view ? (
           <div className="flex flex-col gap-4">
             <StartTueren
+              vorbelegung={vorbelegung}
               onExcel={() => fileRef.current?.click()}
               onModell={(m) => {
                 uebernehmenNativ(m);

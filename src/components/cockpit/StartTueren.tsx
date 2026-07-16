@@ -23,20 +23,33 @@ export function naechsterMonat(monat: string): string {
   return `${String(mm).padStart(2, '0')}/${jj}`;
 }
 
+/** Eckdaten-Vorbelegung (z.B. aus dem /check-Funnel via sessionStorage). */
+export interface CockpitVorbelegung {
+  colliProMonat?: number;
+  arbeitstage?: number;
+  quelle?: string;
+}
+
 /**
  * Die drei Türen ins Prozessmodell:
  *   1. Excel importieren (Migration — für Kunden MIT bestehendem Modell)
  *   2. ROTH-Vorlage + Eckdaten (für Kunden OHNE Excel: kalibrierte Methodik)
  *   3. Leer starten (Berater/Experten bauen selbst)
+ * Kommt der Nutzer aus dem /check, ist Tür 2 vorbefüllt und offen.
  */
 export function StartTueren({
   onExcel,
   onModell,
+  vorbelegung,
 }: {
   onExcel: () => void;
   onModell: (m: NativesProzessmodell) => void;
+  vorbelegung?: CockpitVorbelegung | null;
 }) {
   const [vorlageOffen, setVorlageOffen] = useState(false);
+  // Vorbelegung kommt asynchron (sessionStorage-Effect) → abgeleitet öffnen,
+  // damit die Tür auch aufgeht, wenn der Wert nach dem Mount eintrifft.
+  const zeigeVorlage = vorlageOffen || Boolean(vorbelegung);
 
   return (
     <div className="mx-auto max-w-3xl flex flex-col gap-4 pt-8">
@@ -63,7 +76,7 @@ export function StartTueren({
           aktion="Eckdaten eingeben"
           aktionIcon={<ArrowRight className="h-3.5 w-3.5" />}
           onClick={() => setVorlageOffen((v) => !v)}
-          aktiv={vorlageOffen}
+          aktiv={zeigeVorlage}
           empfohlen
         />
         <Tuer
@@ -76,7 +89,7 @@ export function StartTueren({
         />
       </div>
 
-      {vorlageOffen && <VorlagenFormular onModell={onModell} />}
+      {zeigeVorlage && <VorlagenFormular key={vorbelegung ? 'check' : 'manuell'} onModell={onModell} vorbelegung={vorbelegung} />}
     </div>
   );
 }
@@ -118,11 +131,17 @@ function Tuer({
   );
 }
 
-function VorlagenFormular({ onModell }: { onModell: (m: NativesProzessmodell) => void }) {
+function VorlagenFormular({
+  onModell,
+  vorbelegung,
+}: {
+  onModell: (m: NativesProzessmodell) => void;
+  vorbelegung?: CockpitVorbelegung | null;
+}) {
   const [typ, setTyp] = useState<VorlagenTyp>('se');
   const [monat, setMonat] = useState(aktuellerMonat());
-  const [colli, setColli] = useState('300000');
-  const [arbeitstage, setArbeitstage] = useState('21');
+  const [colli, setColli] = useState(String(vorbelegung?.colliProMonat ?? 300000));
+  const [arbeitstage, setArbeitstage] = useState(String(vorbelegung?.arbeitstage ?? 21));
   const [verteilweg, setVerteilweg] = useState('');
 
   const erzeugen = () => {
@@ -143,6 +162,11 @@ function VorlagenFormular({ onModell }: { onModell: (m: NativesProzessmodell) =>
   return (
     <div className="rounded-xl border bg-card p-4 flex flex-col gap-3">
       <div className="text-sm font-medium">ROTH-Vorlage: Eckdaten</div>
+      {vorbelegung?.quelle === 'check' && (
+        <p className="text-[11px] rounded bg-primary/10 text-primary px-2 py-1.5">
+          Ihre Eckdaten aus dem Hallen-Check sind übernommen — bitte prüfen und bei Bedarf anpassen.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {(
           [

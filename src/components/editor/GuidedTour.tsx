@@ -107,8 +107,8 @@ export function startTour() {
       {
         element: '#tour-prozessmodell',
         popover: {
-          title: '⚙️ Prozessmodell (Min/Colli)',
-          description: 'DIE KERNBERECHNUNG: Hier siehst du jeden einzelnen Prozessschritt (Entladen, Scannen, Verteilen) mit Zeiten, Anteilen und Häufigkeiten. Das Ergebnis ist die Prozesszeit in Min/Colli. Hier stellst du auch den Fahrzeugmix ein (Schnelläufer/Stapler/Langgabel).',
+          title: '⚙️ Prozess-Cockpit (Min/Colli)',
+          description: 'DIE KERNBERECHNUNG: Das Cockpit rechnet dein Prozessmodell live — jeder Schritt (Entladen, Scannen, Verteilen) mit Zeiten, Anteilen und Häufigkeiten, voll editierbar. Excel importieren oder mit der ROTH-Vorlage starten, monatlich Mengen pflegen, Trend verfolgen.',
           side: 'bottom' as const,
         },
       },

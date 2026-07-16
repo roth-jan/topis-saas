@@ -91,8 +91,6 @@ import { TorKalkulationDialog } from '@/components/dialogs/TorKalkulationDialog'
 import { BetriebsdatenImportDialog } from '@/components/dialogs/BetriebsdatenImportDialog';
 import { SzenarienDialog } from '@/components/dialogs/SzenarienDialog';
 import { LogoMark } from '@/components/Logo';
-import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
-import { ProzessmodellImportDialog } from '@/components/dialogs/ProzessmodellImportDialog';
 import Link from 'next/link';
 import { appUrl } from '@/lib/base-path';
 import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
@@ -425,6 +423,7 @@ export function Toolbar() {
   // Lastenheft-Aufholplan 2026-05-31 — neue Dialoge
   const [showBereichsEinteilung, setShowBereichsEinteilung] = useState(false);
   const [showMengen, setShowMengen] = useState(false);
+  const [showWeitereAuswertungen, setShowWeitereAuswertungen] = useState(false);
   const [showVerlader, setShowVerlader] = useState(false);
   const [showHallenRelationsPlan, setShowHallenRelationsPlan] = useState(false);
   const [showKetten, setShowKetten] = useState(false);
@@ -432,14 +431,18 @@ export function Toolbar() {
   // Workflow-Phasen — gliedert die Toolbar nach Beratungs-Story
   type Phase = 'daten' | 'layout' | 'wege' | 'auswertung' | 'planung' | 'vergleich' | 'cockpit';
   const [phase, setPhase] = useState<Phase>('layout');
-  const phases: { id: Phase; label: string; hint: string }[] = [
+  // 'pm-cockpit' ist keine Editor-Phase, sondern der Link zur Cockpit-Seite —
+  // UX-Council 16.07.: das Prozessmodell-Cockpit gehört in die Hauptnavigation,
+  // nicht zwei Klicks tief in die Auswertungsleiste.
+  const phases: { id: Phase | 'pm-cockpit'; label: string; hint: string }[] = [
     { id: 'daten', label: 'Daten', hint: 'Scandaten und Vorlagen laden' },
     { id: 'layout', label: 'Layout', hint: 'Halle aufbauen' },
     { id: 'wege', label: 'Wege', hint: 'Wegberechnung + Distanzmatrix' },
-    { id: 'auswertung', label: 'Auswertung', hint: 'Prozessmodell + KPIs' },
+    { id: 'auswertung', label: 'Auswertung', hint: 'KPIs, Benchmark, Torbelegung' },
+    { id: 'pm-cockpit', label: 'Cockpit', hint: 'Prozessmodell: Monatsmengen pflegen, Min/Colli, Trend' },
     { id: 'planung', label: 'Planung', hint: 'Aufträge zeilenweise editieren, Kosten spielen' },
     { id: 'vergleich', label: 'Vergleich', hint: 'Szenarien gegenüberstellen' },
-    { id: 'cockpit', label: 'Dashboard', hint: 'Tages-Werkzeug: Aufträge, Mengen, Kosten' },
+    { id: 'cockpit', label: 'Kennzahlen', hint: 'KPI-Übersicht: Aufträge, Mengen, Kosten (read-only)' },
   ];
 
   // Export handlers
@@ -637,6 +640,7 @@ export function Toolbar() {
             const externalHref =
               p.id === 'planung' ? appUrl('/projekt/planung/')
               : p.id === 'cockpit' ? appUrl('/dashboard/')
+              : p.id === 'pm-cockpit' ? appUrl('/cockpit/')
               : null;
             const btn = (
               <Button
@@ -648,7 +652,7 @@ export function Toolbar() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
                 }`}
                 style={{ fontWeight: phase === p.id ? 600 : 500 }}
-                onClick={() => !externalHref && setPhase(p.id)}
+                onClick={() => !externalHref && setPhase(p.id as Phase)}
               >
                 {p.label}
               </Button>
@@ -1251,31 +1255,21 @@ export function Toolbar() {
               Erst Layout aufbauen und Daten laden — dann liefern die Auswertungen Werte.
             </span>
           )}
+          {/* UX-Council 16.07.: 5 Top-Aktionen statt 11 Buttons; die alten
+              Prozessmodell-Einstiege (Dialog + ROTH-Excel read-only) sind
+              durch das Cockpit ersetzt. Sekundäres hinter „Weitere". */}
           <div className={`flex items-center gap-1 flex-wrap ${objects.length === 0 ? 'pointer-events-none opacity-50' : ''}`}>
-          <span id="tour-prozessmodell"><ProzessmodellDialog /></span>
-          <ProzessmodellImportDialog />
-          <Link href="/cockpit/">
-            <Button variant="outline" size="sm" className="gap-1 text-xs" title="Prozessmodell-Cockpit (Vollseite): Excel laden, Mengen/Parameter editieren, Trend">
-              <Calculator className="h-3.5 w-3.5" />
-              Prozess-Cockpit
-            </Button>
-          </Link>
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowMengen(true)} title="Prozess- und Mengenkategorien">
-            <Package className="h-3.5 w-3.5" />
-            Mengen-Modell
-          </Button>
-          <span id="tour-flaechenbedarf"><FlaechenbedarfDialog /></span>
+          <span id="tour-prozessmodell">
+            <Link href="/cockpit/">
+              <Button variant="outline" size="sm" className="gap-1 text-xs" title="Prozessmodell-Cockpit: Excel/Vorlage laden, Mengen + Schritte editieren, Monats-Trend">
+                <Calculator className="h-3.5 w-3.5" />
+                Prozess-Cockpit
+              </Button>
+            </Link>
+          </span>
           <span id="tour-benchmark"><BenchmarkDialog /></span>
           <span id="tour-istsoll"><IstSollDialog /></span>
           <span id="tour-torbelegung"><TorbelegungDialog /></span>
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowHallenRelationsPlan(true)} title="Relationen je Halle als Plan">
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Relations-Plan
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowBereichsEinteilung(true)} title="Bereiche einteilen und auswerten">
-            <Layers className="h-3.5 w-3.5" />
-            Bereichseinteilung
-          </Button>
           <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowBereichOptimizer(true)}>
             <Sparkles className="h-3.5 w-3.5" />
             Optimieren
@@ -1285,6 +1279,33 @@ export function Toolbar() {
               <FileText className="h-3.5 w-3.5" />
               Report
             </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-xs text-muted-foreground"
+            onClick={() => setShowWeitereAuswertungen((v) => !v)}
+            title="Mengen-Modell, Fläche & Wege, Relations-Plan, Bereichseinteilung"
+          >
+            {showWeitereAuswertungen ? 'Weniger ▴' : 'Weitere ▾'}
+          </Button>
+          {showWeitereAuswertungen && (
+            <>
+              <Separator orientation="vertical" className="h-6 mx-0.5" />
+              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowMengen(true)} title="Prozess- und Mengenkategorien">
+                <Package className="h-3.5 w-3.5" />
+                Mengen-Modell
+              </Button>
+              <span id="tour-flaechenbedarf"><FlaechenbedarfDialog /></span>
+              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowHallenRelationsPlan(true)} title="Relationen je Halle als Plan">
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Relations-Plan
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setShowBereichsEinteilung(true)} title="Bereiche einteilen und auswerten">
+                <Layers className="h-3.5 w-3.5" />
+                Bereichseinteilung
+              </Button>
+            </>
           )}
           </div>
         </div>
@@ -1398,8 +1419,8 @@ export function Toolbar() {
               sichtbar) — hier nicht nochmal rendern. Alex P. UC 6: "I do not
               understand why these buttons appear twice". */}
           <span className="text-[11px] text-muted-foreground ml-1">
-            Dashboard und Auftrags-Planung oben rechts in der Kopfzeile. Halle
-            und Volumen-Daten lädst du in Phase „Daten".
+            Kennzahlen und Auftrags-Planung oben in der Kopfzeile. Halle
+            und Volumen-Daten lädst du in Phase &bdquo;Daten&ldquo;.
           </span>
         </div>
         )}

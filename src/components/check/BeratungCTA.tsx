@@ -7,12 +7,15 @@ import type { AmpelBewertung } from '@/lib/ampel-system';
 interface BeratungCTAProps {
   bewertung: AmpelBewertung;
   onOpenEditor?: () => void;
+  /** Primärer Produkt-Pfad (UX-Council 16.07.): weiter ins Hallencockpit,
+   * Eckdaten reisen mit — der Editor ist die Vertiefung, nicht der Einstieg. */
+  onOpenCockpit?: () => void;
 }
 
 /**
  * Call-to-Action Bereich: Zeigt das Hauptergebnis und den Beratungs-Button.
  */
-export function BeratungCTA({ bewertung, onOpenEditor }: BeratungCTAProps) {
+export function BeratungCTA({ bewertung, onOpenEditor, onOpenCockpit }: BeratungCTAProps) {
   const hasProblems = bewertung.roteAmpeln > 0 || bewertung.gelbeAmpeln > 0;
   const worstKPI = bewertung.kpis.find((k) => k.status === 'rot') || bewertung.kpis.find((k) => k.status === 'gelb');
 
@@ -34,18 +37,25 @@ export function BeratungCTA({ bewertung, onOpenEditor }: BeratungCTAProps) {
           )}
         </div>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* Buttons — Reihenfolge = Priorität: Beratung, dann Cockpit (Produkt),
+            Editor nur noch als Vertiefung */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <a href="mailto:info@roth-logistik.de?subject=Hallen-Check%20Beratung&body=Ich%20habe%20den%20TOPIS%20Hallen-Check%20durchgeführt%20und%20möchte%20gerne%20ein%20Beratungsgespräch%20vereinbaren.">
             <Button size="lg" className="gap-2">
               <Phone className="h-4 w-4" />
               Beratungsgespräch vereinbaren
             </Button>
           </a>
-          {onOpenEditor && (
-            <Button variant="outline" size="lg" className="gap-2" onClick={onOpenEditor}>
-              Im Experten-Editor öffnen
+          {onOpenCockpit && (
+            <Button variant="outline" size="lg" className="gap-2" onClick={onOpenCockpit} title="Ihre Eckdaten reisen mit — im Cockpit pflegen Sie Ihr Prozessmodell monatlich weiter">
+              Im Hallencockpit fortsetzen
               <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+          {onOpenEditor && (
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={onOpenEditor}>
+              Experten-Editor
+              <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>

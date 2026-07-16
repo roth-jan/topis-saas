@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
-  ChevronRight, ChevronDown, Search, ListTree, UnfoldVertical, FoldVertical, Plus, Trash2,
+  ChevronRight, ChevronDown, Search, ListTree, UnfoldVertical, FoldVertical, Plus, Trash2, Route,
 } from 'lucide-react';
 import type { ModellBlock, ModellGroesse, ModellSchritt } from '@/lib/prozessmodell-excel-modell';
 import type { SchrittFeld } from '@/lib/prozessmodell-nativ';
@@ -73,6 +73,12 @@ export function ProzessGrid({
             className="h-7 pl-7 text-xs"
           />
         </div>
+        <span
+          className="hidden lg:inline text-[10px] text-muted-foreground ml-2"
+          title="SE = Stückgut-/Sammelgut-Eingang (Wareneingang) · SA = Stückgut-/Sammelgut-Ausgang (Warenausgang) · Min/Colli = Prozessminuten je Packstück"
+        >
+          SE = Eingang · SA = Ausgang · Min/Colli = Minuten je Packstück
+        </span>
         <div className="ml-auto flex items-center gap-1">
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setOffen(new Set(bloecke.map((_, i) => i)))}>
             <UnfoldVertical className="h-3.5 w-3.5" />
@@ -103,7 +109,18 @@ export function ProzessGrid({
                 ) : (
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                 )}
-                <span className="font-medium text-sm truncate flex-1">{b.name}</span>
+                <span
+                  className="font-medium text-sm truncate flex-1"
+                  title={
+                    b.name.startsWith('SE')
+                      ? `${b.name} — SE = Stückgut-/Sammelgut-Eingang (Wareneingang)`
+                      : b.name.startsWith('SA')
+                        ? `${b.name} — SA = Stückgut-/Sammelgut-Ausgang (Warenausgang)`
+                        : b.name
+                  }
+                >
+                  {b.name}
+                </span>
                 <span className="text-[11px] text-muted-foreground hidden md:inline">
                   {groessen.length} Größen · {b.schritte.length} Schritte
                 </span>
@@ -154,10 +171,22 @@ export function ProzessGrid({
 
 /** Eine Grid-Zeile: Name | Typ | Wert (editierbar). */
 function GroesseZeile({ groesse: g, onEdit }: { groesse: ModellGroesse; onEdit: (g: ModellGroesse, v: number) => void }) {
+  const istVerteilweg = g.name.toLowerCase().includes('verteilweg');
   return (
     <tr className="border-t first:border-t-0 hover:bg-muted/30 group">
       <td className="pl-9 pr-2 py-1 w-full">
-        <span className="truncate block max-w-[420px]" title={g.name}>{g.name}</span>
+        <span className="inline-flex items-center gap-1.5 truncate max-w-[420px]" title={g.name}>
+          {g.name}
+          {istVerteilweg && (
+            <span
+              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground border rounded px-1 py-px shrink-0"
+              title={'Dieser Wert kann aus dem echten Hallen-Layout berechnet werden: Editor → Phase „Wege“ → Wegeberechnung (colli-gewichteter Verteilweg). Hier trägt man den berechneten oder gemessenen Wert ein.'}
+            >
+              <Route className="h-2.5 w-2.5" />
+              aus Layout berechenbar
+            </span>
+          )}
+        </span>
       </td>
       <td className="px-2 py-1 whitespace-nowrap">
         <span
