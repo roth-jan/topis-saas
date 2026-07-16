@@ -334,14 +334,17 @@ npm install
 npm run dev    # http://localhost:3000/topis-saas/projekt
 ```
 
-### Build & Deploy
+### Build & Deploy (ZWEI Ziele, ein Repo)
 ```bash
-npm run build                    # Static Export nach out/
-# Deploy auf gh-pages Branch:
-# 1. gh-pages Branch auschecken
-# 2. out/ Inhalt kopieren + .nojekyll Datei
-# 3. Push zu gh-pages
+# 1) Hetzner (PRIMÄR seit 16.07.2026): https://topis.ntc.software
+./scripts/deploy-hetzner.sh      # Build mit TOPIS_BASE_PATH="" + rsync + Live-Check
+#    Server: 46.224.185.100, /opt/topis (nginx topis-web hinter jobbi-Caddy)
+
+# 2) GitHub Pages (übergangsweise parallel): roth-jan.github.io/topis-saas
+npm run build                    # Static Export nach out/ (Default-basePath /topis-saas)
+# gh-pages-Worktree: out/ kopieren + .nojekyll + push zu gh-pages
 ```
+**basePath ist env-gesteuert** (next.config.ts, `TOPIS_BASE_PATH`). Harte Links (`<a>`, `window.location`) IMMER über `appUrl()` aus `src/lib/base-path.ts` — nie `/topis-saas/...` hartkodieren.
 
 ### Wichtige Regeln
 - `output: "export"` in next.config.ts - kein Server-Side Rendering
