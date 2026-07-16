@@ -1,4 +1,5 @@
 import { unzipSync, zipSync, strFromU8, strToU8 } from 'fflate';
+import { parseZahl } from './prozessmodell-excel-engine';
 
 /**
  * Excel-Roundtrip: schreibt geänderte Zellwerte in die ORIGINAL-Datei zurück.
@@ -72,7 +73,7 @@ function zahlAlsXml(value: ExportOverride['value']): string {
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   if (typeof value === 'boolean') return value ? '1' : '0';
   if (typeof value === 'string') {
-    const n = parseFloat(value.replace(',', '.'));
+    const n = parseZahl(value); // deutsch-bewusst (Review-Fund #17)
     if (Number.isFinite(n)) return String(n);
   }
   return '0';
@@ -96,7 +97,43 @@ function patchZelle(xml: string, addr: string, wert: string): string | null {
     const attrs = mLeer[1].replace(/\s+t="[^"]*"/, '');
     return xml.replace(leer, `<c r="${addr}"${attrs}><v>${wert}</v></c>`);
   }
+  // Zelle fehlt komplett im XML (Excel serialisiert leere Zellen gar nicht,
+  // Review-Fund #16): in die passende <row> an spaltenrichtiger Position
+  // einfügen — Zellen einer Zeile müssen nach Spalte sortiert bleiben.
+  const m = COL_RE.exec(addr);
+  if (!m) return null;
+  const [, col, rowNr] = m;
+  const zielSpalte = colNum(col);
+  const rowRe = new RegExp(`(<row[^>]*\\sr="${rowNr}"[^>]*>)([\\s\\S]*?)(</row>)`);
+  const mRow = rowRe.exec(xml);
+  const neueZelle = `<c r="${addr}"><v>${wert}</v></c>`;
+  if (mRow) {
+    const inner = mRow[2];
+    // Vor der ersten vorhandenen Zelle mit größerer Spalte einfügen (Reihenfolge!).
+    let eingefuegt = false;
+    const finalerInner = inner.replace(/<c\s+r="([A-Z]{1,2})\d+"/, (treffer, cCol) => {
+      if (!eingefuegt && colNum(cCol) > zielSpalte) {
+        eingefuegt = true;
+        return neueZelle + treffer;
+      }
+      return treffer;
+    });
+    return xml.replace(rowRe, `${mRow[1]}${eingefuegt ? finalerInner : inner + neueZelle}${mRow[3]}`);
+  }
+  // Auch die Zeile fehlt: leere Zeilen im <sheetData> sind selten, aber möglich.
+  // Wir fügen die Zeile am Ende von <sheetData> ein (Excel sortiert beim Öffnen).
+  const sheetData = /(<\/sheetData>)/;
+  if (sheetData.test(xml)) {
+    return xml.replace(sheetData, `<row r="${rowNr}"><c r="${addr}"><v>${wert}</v></c></row>$1`);
+  }
   return null;
+}
+
+const COL_RE = /^([A-Z]{1,2})(\d+)$/;
+function colNum(col: string): number {
+  let n = 0;
+  for (let i = 0; i < col.length; i++) n = n * 26 + (col.charCodeAt(i) - 64);
+  return n;
 }
 
 /** Setzt fullCalcOnLoad, damit Excel beim Öffnen ALLE Formeln neu rechnet

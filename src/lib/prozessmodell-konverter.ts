@@ -31,6 +31,21 @@ export interface KonvertierungsErgebnis {
   warnungen: string[];
 }
 
+/** Monats-Zelle → 'MM/YYYY'. Excel-Monatszellen sind oft ein echtes Datum
+ * (numerischer Serial-Wert) statt Text — dann rechnen wir es um (Review-Fund #26). */
+function monatAlsString(v: unknown): string {
+  if (typeof v === 'string' && v.trim()) return v.trim();
+  if (typeof v === 'number' && v > 0) {
+    // Excel-Serial (Tage seit 1899-12-30, mit dem bekannten 1900-Schaltjahr-Offset)
+    const ms = Math.round((v - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    if (!Number.isNaN(d.getTime())) {
+      return `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+    }
+  }
+  return '';
+}
+
 export function konvertiereExcelZuNativ(wb: ProzessWorkbook, name = 'Prozessmodell'): KonvertierungsErgebnis {
   const warnungen: string[] = [];
   const maxRow = wb.maxRow(PN);
@@ -126,9 +141,13 @@ export function konvertiereExcelZuNativ(wb: ProzessWorkbook, name = 'Prozessmode
       wert = cell.v;
       origin = { sheet: PN, addr: `${col}${row}` };
     } else if (cell.v == null) {
+      // Leere Eingabezelle: Herkunft trotzdem merken (Review-Fund #12),
+      // sonst fehlt ein später eingetragener Wert im Excel-Export.
       wert = 0;
+      origin = { sheet: PN, addr: `${col}${row}` };
     } else {
       wert = num(cell.v);
+      origin = { sheet: PN, addr: `${col}${row}` };
     }
 
     knoten.set(id, {
@@ -324,12 +343,13 @@ export function konvertiereExcelZuNativ(wb: ProzessWorkbook, name = 'Prozessmode
 
   // Monat + Arbeitstage
   const monatV = wb.hasSheet('Dateneingabe') ? wb.rawCell('Dateneingabe', 'C3').v : null;
+  const monat = monatAlsString(monatV);
   const arbeitstage = wb.hasSheet('Dateneingabe') ? wb.resolveNum('Dateneingabe', 'E3') || 21 : 21;
 
   const modell: NativesProzessmodell = {
     version: 1,
     name,
-    monat: typeof monatV === 'string' ? monatV : '',
+    monat,
     arbeitstage,
     arbeitsminProStunde,
     knoten: [...knoten.values()],

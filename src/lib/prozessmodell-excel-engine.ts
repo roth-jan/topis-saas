@@ -197,13 +197,20 @@ export class ProzessWorkbook {
   }
 }
 
+/** String → Zahl, deutsch-bewusst: bei Komma = Dezimaltrenner werden Punkte
+ * als Tausendertrenner entfernt ('1.234,5' → 1234.5); ohne Komma bleibt der
+ * Punkt Dezimaltrenner ('1234.5' → 1234.5). (Review-Fund #17) */
+export function parseZahl(s: string): number {
+  const t = s.trim();
+  const norm = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t;
+  const n = parseFloat(norm);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function num(v: CellValue | number | string): number {
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
   if (typeof v === 'boolean') return v ? 1 : 0;
-  if (typeof v === 'string') {
-    const n = parseFloat(v.replace(',', '.'));
-    return Number.isFinite(n) ? n : 0;
-  }
+  if (typeof v === 'string') return parseZahl(v);
   return 0;
 }
 

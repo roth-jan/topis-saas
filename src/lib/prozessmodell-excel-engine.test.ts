@@ -41,6 +41,21 @@ const ERWARTET_MIN_COLLI: [string, number][] = [
   ['Beladung Kunden-WAB', 40.456573],
 ];
 
+describe('parseZahl — deutsch-bewusst (Review-Fund #17)', () => {
+  it('Tausenderpunkt + Dezimalkomma', async () => {
+    const { parseZahl } = await import('./prozessmodell-excel-engine');
+    // Komma vorhanden → Punkte sind Tausendertrenner
+    expect(parseZahl('1.234,5')).toBe(1234.5);
+    expect(parseZahl('1.234.567,89')).toBeCloseTo(1234567.89, 4);
+    expect(parseZahl('0,7')).toBe(0.7);
+    // Kein Komma → Punkt bleibt Dezimaltrenner (JS-Standard, sicher & eindeutig;
+    // die Zahleneingabefelder liefern ohnehin Punkt-Dezimal)
+    expect(parseZahl('1234.5')).toBe(1234.5);
+    expect(parseZahl('56.78')).toBe(56.78);
+    expect(parseZahl('42')).toBe(42);
+  });
+});
+
 describe('evalAusdruck (native Ausdrücke, CI-sicher)', () => {
   it('IFERROR liefert den Fallback bei Auswertungsfehlern (Review-Fund #15)', async () => {
     const { evalAusdruck } = await import('./prozessmodell-excel-engine');

@@ -43,13 +43,30 @@ describe('exportiereMitOverrides (Zip-Patch)', () => {
     expect(strFromU8(entpackt['xl/workbook.xml'])).toContain('fullCalcOnLoad="1"');
   });
 
-  it('meldet unauffindbare Zellen statt sie zu verschlucken', () => {
-    const { ersetzteZellen, nichtGefunden } = exportiereMitOverrides(syntheticXlsx(), [
-      { sheet: 'Dateneingabe', addr: 'Z99', value: 1 },
-      { sheet: 'GibtEsNicht', addr: 'A1', value: 1 },
+  it('fügt eine im XML fehlende (leere) Zelle ein (Review-Fund #16)', () => {
+    // Synthetische Mappe mit einer leeren Zelle B3, die Excel nicht serialisiert
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet([['A1', 'B1'], ['a2', 'b2']]);
+    // B3 existiert nicht (Zeile 3 fehlt ganz) → Export muss sie anlegen
+    XLSX.utils.book_append_sheet(wb, ws, 'Dateneingabe');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['x']]), 'Übersicht');
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+    const { datei, ersetzteZellen, nichtGefunden } = exportiereMitOverrides(buf, [
+      { sheet: 'Dateneingabe', addr: 'B3', value: 777 },
     ]);
-    expect(ersetzteZellen).toBe(0);
-    expect(nichtGefunden).toHaveLength(2);
+    expect(nichtGefunden).toHaveLength(0);
+    expect(ersetzteZellen).toBe(1);
+    const re = XLSX.read(datei, { cellFormula: true });
+    expect(re.Sheets['Dateneingabe']['B3'].v).toBe(777);
+  });
+
+  it('meldet nur Zellen in fehlenden SHEETS als nicht gefunden (echte Zellen werden eingefügt)', () => {
+    const { ersetzteZellen, nichtGefunden } = exportiereMitOverrides(syntheticXlsx(), [
+      { sheet: 'Dateneingabe', addr: 'Z99', value: 1 }, // Sheet existiert → Zelle wird eingefügt
+      { sheet: 'GibtEsNicht', addr: 'A1', value: 1 }, // Sheet fehlt → nicht gefunden
+    ]);
+    expect(ersetzteZellen).toBe(1);
+    expect(nichtGefunden).toEqual([{ sheet: 'GibtEsNicht', addr: 'A1' }]);
   });
 
   it('ohne Overrides bleibt der Inhalt unverändert lesbar', () => {

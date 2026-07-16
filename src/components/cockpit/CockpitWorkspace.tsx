@@ -65,6 +65,10 @@ export function CockpitWorkspace() {
   const [hatDatei, setHatDatei] = useState(false);
   /** Import-/Konvertierungs-Warnungen — zusammen mit Rechenkern-Warnungen im UI sichtbar (Fund #14). */
   const [importWarnungen, setImportWarnungen] = useState<string[]>([]);
+  /** Stale-Guard für async Datei-Downloads (Review-Fund #18). */
+  const ladeSeqRef = useRef(0);
+  /** ID des zuletzt aus der Cloud geladenen Monats (für die Überschreib-Warnung #24). */
+  const [zuletztGeladenId, setZuletztGeladenId] = useState<string | null>(null);
   const uid = session?.user?.id ?? null;
   const fremdGeladen = Boolean(geladenVon && uid && geladenVon.owner !== uid);
 
@@ -156,6 +160,7 @@ export function CockpitWorkspace() {
     rawFileRef.current = buf;
     setHatDatei(true);
     setGeladenVon(null); // eigene Arbeit
+    setZuletztGeladenId(null);
     importStandRef.current = structuredClone(modell);
     setNativ(modell);
     setFileName(name);
@@ -164,6 +169,7 @@ export function CockpitWorkspace() {
 
   /** Modell direkt übernehmen (Vorlage, leeres Modell, neuer Monat, Version). */
   const uebernehmenNativ = (m: NativesProzessmodell, alsBasis = true) => {
+    setZuletztGeladenId(null);
     rawFileRef.current = null;
     setHatDatei(false);
     setGeladenVon(null);
@@ -256,6 +262,12 @@ export function CockpitWorkspace() {
       );
       if (!ok) return;
     }
+    // Review-Fund #24: Speichern unter einem Monat, den es in der Cloud schon
+    // gibt (und der nicht der gerade geladene ist), überschreibt diesen Stand.
+    const vorhandener = monate.find((x) => x.monat === view.monat && x.owner === uid);
+    if (vorhandener && !fremdGeladen && vorhandener.id !== zuletztGeladenId) {
+      if (!window.confirm(`Monat ${view.monat} ist bereits gespeichert. Der vorhandene Stand wird überschrieben (die Version bleibt im Verlauf). Fortfahren?`)) return;
+    }
     setSaving(true);
     try {
       // Das NATIVE Modell (aktueller Stand inkl. Ihrer Änderungen) ist die
@@ -279,6 +291,7 @@ export function CockpitWorkspace() {
 
   const ladeMonat = async (m: CloudProzessmodellMonat) => {
     if (!verlustOk(`Monat ${m.monat} laden`)) return;
+    const seq = ++ladeSeqRef.current;
     try {
       if (m.modell) {
         // Natives Modell ist die Wahrheit; Datei (falls da) nur für Export nachladen.
@@ -288,13 +301,17 @@ export function CockpitWorkspace() {
         setImportWarnungen([]);
         // Herkunft merken (Berater-Sicht: fremder Kunde!)
         setGeladenVon({ owner: m.owner, label: m.owner_email ?? 'Kunde' });
+        setZuletztGeladenId(m.id);
         rawFileRef.current = null;
         setHatDatei(false);
         if (m.datei_pfad) {
           try {
             const buf = await loadProzessmodellDatei(m.datei_pfad);
-            rawFileRef.current = buf;
-            setHatDatei(true);
+            // Zwischenzeitlich anderen Monat geladen? Dann diesen Download verwerfen.
+            if (seq === ladeSeqRef.current) {
+              rawFileRef.current = buf;
+              setHatDatei(true);
+            }
           } catch {
             /* Export dann eben nicht möglich — Modell rechnet trotzdem */
           }
@@ -303,6 +320,7 @@ export function CockpitWorkspace() {
       } else {
         // Alt-Zeile ohne natives Modell: Datei laden + konvertieren
         const buf = await loadProzessmodellDatei(m.datei_pfad);
+        if (seq !== ladeSeqRef.current) return; // anderer Monat wurde inzwischen geladen
         if (uebernehmenAusDatei(buf, m.dateiname || `${m.monat}.xlsx`)) {
           setGeladenVon({ owner: m.owner, label: m.owner_email ?? 'Kunde' });
           toast.success(`Monat ${m.monat} aus Datei konvertiert`);
@@ -382,6 +400,13 @@ export function CockpitWorkspace() {
                     <Button size="sm" className="gap-1 text-xs" onClick={speichernMonat} disabled={saving}>
                       <CloudUpload className="h-3.5 w-3.5" />
                       {saving ? 'Speichert…' : `Monat ${view.monat || '?'} speichern`}
+                    </Button>
+                  )}
+                  {/* Session mitten in der Bearbeitung weg (anderer Tab, Standby)?
+                      Nicht kommentarlos den Speichern-Button verschwinden lassen (Fund #29). */}
+                  {configured && !session && (
+                    <Button size="sm" variant="destructive" className="gap-1 text-xs" onClick={() => window.location.reload()}>
+                      Abgemeldet — neu anmelden zum Speichern
                     </Button>
                   )}
                   <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => fileRef.current?.click()}>
