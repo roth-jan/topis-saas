@@ -1,5 +1,6 @@
 'use client';
 
+import { appUrl } from '@/lib/base-path';
 import { useMemo, useEffect } from 'react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StundenChart } from '@/components/dashboard/StundenChart';
@@ -122,7 +123,7 @@ export default function DashboardPage() {
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2 border-b bg-card">
-        <a href="/topis-saas/projekt">
+        <a href={appUrl('/projekt/')}>
           <Button variant="ghost" size="sm" className="gap-1">
             <ArrowLeft className="h-4 w-4" />
             Editor
@@ -152,7 +153,7 @@ export default function DashboardPage() {
               <p className="text-sm mt-1">
                 Importiere Betriebsdaten und berechne das Prozessmodell im Editor.
               </p>
-              <a href="/topis-saas/projekt">
+              <a href={appUrl('/projekt/')}>
                 <Button className="mt-4" size="sm">
                   <ArrowLeft className="h-4 w-4 mr-1" />
                   Zum Editor
@@ -183,7 +184,7 @@ export default function DashboardPage() {
                         Σ <strong>{sumStd.toFixed(1)} h</strong> · <strong>{sumKos.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}</strong>
                         <span className="text-[11px] text-muted-foreground ml-2">(bei {planSatz} €/h, {planMinFix.toFixed(2)} Min/Colli fix)</span>
                       </div>
-                      <a href="/topis-saas/projekt/planung/" className="text-xs text-blue-600 hover:underline">
+                      <a href={appUrl('/projekt/planung/')} className="text-xs text-blue-600 hover:underline">
                         → bearbeiten in der Planung
                       </a>
                     </CardContent>

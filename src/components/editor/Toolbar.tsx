@@ -94,6 +94,7 @@ import { LogoMark } from '@/components/Logo';
 import { ProzessmodellDialog } from '@/components/dialogs/ProzessmodellDialog';
 import { ProzessmodellImportDialog } from '@/components/dialogs/ProzessmodellImportDialog';
 import Link from 'next/link';
+import { appUrl } from '@/lib/base-path';
 import { FlaechenbedarfDialog } from '@/components/dialogs/FlaechenbedarfDialog';
 import { BenchmarkDialog } from '@/components/dialogs/BenchmarkDialog';
 import { IstSollDialog } from '@/components/dialogs/IstSollDialog';
@@ -634,8 +635,8 @@ export function Toolbar() {
             // dorthin navigieren, sonst wirken die alten globalen Buttons als
             // Duplikate (Alex 22.05.).
             const externalHref =
-              p.id === 'planung' ? '/topis-saas/projekt/planung/'
-              : p.id === 'cockpit' ? '/topis-saas/dashboard/'
+              p.id === 'planung' ? appUrl('/projekt/planung/')
+              : p.id === 'cockpit' ? appUrl('/dashboard/')
               : null;
             const btn = (
               <Button
@@ -750,7 +751,7 @@ export function Toolbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => {
-              window.location.href = '/topis-saas/check';
+              window.location.href = appUrl('/check/');
             }}>
               <BarChart3 className="mr-2 h-4 w-4" />
               Kunden-Check (Self-Service)…
@@ -1323,7 +1324,7 @@ export function Toolbar() {
             </Button>
           )}
           <Separator orientation="vertical" className="h-6 mx-1" />
-          <a href="/topis-saas/projekt/planung">
+          <a href={appUrl('/projekt/planung/')}>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs">
               <FileText className="h-4 w-4" />
               Tabelle + Σ-Kosten
