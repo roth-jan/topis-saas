@@ -1,6 +1,6 @@
 {
   "meta": {
-    "name": "AS Halle 6 v14 (Lastenheft-konform mit pathAreas)",
+    "name": "Demo-Umschlaghalle (Lastenheft-konform)",
     "kunde": "Andreas Schmid",
     "standort": "Gersthofen",
     "stand": "2026-05-22 v18 (Halle auf 210m erweitert, alle 107 horizontalen Tore neu positioniert, jedes 3,75m breit)",
@@ -10,7 +10,7 @@
   "hall": {
     "width": 210.0,
     "height": 58.0,
-    "name": "Andreas Schmid — Halle 6",
+    "name": "Demo-Umschlaghalle",
     "color": "#26262a"
   },
   "objects": [
@@ -1091,7 +1091,7 @@
       "y": 6.0,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 60 (Grob)",
+      "name": "Tor 60 (Kunde G)",
       "side": "east",
       "meta": {
         "kunde": "Grob"
@@ -1104,7 +1104,7 @@
       "y": 11.75,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 59 (Kleiner)",
+      "name": "Tor 59 (Kunde F)",
       "side": "east",
       "meta": {
         "kunde": "Kleiner"
@@ -1117,7 +1117,7 @@
       "y": 17.5,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 58 (Börner)",
+      "name": "Tor 58 (Kunde E)",
       "side": "east",
       "meta": {
         "kunde": "Börner"
@@ -1141,7 +1141,7 @@
       "y": 29.0,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 56 (Chefs Culinar)",
+      "name": "Tor 56 (Kunde D)",
       "side": "east",
       "meta": {
         "kunde": "Chefs Culinar"
@@ -1154,7 +1154,7 @@
       "y": 34.75,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 55 (Lidl)",
+      "name": "Tor 55 (Kunde C)",
       "side": "east",
       "meta": {
         "kunde": "Lidl"
@@ -1167,7 +1167,7 @@
       "y": 40.5,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 54 (Norma)",
+      "name": "Tor 54 (Kunde B)",
       "side": "east",
       "meta": {
         "kunde": "Norma"
@@ -1180,7 +1180,7 @@
       "y": 46.25,
       "width": 1.5,
       "height": 3.75,
-      "name": "Tor 53 (Silberhorn)",
+      "name": "Tor 53 (Kunde A)",
       "side": "east",
       "meta": {
         "kunde": "Silberhorn"

@@ -53,7 +53,7 @@ function ShowcaseOverlay({
               TOPIS Showcase
             </span>
             <span className="text-zinc-500 text-xs px-2 py-0.5 bg-white/10 rounded">
-              Andreas Schmid
+              Praxis-Projekt
             </span>
           </div>
           <div className="text-white font-medium text-lg">
@@ -317,7 +317,7 @@ export function ShowcaseDialog() {
       // ==========================================
       // PHASE 1: EINLEITUNG
       // ==========================================
-      updatePhase('Projekt: Andreas Schmid Gersthofen', 'Umschlaghalle 6 - Optimierungsanalyse', 5);
+      updatePhase('Praxis-Projekt: Umschlaghalle', 'Optimierungsanalyse einer realen Halle', 5);
       await wait(2500);
       if (stoppedRef.current) return;
 
@@ -542,7 +542,7 @@ export function ShowcaseDialog() {
 
     try {
       // Phase 1: Intro
-      updatePhase('Projekt: Geis Naila (Bischoff International)', 'Reale Projektdaten Oktober 2013 — 6.975 qm L-Shape Umschlaghalle', 5);
+      updatePhase('Praxis-Projekt: L-Shape-Umschlaghalle', 'Reale Projektdaten 2013 — 6.975 qm, anonymisiert', 5);
       await wait(2500);
       if (stoppedRef.current) return;
 
@@ -552,7 +552,7 @@ export function ShowcaseDialog() {
       if (stoppedRef.current) return;
 
       const vorlage = ladeProjektVorlage('geis_naila');
-      if (!vorlage) { toast.error('Naila-Vorlage nicht gefunden'); return; }
+      if (!vorlage) { toast.error('Vorlage nicht gefunden'); return; }
 
       updatePhase('Phase 1: Layout komplett', `${vorlage.beschreibung}`, 30);
       await wait(1500);
@@ -606,7 +606,7 @@ export function ShowcaseDialog() {
       if (stoppedRef.current) return;
 
       // Phase 5: Speichern
-      updatePhase('Phase 5: Layout speichern', 'Sichere Naila-Projekt für weitere Analyse...', 90);
+      updatePhase('Phase 5: Layout speichern', 'Sichere Projekt für weitere Analyse...', 90);
       const vorherMetrics = calculateMetrics();
       const vorherScreenshot = getScreenshot();
       const state = useTopisStore.getState();
@@ -629,16 +629,16 @@ export function ShowcaseDialog() {
       if (stoppedRef.current) return;
 
       updatePhase(
-        'Geis Naila — Projekt geladen',
+        'Praxis-Projekt (L-Shape) geladen',
         'Layout + Prozessmodell bereit. Nutze Fläche & Wege, Benchmark und IST-SOLL für weitere Analyse.',
         100
       );
       await wait(2500);
 
-      toast.success('Geis Naila geladen — Prozessmodell-Dialog zeigt Ergebnis');
+      toast.success('Praxis-Projekt geladen — Prozessmodell-Dialog zeigt Ergebnis');
     } catch (error) {
       console.error('Naila-Showcase Fehler:', error);
-      toast.error('Fehler während der Naila-Demo');
+      toast.error('Fehler während der Demo');
     } finally {
       setShowOverlay(false);
       setIsRunning(false);
@@ -666,7 +666,7 @@ export function ShowcaseDialog() {
           <SheetHeader>
             <SheetTitle>Showcase-Demo</SheetTitle>
             <SheetDescription>
-              Erlebe eine vollständige Vorher/Nachher-Optimierung der Andreas Schmid Umschlaghalle.
+              Erlebe eine vollständige Vorher/Nachher-Optimierung einer realen Umschlaghalle (anonymisiertes Praxis-Projekt).
             </SheetDescription>
           </SheetHeader>
 
@@ -675,7 +675,7 @@ export function ShowcaseDialog() {
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <h4 className="font-medium flex items-center gap-2">
                 <span className="text-2xl">🎬</span>
-                Andreas Schmid Showcase
+                Praxis-Showcase Umschlaghalle
               </h4>
               <p className="text-sm text-muted-foreground">
                 Diese Demo zeigt den kompletten TOPIS-Workflow:
@@ -733,7 +733,7 @@ export function ShowcaseDialog() {
               <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2">
                   <span className="text-2xl">📊</span>
-                  Geis Naila — Reales Projekt
+                  Praxis-Projekt 2: L-Shape-Halle
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   Echte Projektdaten aus der ROTH-Beratung (Oktober 2013):
@@ -753,7 +753,7 @@ export function ShowcaseDialog() {
                   disabled={isRunning}
                 >
                   <Play className="h-5 w-5 mr-2" />
-                  Geis Naila laden
+                  Praxis-Projekt 2 laden
                 </Button>
               </div>
             </div>

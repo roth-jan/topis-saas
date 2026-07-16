@@ -111,7 +111,7 @@ export function KundenCheckResults({
           <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-              Demo-Daten (AS Gersthofen — 115 Tore, ~4.000 Colli/Tag)
+              Demo-Daten (reale Umschlaghalle — 115 Tore, ~4.000 Colli/Tag)
             </p>
             <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
               Sie sehen eine Beispielanalyse.{' '}

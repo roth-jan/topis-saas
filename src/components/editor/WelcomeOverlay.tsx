@@ -45,7 +45,7 @@ export function WelcomeOverlay() {
 
   const loadDemo = () => {
     ladeProjektVorlage('as_gersthofen_2026');
-    toast.success('Demo-Halle „Andreas Schmid — Halle 6" geladen');
+    toast.success('Demo-Halle geladen');
     close();
   };
 
@@ -63,7 +63,7 @@ export function WelcomeOverlay() {
       key: 'demo',
       icon: Warehouse,
       title: 'Demo-Halle ansehen',
-      desc: 'Andreas Schmid · Halle 6 — 85 Tore, Wege & Heatmap fertig geladen.',
+      desc: 'Reale Umschlaghalle — 115 Tore, Wege & Heatmap fertig geladen.',
       onClick: loadDemo,
       primary: true,
     },

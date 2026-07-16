@@ -1,6 +1,7 @@
 'use client';
 
 import { appUrl } from '@/lib/base-path';
+import { AppNav } from '@/components/AppNav';
 import { useMemo, useEffect } from 'react';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StundenChart } from '@/components/dashboard/StundenChart';
@@ -27,7 +28,6 @@ import {
   Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ThemeToggleSimple } from '@/components/theme-toggle';
 
 export default function DashboardPage() {
   const analyse = useBetriebsdatenStore((s) => s.analyse);
@@ -121,28 +121,23 @@ export default function DashboardPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b bg-card">
-        <a href={appUrl('/projekt/')}>
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" />
-            Editor
-          </Button>
-        </a>
-        <div className="h-6 w-px bg-border" />
-        <h1 className="text-sm font-bold flex items-center gap-2">
-          <BarChart3 className="h-4 w-4" />
-          TOPIS Dashboard
-        </h1>
-        {analyse && (
-          <span className="text-xs text-muted-foreground">
-            {analyse.zeitraum.von} — {analyse.zeitraum.bis} | {analyse.arbeitstage} Arbeitstage
-          </span>
-        )}
-        <div className="ml-auto">
-          <ThemeToggleSimple />
-        </div>
-      </div>
+      {/* Gemeinsame Kopfleiste (wie Editor/Cockpit) */}
+      <AppNav
+        aktiv="kennzahlen"
+        zeile2={
+          <div className="flex items-center gap-3 min-w-0">
+            <h1 className="text-sm font-bold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Kennzahlen
+            </h1>
+            {analyse && (
+              <span className="text-xs text-muted-foreground truncate">
+                {analyse.zeitraum.von} — {analyse.zeitraum.bis} | {analyse.arbeitstage} Arbeitstage
+              </span>
+            )}
+          </div>
+        }
+      />
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-4 pb-24 space-y-4 max-w-[1400px] mx-auto">

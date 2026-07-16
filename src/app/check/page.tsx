@@ -275,7 +275,7 @@ export default function CheckPage() {
   // ============ Demo Pipeline ============
   const handleDemo = useCallback(() => {
     const { records } = generateDemoRecords();
-    runAnalyseFromRecords(records, 'AS Gersthofen (Demo)', 'demo');
+    runAnalyseFromRecords(records, 'Demo-Umschlaghalle', 'demo');
   }, [runAnalyseFromRecords]);
 
   // ============ File Handling ============
@@ -527,7 +527,7 @@ export default function CheckPage() {
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-3">Unterstützte Formate (Auto-Erkennung):</p>
               <div className="flex flex-wrap justify-center gap-2">
-                {['ROTH Standard', 'Andreas Schmid', 'Geis', 'PML Kiel', 'IDS Hub', 'Noerpel', 'Rhenus', 'TLT'].map((name) => (
+                {['ROTH-Standard', '7 weitere Speditions-WMS-Formate'].map((name) => (
                   <span key={name} className="px-3 py-1 bg-muted rounded-full text-xs">
                     {name}
                   </span>

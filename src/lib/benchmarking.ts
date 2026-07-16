@@ -53,6 +53,19 @@ export interface HallenRankingEntry {
  * Vergleicht die aktuelle Halle mit Referenzhallen.
  * Abteilungen werden dynamisch aus dem Ergebnis abgeleitet.
  */
+
+/**
+ * Öffentliche Anzeige der Referenzhallen ist ANONYMISIERT (Vertraulichkeit:
+ * die Klarnamen sind ROTH-Projektdaten anderer Kunden und gehören nicht in
+ * ein Produkt, das Dritte sehen). Die Werte bleiben echt; Kennung = stabile
+ * Nummer + Fläche als Kontext. Klarnamen ggf. später nur für Berater-Rolle.
+ */
+function anonymLabel(h: ReferenzHalle, referenzHallen: ReferenzHalle[]): string {
+  const nr = referenzHallen.findIndex((x) => x.id === h.id) + 1;
+  const flaeche = h.flaecheQm ? ` · ${(h.flaecheQm / 1000).toLocaleString('de-DE', { maximumFractionDigits: 1 })}k m²` : '';
+  return `Referenzhalle ${nr}${flaeche}`;
+}
+
 export function berechneBenchmark(
   ergebnis: GesamtErgebnis,
   verteilwegM: number,
@@ -82,7 +95,7 @@ export function berechneBenchmark(
     const werte = referenzHallen
       .filter((h) => h.minProColli[abtId] !== undefined && h.minProColli[abtId] > 0)
       .map((h) => ({
-        name: h.name,
+        name: anonymLabel(h, referenzHallen),
         wert: h.minProColli[abtId],
       }));
     werte.push({ name: halleName, wert: aktuelleAbteilungen[abtId] || 0 });
@@ -106,8 +119,8 @@ export function berechneBenchmark(
 
   // Gesamt-Ranking
   const gesamtWerte = referenzHallen.map((h) => ({
-    name: h.name,
-    standort: h.standort,
+    name: anonymLabel(h, referenzHallen),
+    standort: '', // Standorte identifizieren Kunden → nicht anzeigen
     wert: h.minProColliGesamt,
   }));
   gesamtWerte.push({ name: halleName, standort: '', wert: ergebnis.minProColli });

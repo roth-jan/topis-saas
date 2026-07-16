@@ -65,12 +65,12 @@ function createSchmidHalle6(): {
   // KUNDENZONEN SÜDEN
   const kundenSued = [
     { name: 'AS',       color: '#ef4444', x: 1,   w: 15 },
-    { name: 'Logistix', color: '#3b82f6', x: 16,  w: 12 },
-    { name: 'Murphy',   color: '#a855f7', x: 28,  w: 12 },
-    { name: 'Strauss',  color: '#f59e0b', x: 40,  w: 15 },
-    { name: 'A.Sigl',   color: '#ec4899', x: 55,  w: 12 },
+    { name: 'Kunde H', color: '#3b82f6', x: 16,  w: 12 },
+    { name: 'Kunde I',   color: '#a855f7', x: 28,  w: 12 },
+    { name: 'Kunde L',  color: '#f59e0b', x: 40,  w: 15 },
+    { name: 'Kunde J',   color: '#ec4899', x: 55,  w: 12 },
     { name: 'VT',       color: '#8b5cf6', x: 118, w: 12 },
-    { name: 'G.Sigl',   color: '#06b6d4', x: 130, w: 12 },
+    { name: 'Kunde K',   color: '#06b6d4', x: 130, w: 12 },
   ];
   kundenSued.forEach(k => {
     objects.push({
@@ -82,12 +82,12 @@ function createSchmidHalle6(): {
   // KUNDENZONEN NORDEN
   const kundenNord = [
     { name: 'AS Ü.79',        color: '#ef4444', x: 1,   w: 18 },
-    { name: 'Strauss',         color: '#f59e0b', x: 20,  w: 8 },
+    { name: 'Kunde L',         color: '#f59e0b', x: 20,  w: 8 },
     { name: 'VT',              color: '#8b5cf6', x: 29,  w: 8 },
-    { name: 'Fischer&VT 70/71',color: '#14b8a6', x: 38,  w: 22 },
-    { name: 'Fischer',         color: '#14b8a6', x: 78,  w: 20 },
-    { name: 'G.Sigl',          color: '#06b6d4', x: 100, w: 20 },
-    { name: 'Huber',           color: '#22c55e', x: 122, w: 27 },
+    { name: 'Kunde M+N 70/71',color: '#14b8a6', x: 38,  w: 22 },
+    { name: 'Kunde M',         color: '#14b8a6', x: 78,  w: 20 },
+    { name: 'Kunde K',          color: '#06b6d4', x: 100, w: 20 },
+    { name: 'Kunde O',           color: '#22c55e', x: 122, w: 27 },
   ];
   kundenNord.forEach(k => {
     objects.push({

@@ -1,15 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Calculator, Upload, RotateCcw, CloudUpload, ArrowLeft, FileDown,
+  Calculator, Upload, RotateCcw, CloudUpload, FileDown,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { CloudMenu } from '@/components/auth/CloudMenu';
+import { AppNav } from '@/components/AppNav';
 import { ProzessWorkbook } from '@/lib/prozessmodell-excel-engine';
 import type { ModellGroesse, ModellSchritt } from '@/lib/prozessmodell-excel-modell';
 import { konvertiereExcelZuNativ } from '@/lib/prozessmodell-konverter';
@@ -253,70 +252,59 @@ export function CockpitWorkspace() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Kopfleiste */}
-      <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-        <div className="mx-auto max-w-[1400px] px-4 py-2.5 flex items-center gap-3">
-          <div className="flex items-center shrink-0">
-            <Link href="/projekt/">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
-                <ArrowLeft className="h-3.5 w-3.5" />
-                Editor
-              </Button>
-            </Link>
-            <Link href="/dashboard/">
-              <Button variant="ghost" size="sm" className="text-xs text-muted-foreground">
-                Kennzahlen
-              </Button>
-            </Link>
-          </div>
-          <div className="flex items-center gap-2 min-w-0">
-            <Calculator className="h-4 w-4 text-primary shrink-0" />
-            <h1 className="font-display font-semibold text-sm truncate">Prozessmodell-Cockpit</h1>
-            {view && (
-              <Badge variant="secondary" className="font-normal shrink-0">{view.monat || fileName}</Badge>
-            )}
-            {dirty && <Badge className="font-normal shrink-0">geändert</Badge>}
-          </div>
-          <div className="ml-auto flex items-center gap-1.5">
-            {view && (
-              <>
-                {dirty && (
-                  <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={resetEdits}>
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Zurücksetzen
+      {/* Gemeinsame Kopfleiste (wie Editor) + Cockpit-Aktionszeile */}
+      <AppNav
+        aktiv="pm-cockpit"
+        zeile2={
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <Calculator className="h-4 w-4 text-primary shrink-0" />
+              <h1 className="font-display font-semibold text-sm truncate">Prozessmodell-Cockpit</h1>
+              {view && (
+                <Badge variant="secondary" className="font-normal shrink-0">{view.monat || fileName}</Badge>
+              )}
+              {dirty && <Badge className="font-normal shrink-0">geändert</Badge>}
+            </div>
+            <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+              {view && (
+                <>
+                  {dirty && (
+                    <Button variant="ghost" size="sm" className="gap-1 text-xs" onClick={resetEdits}>
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Zurücksetzen
+                    </Button>
+                  )}
+                  {rawFileRef.current && (
+                    <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportieren}>
+                      <FileDown className="h-3.5 w-3.5" />
+                      Excel exportieren
+                    </Button>
+                  )}
+                  {nativ && (
+                    <NeuerMonatDialog
+                      modell={nativ}
+                      onNeuerMonat={(m) => {
+                        uebernehmenNativ(m);
+                        toast.success(`Monat ${m.monat} angelegt — Mengen prüfen, dann speichern.`);
+                      }}
+                    />
+                  )}
+                  {configured && session && (
+                    <Button size="sm" className="gap-1 text-xs" onClick={speichernMonat} disabled={saving}>
+                      <CloudUpload className="h-3.5 w-3.5" />
+                      {saving ? 'Speichert…' : `Monat ${view.monat || '?'} speichern`}
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => fileRef.current?.click()}>
+                    <Upload className="h-3.5 w-3.5" />
+                    Excel
                   </Button>
-                )}
-                {rawFileRef.current && (
-                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={exportieren}>
-                    <FileDown className="h-3.5 w-3.5" />
-                    Excel exportieren
-                  </Button>
-                )}
-                {nativ && (
-                  <NeuerMonatDialog
-                    modell={nativ}
-                    onNeuerMonat={(m) => {
-                      uebernehmenNativ(m);
-                      toast.success(`Monat ${m.monat} angelegt — Mengen prüfen, dann speichern.`);
-                    }}
-                  />
-                )}
-                {configured && session && (
-                  <Button size="sm" className="gap-1 text-xs" onClick={speichernMonat} disabled={saving}>
-                    <CloudUpload className="h-3.5 w-3.5" />
-                    {saving ? 'Speichert…' : `Monat ${view.monat || '?'} speichern`}
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => fileRef.current?.click()}>
-                  <Upload className="h-3.5 w-3.5" />
-                  Excel
-                </Button>
-              </>
-            )}
-            <CloudMenu />
-          </div>
-        </div>
-      </header>
+                </>
+              )}
+            </div>
+          </>
+        }
+      />
 
       <input ref={fileRef} type="file" accept=".xlsx" className="hidden" onChange={handleFile} />
 

@@ -154,7 +154,7 @@ export function TorbelegungDialog() {
                 <SelectValue placeholder="Fahrplan-Daten auswählen..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="schmid_halle6">Schmid Halle 6 ({SCHMID_FAHRPLAN.seAnkuenfte.length} SE + {SCHMID_FAHRPLAN.saAbfahrten.length} SA)</SelectItem>
+                <SelectItem value="schmid_halle6">Demo-Fahrplan ({SCHMID_FAHRPLAN.seAnkuenfte.length} SE + {SCHMID_FAHRPLAN.saAbfahrten.length} SA)</SelectItem>
               </SelectContent>
             </Select>
             <input

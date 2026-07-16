@@ -594,7 +594,7 @@ export function WegeberechnungDialog() {
                       <SelectValue placeholder="Distanzmatrix auswählen..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="schmid_halle6">Schmid Halle 6 (204 Paare, 82.120 Colli)</SelectItem>
+                      <SelectItem value="schmid_halle6">Demo-Distanzmatrix (204 Paare, 82.120 Colli)</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button
