@@ -7,7 +7,7 @@ import type { Fahrplan } from '@/types/torbelegung';
  * Quelle: AS_SE_und_SA_Fahrplan_mit_zeiten.xlsx, VH_SE_FV_Torbelegung.xlsx, VH_SA_FV_Verladerauswertung.xlsm
  */
 export const SCHMID_FAHRPLAN: Fahrplan = {
-  name: 'Andreas Schmid Halle 6',
+  name: 'Demo-Fahrplan (Halle 6)',
   seAnkuenfte: [
     { typ: 'SE', netzwerk: '24Plus', verkehrsart: '1', relation: 'VP333', sollZeit: '06:30' },
     { typ: 'SE', netzwerk: '24Plus', verkehrsart: 'L', relation: 'VP092', sollZeit: '02:00' },

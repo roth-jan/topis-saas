@@ -101,7 +101,7 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
     colliProTag: COLLI_PRO_TAG,
     flaecheQm: 12470,  // 215 × 58 m mit Anbau
     fte: 55,
-    hallenName: 'AS Gersthofen Halle 6 (mit Anbau)',
+    hallenName: 'Demo-Umschlaghalle (Halle 6, mit Anbau)',
     prozessTyp: 'se',
   };
 

@@ -40,7 +40,7 @@ export const REFERENZHALLEN: ReferenzHalle[] = [
   { id: 'rhenus_duesseldorf', name: 'Rhenus', standort: 'Düsseldorf', typ: 'se', minProColli: {}, minProColliGesamt: 1.75, jahr: 2021 },
   { id: 'tlt_potsdam', name: 'TLT', standort: 'Berlin-Potsdam', typ: 'se', flaecheQm: 8237, minProColli: {}, minProColliGesamt: 1.91 },
   {
-    id: 'as_gersthofen', name: 'Andreas Schmid', standort: 'Gersthofen (Halle 6)', typ: 'se',
+    id: 'as_gersthofen', name: 'Referenzhalle (Kalibrierung)', standort: '', typ: 'se',
     flaecheQm: 8576, minProColli: { entlader: 0.829, scanner: 0.336, verteiler: 0.752 },
     minProColliGesamt: 1.917, verteilwegM: 138.8, fte: 54.5, jahr: 2020,
   },

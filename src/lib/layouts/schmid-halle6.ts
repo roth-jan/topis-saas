@@ -64,7 +64,7 @@ function createSchmidHalle6(): {
 
   // KUNDENZONEN SÜDEN
   const kundenSued = [
-    { name: 'AS',       color: '#ef4444', x: 1,   w: 15 },
+    { name: 'Zone 1',   color: '#ef4444', x: 1,   w: 15 },
     { name: 'Kunde H', color: '#3b82f6', x: 16,  w: 12 },
     { name: 'Kunde I',   color: '#a855f7', x: 28,  w: 12 },
     { name: 'Kunde L',  color: '#f59e0b', x: 40,  w: 15 },
@@ -159,7 +159,7 @@ function createSchmidHalle6(): {
     gaenge.push({ id: gangId++, name: `Zufahrt ${i + 1} Süd`, points: [{ x, y: 23 }, { x, y: H - 1.5 }], breite: 2.5, typ: 'regalgang', farbe: '#4ade80' });
   });
 
-  return { objects, gaenge, hall: { width: W, height: H, name: 'Halle 6 - Andreas Schmid Gersthofen' } };
+  return { objects, gaenge, hall: { width: W, height: H, name: 'Demo-Umschlaghalle (Halle 6)' } };
 }
 
 /**
@@ -186,11 +186,11 @@ export function loadSchmidLayout() {
  */
 export const PROJEKT_GERSTHOFEN: ProjektVorlage = {
   id: 'as_gersthofen',
-  name: 'Andreas Schmid',
-  standort: 'Gersthofen (Halle 6)',
+  name: 'Demo-Umschlaghalle',
+  standort: 'anonymisiert (Halle 6)',
   jahr: 2019,
   beschreibung: '85 Tore, Schnelläufer-Verteilung, 150×42m',
-  hall: { width: 151, height: 42, name: 'Halle 6 - Andreas Schmid Gersthofen', color: '#26262a' },
+  hall: { width: 151, height: 42, name: 'Demo-Umschlaghalle (Halle 6)', color: '#26262a' },
   objects: createSchmidHalle6().objects,
   prozessmodell: 'se_standard',
   parameterOverrides: {

@@ -6,7 +6,7 @@ import type { Distanzmatrix } from '@/types/distanzmatrix';
  * Quelle: AS_Wege_Halle6.xlsx (Beratungsprojekt 2018-2020)
  */
 export const SCHMID_DISTANZMATRIX: Distanzmatrix = {
-  name: 'Andreas Schmid Halle 6 (gemessen)',
+  name: 'Demo-Distanzmatrix (Halle 6, gemessen)',
   entladezonen: [
     { name: 'EZ 1', torVon: 19, torBis: 26 },
     { name: 'EZ 2', torVon: 65, torBis: 73 },

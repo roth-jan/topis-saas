@@ -419,7 +419,7 @@ export default function PlanungPage() {
                         → auf der Halle erst Tor, dann Bereich/Tor klicken, Colli eingeben. So oft du willst.
                       </li>
                       <li>
-                        <strong>Aus IST-Daten:</strong> im Editor unter Datei → „Volumen-Daten laden" → z.B. AS Januar 2026,
+                        <strong>Aus IST-Daten:</strong> im Editor unter Datei → „Volumen-Daten laden" → z.B. Betriebsdaten Januar 2026,
                         dann landen die Aufträge hier automatisch.
                       </li>
                     </ul>

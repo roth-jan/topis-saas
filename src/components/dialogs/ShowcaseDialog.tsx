@@ -142,7 +142,7 @@ function createVorherSzenario(): { objects: Omit<TopisObject, 'id'>[]; hall: { w
 
   // Kunden-Bereiche - ungünstig platziert
   const kunden = [
-    { name: 'AS', color: '#ef4444', x: 5, w: 20 },
+    { name: 'Zone 1', color: '#ef4444', x: 5, w: 20 },
     { name: 'Logistix', color: '#3b82f6', x: 28, w: 18 },
     { name: 'Murphy', color: '#a855f7', x: 50, w: 15 },
     { name: 'Strauss', color: '#f59e0b', x: 70, w: 18 },
@@ -229,7 +229,7 @@ function createNachherSzenario(): { objects: Omit<TopisObject, 'id'>[]; hall: { 
 
   // Kunden-Bereiche - optimiert in der Mitte
   const kunden = [
-    { name: 'AS', color: '#ef4444', x: 5, w: 20 },
+    { name: 'Zone 1', color: '#ef4444', x: 5, w: 20 },
     { name: 'Logistix', color: '#3b82f6', x: 28, w: 18 },
     { name: 'Murphy', color: '#a855f7', x: 50, w: 15 },
     { name: 'Strauss', color: '#f59e0b', x: 70, w: 18 },
