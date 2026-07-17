@@ -81,7 +81,7 @@ function createSchmidHalle6(): {
 
   // KUNDENZONEN NORDEN
   const kundenNord = [
-    { name: 'AS Ü.79',        color: '#ef4444', x: 1,   w: 18 },
+    { name: 'Zone 79',        color: '#ef4444', x: 1,   w: 18 },
     { name: 'Kunde L',         color: '#f59e0b', x: 20,  w: 8 },
     { name: 'VT',              color: '#8b5cf6', x: 29,  w: 8 },
     { name: 'Kunde M+N 70/71',color: '#14b8a6', x: 38,  w: 22 },
