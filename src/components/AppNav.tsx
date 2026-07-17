@@ -21,16 +21,18 @@ export function AppNav({
   aktiv: 'editor' | 'pm-cockpit' | 'planung' | 'kennzahlen';
   zeile2?: React.ReactNode;
 }) {
+  // Cockpit ist Home (Jan 17.07.: „Cockpit als Zentrum") — steht zuerst,
+  // der Editor ist die „Werkstatt" für die Hallen-Geometrie.
   const tabs: { id: typeof aktiv; label: string; href: string }[] = [
-    { id: 'editor', label: 'Editor', href: '/projekt/' },
     { id: 'pm-cockpit', label: 'Cockpit', href: '/cockpit/' },
+    { id: 'editor', label: 'Editor', href: '/projekt/' },
     { id: 'planung', label: 'Planung', href: '/projekt/planung/' },
     { id: 'kennzahlen', label: 'Kennzahlen', href: '/dashboard/' },
   ];
   return (
     <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="h-11 flex items-center px-2 gap-2 border-b border-border/40">
-        <Link href="/projekt/" className="flex items-center gap-2 px-1 shrink-0">
+        <Link href="/cockpit/" className="flex items-center gap-2 px-1 shrink-0">
           <LogoMark size={28} />
           <span className="hidden xl:inline font-display text-[15px] tracking-tight" style={{ fontWeight: 800 }}>TOPIS</span>
           <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">SaaS</Badge>

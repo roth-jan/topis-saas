@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { FileSpreadsheet, Factory, PencilRuler, Upload, ArrowRight } from 'lucide-react';
 import { erzeugeModellAusVorlage, erzeugeLeeresModell, type VorlagenTyp } from '@/lib/prozessmodell-vorlagen';
 import type { NativesProzessmodell } from '@/lib/prozessmodell-nativ';
+import { appUrl } from '@/lib/base-path';
 
 /** Aktueller Monat als 'MM/YYYY'. */
 export function aktuellerMonat(): string {
@@ -90,6 +91,12 @@ export function StartTueren({
       </div>
 
       {zeigeVorlage && <VorlagenFormular key={vorbelegung ? 'check' : 'manuell'} onModell={onModell} vorbelegung={vorbelegung} />}
+
+      <p className="text-center text-[11px] text-muted-foreground">
+        Sie möchten die Halle zeichnen und Wege räumlich berechnen?{' '}
+        <a href={appUrl('/projekt/')} className="text-primary underline underline-offset-2">Zum Hallen-Editor</a>{' '}
+        — der berechnete Verteilweg fließt automatisch ins Cockpit.
+      </p>
     </div>
   );
 }

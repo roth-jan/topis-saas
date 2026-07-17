@@ -16,7 +16,7 @@ export default function Home() {
           <nav className="flex items-center gap-1.5">
             <Link href="/check" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">Hallen-Check</Link>
             <Button asChild size="sm" className="h-8 gap-1.5 rounded-lg">
-              <Link href="/projekt">Editor öffnen <ArrowRight className="h-3.5 w-3.5" /></Link>
+              <Link href="/cockpit">Cockpit öffnen <ArrowRight className="h-3.5 w-3.5" /></Link>
             </Button>
           </nav>
         </div>
@@ -36,10 +36,13 @@ export default function Home() {
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
-            <Link href="/projekt">Editor starten <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/cockpit">Zum Hallencockpit <ArrowRight className="h-4 w-4" /></Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="h-11 rounded-xl px-6">
             <Link href="/check">Hallen-Check</Link>
+          </Button>
+          <Button asChild variant="ghost" size="lg" className="h-11 rounded-xl px-6 text-muted-foreground">
+            <Link href="/projekt">Halle im Editor bauen</Link>
           </Button>
         </div>
       </section>
@@ -141,7 +144,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
-              <Link href="/projekt">Editor starten <ArrowRight className="h-4 w-4" /></Link>
+              <Link href="/cockpit">Zum Hallencockpit <ArrowRight className="h-4 w-4" /></Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="h-11 rounded-xl px-6">
               <Link href="/check">Hallen-Check starten</Link>

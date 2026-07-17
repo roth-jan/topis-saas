@@ -621,12 +621,12 @@ export function Toolbar() {
 
       {/* ============ ROW 1: GLOBAL (Logo + Phasen-Tabs + globale Aktionen) ============ */}
       <div className="h-11 flex items-center px-2 gap-2 min-w-0 border-b border-border/40">
-        {/* Logo */}
-        <div className="flex items-center gap-2 px-1 shrink-0">
+        {/* Logo → Cockpit (Home; Jan 17.07. „Cockpit als Zentrum", Editor = Werkstatt) */}
+        <Link href="/cockpit/" className="flex items-center gap-2 px-1 shrink-0" title="Zum Cockpit (Start)">
           <LogoMark size={28} />
           <span className="hidden xl:inline font-display text-[15px] tracking-tight" style={{ fontWeight: 800 }}>TOPIS</span>
-          <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">SaaS</Badge>
-        </div>
+          <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">Werkstatt</Badge>
+        </Link>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
 
