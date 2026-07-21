@@ -246,7 +246,7 @@ export function ProzessmodellDialog() {
               </>
             ) : (
               <div className="text-center text-muted-foreground py-8">
-                Klicke &quot;Berechnen&quot; um die Analyse zu starten.
+                Klicken Sie auf &quot;Berechnen&quot;, um die Analyse zu starten.
                 <Button className="mt-2 block mx-auto" size="sm" onClick={berechne}>
                   Berechnen
                 </Button>

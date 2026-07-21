@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { useTopisStore } from '@/lib/store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
@@ -43,6 +44,7 @@ export default function PlanungPage() {
   const simAuftraege = useTopisStore((s) => s.simAuftraege);
   const removeSimAuftrag = useTopisStore((s) => s.removeSimAuftrag);
   const clearSimAuftraege = useTopisStore((s) => s.clearSimAuftraege);
+  const seedBeispielAuftraege = useTopisStore((s) => s.seedBeispielAuftraege);
   const forkSimAuftragAsSim = useTopisStore((s) => s.forkSimAuftragAsSim);
   const removeSimVarianteFor = useTopisStore((s) => s.removeSimVarianteFor);
   const setAnimationActive = useTopisStore((s) => s.setAnimationActive);
@@ -408,18 +410,32 @@ export default function PlanungPage() {
               <CardContent className="py-4">
                 <div className="flex gap-3 items-start text-sm">
                   <Calculator className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  {/* War eine Sackgasse: Text verwies nur zurück in den Editor
+                      (Blindtest 21.07.). Jetzt ist der schnellste Weg direkt hier
+                      als Knopf ausführbar. */}
                   <div>
                     <p className="font-semibold mb-1">Noch keine Aufträge vorhanden.</p>
                     <p className="text-muted-foreground">
-                      Du hast zwei Wege:
+                      Am schnellsten starten Sie mit Beispiel-Aufträgen — die können Sie danach frei ändern.
                     </p>
-                    <ul className="text-muted-foreground mt-1 space-y-1 list-disc list-inside">
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => { seedBeispielAuftraege(); toast.success('10 Beispiel-Aufträge geladen'); }}
+                      >
+                        10 Beispiel-Aufträge laden
+                      </Button>
+                      <Button asChild size="sm" variant="outline">
+                        <a href={appUrl('/projekt/')}>Eigene Aufträge auf der Halle setzen</a>
+                      </Button>
+                    </div>
+                    <ul className="text-muted-foreground mt-3 space-y-1 list-disc list-inside text-xs">
                       <li>
-                        <strong>Reine Simulation:</strong> zurück zum Editor → Phase „Planung" → Knopf „Auftrag anlegen"
-                        → auf der Halle erst Tor, dann Bereich/Tor klicken, Colli eingeben. So oft du willst.
+                        <strong>Eigene Aufträge:</strong> im Hallenplan → Phase „Planung" → Knopf „Auftrag anlegen"
+                        → auf der Halle erst Tor, dann Bereich/Tor klicken, Colli eingeben.
                       </li>
                       <li>
-                        <strong>Aus IST-Daten:</strong> im Editor unter Datei → „Volumen-Daten laden" → z.B. Betriebsdaten Januar 2026,
+                        <strong>Aus IST-Daten:</strong> im Hallenplan unter Datei → „Volumen-Daten laden" → z.B. Betriebsdaten Januar 2026,
                         dann landen die Aufträge hier automatisch.
                       </li>
                     </ul>
@@ -434,7 +450,7 @@ export default function PlanungPage() {
               <CardContent className="py-3 text-xs">
                 <div className="flex items-center gap-2">
                   <Calculator className="h-3.5 w-3.5 text-blue-500" />
-                  <span><strong>{simAuftraege.length}</strong> Auftrag(e) aus reiner Simulation — keine IST-Daten geladen. Σ-Werte zeigen also nur was du selbst angelegt hast.</span>
+                  <span><strong>{simAuftraege.length}</strong> Auftrag(e) aus reiner Simulation — keine IST-Daten geladen. Σ-Werte zeigen also nur, was Sie selbst angelegt haben.</span>
                 </div>
               </CardContent>
             </Card>

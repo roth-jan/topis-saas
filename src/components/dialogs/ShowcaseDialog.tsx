@@ -630,7 +630,7 @@ export function ShowcaseDialog() {
 
       updatePhase(
         'Praxis-Projekt (L-Shape) geladen',
-        'Layout + Prozessmodell bereit. Nutze Fläche & Wege, Benchmark und IST-SOLL für weitere Analyse.',
+        'Layout + Prozessmodell bereit. Nutzen Sie Fläche & Wege, Benchmark und IST-SOLL für weitere Analysen.',
         100
       );
       await wait(2500);

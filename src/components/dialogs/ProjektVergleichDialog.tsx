@@ -140,7 +140,7 @@ export function ProjektVergleichDialog() {
   // Export comparison report
   const exportReport = () => {
     if (!canCompare) {
-      toast.error('Speichere erst Vorher und Nachher Zustände');
+      toast.error('Speichern Sie erst einen Vorher- und einen Nachher-Zustand');
       return;
     }
 

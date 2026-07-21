@@ -106,7 +106,7 @@ export function WelcomeOverlay() {
             Willkommen bei TOPIS
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Womit möchtest du starten?
+            Womit möchten Sie starten?
           </p>
         </div>
 
@@ -141,7 +141,7 @@ export function WelcomeOverlay() {
 
         <div className="border-t border-border bg-muted/20 px-8 py-3">
           <p className="text-[11px] text-muted-foreground">
-            Du kannst Hallen jederzeit über <span className="text-foreground/70">Daten → Halle laden</span> wechseln.
+            Sie können Hallen jederzeit über <span className="text-foreground/70">Daten → Halle laden</span> wechseln.
           </p>
         </div>
       </div>

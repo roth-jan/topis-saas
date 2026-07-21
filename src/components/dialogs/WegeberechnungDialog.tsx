@@ -129,7 +129,7 @@ export function WegeberechnungDialog() {
       if (gaenge.length > 0 && passable.length === 0) {
         setIsCalculating(false);
         toast.error(
-          `Kein Gang ist breit genug für ${ffz.name} (min. ${ffz.mindestBreite} m). Wähle ein schmaleres FFZ oder verbreitere die Gänge.`,
+          `Kein Gang ist breit genug für ${ffz.name} (min. ${ffz.mindestBreite} m). Wählen Sie ein schmaleres FFZ oder verbreitern Sie die Gänge.`,
           { duration: 6000 },
         );
         return;

@@ -117,9 +117,9 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
               {tab === 'signup' ? 'Konto erstellen' : tab === 'magic' ? 'Login-Link' : 'Willkommen zurück'}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {tab === 'signup' ? 'Lege dein Konto an, um Layouts zu speichern & zu teilen.'
-                : tab === 'magic' ? 'Wir senden dir einen Login-Link — ohne Passwort.'
-                : 'Melde dich an, um deine Cloud-Layouts zu laden.'}
+              {tab === 'signup' ? 'Legen Sie Ihr Konto an, um Layouts zu speichern & zu teilen.'
+                : tab === 'magic' ? 'Wir senden Ihnen einen Login-Link — ohne Passwort.'
+                : 'Melden Sie sich an, um Ihre Cloud-Layouts zu laden.'}
             </p>
 
             {/* Segmented Tabs */}

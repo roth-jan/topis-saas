@@ -488,7 +488,7 @@ export function TorbelegungDialog() {
           {!activeFahrplan && (
             <div className="text-center py-8 text-muted-foreground">
               <CalendarClock className="h-12 w-12 mx-auto mb-4 opacity-30" />
-              <p>Wähle eine Fahrplan-Datenquelle aus, um die Torbelegung anzuzeigen.</p>
+              <p>Wählen Sie eine Fahrplan-Datenquelle aus, um die Torbelegung anzuzeigen.</p>
             </div>
           )}
         </div>

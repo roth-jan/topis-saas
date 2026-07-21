@@ -2135,7 +2135,7 @@ export function HallCanvas() {
       setPathDrawing(true);
       if (!currentPath || currentPath.waypoints.length === 0) {
         setCurrentPath({ waypoints: [snapPos] });
-        toast.info('Klicke ein Ziel-Tor oder einen Bereich — A* routet automatisch über die Gänge. Mehrere Klicks = manueller Pfad. Enter speichert, ESC bricht ab.', { duration: 4500 });
+        toast.info('Klicken Sie ein Ziel-Tor oder einen Bereich an — TOPIS routet automatisch über die Gänge. Mehrere Klicks = manueller Pfad. Enter speichert, ESC bricht ab.', { duration: 4500 });
       } else {
         const last = currentPath.waypoints[currentPath.waypoints.length - 1];
         const distLast = Math.hypot(snapPos.x - last.x, snapPos.y - last.y);
@@ -3378,13 +3378,15 @@ export function HallCanvas() {
           tuer, hindernis, rampe, leveller, pfosten, treppe, ladestation,
           gefahrgut, sperrplatz, klaerplatz, buero, sozialraum, wc, entladebereich,
           outdoor_area, outdoor_road, trailer_spot, parking, custom). Einheitliches
-          Pattern: Klick = setzen, Klick+Drag = Größe aufziehen. */}
+          Pattern: Klick = setzen (Standardgröße), Größe danach über Properties-Panel
+          oder Resize-Handles. Drag-to-size existiert NICHT — Objekt entsteht bereits
+          auf mousedown (s. handleMouseDown), der alte Hinweistext war falsch (Fix 21.07.2026). */}
       {OBJECT_LABELS[tool as ObjectType] && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 border rounded-lg px-4 py-2 text-sm shadow-lg">
           <span>
             <kbd className="px-1 bg-muted rounded">Klick</kbd> {OBJECT_LABELS[tool as ObjectType]} mit Standardgröße platzieren
             {' | '}
-            <kbd className="px-1 bg-muted rounded">Klick+Ziehen</kbd> Größe selbst aufziehen
+            Größe danach rechts unter <span className="font-medium">Eigenschaften</span> oder per Anfasser ändern
             {' | '}
             <kbd className="px-1 bg-muted rounded">V</kbd> zurück zur Auswahl
           </span>

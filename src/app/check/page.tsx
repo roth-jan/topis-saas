@@ -18,6 +18,7 @@ import { REFERENZHALLEN } from '@/lib/data/referenzhallen';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from '@/lib/data/prozessmodell-se';
 import { berechneIstSoll } from '@/lib/ist-soll-rechner';
 import { KundenCheckResults } from '@/components/check/KundenCheckResults';
+import { Fachbegriff } from '@/components/ui/fachbegriff';
 import { generateRecordsFromEckdaten, generateDemoRecords } from '@/lib/eckdaten-analyse';
 import type { Eckdaten } from '@/lib/eckdaten-analyse';
 
@@ -280,16 +281,43 @@ export default function CheckPage() {
 
   // ============ File Handling ============
   const handleFile = useCallback((file: File) => {
-    if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt') && !file.name.endsWith('.tsv')) {
-      setError('Bitte eine CSV-Datei hochladen (.csv, .txt, .tsv)');
+    const name = file.name.toLowerCase();
+    const istExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+    const istText = name.endsWith('.csv') || name.endsWith('.txt') || name.endsWith('.tsv');
+
+    if (!istText && !istExcel) {
+      setError('Bitte eine CSV- oder Excel-Datei hochladen (.csv, .txt, .tsv, .xlsx, .xls)');
       return;
     }
+
     const reader = new FileReader();
+    reader.onerror = () => setError('Fehler beim Lesen der Datei');
+
+    // Excel: erstes Blatt nach CSV (Semikolon) wandeln — danach identische Pipeline
+    // wie beim CSV-Upload. xlsx wird dynamisch geladen, damit die Bibliothek nicht
+    // im Haupt-Bundle des Funnels landet.
+    if (istExcel) {
+      reader.onload = async (e) => {
+        try {
+          const XLSX = await import('xlsx');
+          const wb = XLSX.read(e.target?.result as ArrayBuffer, { type: 'array' });
+          const blatt = wb.Sheets[wb.SheetNames[0]];
+          if (!blatt) { setError('Die Excel-Datei enthält kein lesbares Tabellenblatt.'); return; }
+          const csv = XLSX.utils.sheet_to_csv(blatt, { FS: ';' });
+          if (!csv.trim()) { setError('Das erste Tabellenblatt ist leer.'); return; }
+          runAnalyse(csv, file.name);
+        } catch {
+          setError('Die Excel-Datei konnte nicht gelesen werden. Bitte als CSV exportieren.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
     reader.onload = (e) => {
       const text = e.target?.result as string;
       if (text) runAnalyse(text, file.name);
     };
-    reader.onerror = () => setError('Fehler beim Lesen der Datei');
     reader.readAsText(file, 'utf-8');
   }, [runAnalyse]);
 
@@ -495,7 +523,7 @@ export default function CheckPage() {
                   </div>
                   <div>
                     <p className="text-lg font-medium">
-                      {dragOver ? 'Datei hier ablegen...' : 'CSV-Datei per Drag & Drop ablegen'}
+                      {dragOver ? 'Datei hier ablegen...' : 'CSV- oder Excel-Datei per Drag & Drop ablegen'}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       oder klicken zum Auswählen · WMS-Export, Scandaten, Betriebsdaten
@@ -511,7 +539,7 @@ export default function CheckPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.txt,.tsv"
+              accept=".csv,.txt,.tsv,.xlsx,.xls"
               className="hidden"
               onChange={handleFileInput}
             />
@@ -570,7 +598,7 @@ export default function CheckPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="eck-colli">Colli pro Tag *</Label>
+                      <Label htmlFor="eck-colli"><Fachbegriff id="colli">Colli</Fachbegriff> pro Tag *</Label>
                       <Input
                         id="eck-colli"
                         type="number"
@@ -592,7 +620,7 @@ export default function CheckPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="eck-fte">Mitarbeiter (FTE) *</Label>
+                      <Label htmlFor="eck-fte">Mitarbeiter (<Fachbegriff id="fte">FTE</Fachbegriff>) *</Label>
                       <Input
                         id="eck-fte"
                         type="number"

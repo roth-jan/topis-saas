@@ -219,7 +219,7 @@ export function BereichOptimizerDialog({ open, onOpenChange }: Props) {
           <TabsContent value="bereich" className="space-y-3 pt-3">
             <p className="text-xs text-muted-foreground">
               Verschiebt Sortier-/Pufferzonen zum Colli-Schwerpunkt der versorgten Tore.
-              Sinnvoll wenn deine Halle Bereiche hat (z.B. Langgut-Sortierung).
+              Sinnvoll, wenn Ihre Halle Bereiche hat (z.B. Langgut-Sortierung).
             </p>
 
             {!bereichKannBerechnen && !ergebnis && (

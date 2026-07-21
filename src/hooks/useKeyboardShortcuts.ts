@@ -86,6 +86,28 @@ export function useKeyboardShortcuts() {
             setTool('path');
             toast.success('Pfad-Werkzeug');
             break;
+          case 'r':
+            setTool('regal');
+            toast.success('Regal-Werkzeug');
+            break;
+          // Fahrgang liegt auf F, NICHT auf G — G ist seit jeher der Raster-Toggle
+          // (Toolbar-Tooltip versprach früher fälschlich G, Fix 21.07.2026).
+          case 'f':
+            setTool('gang');
+            toast.success('Fahrgang-Werkzeug');
+            break;
+          case 'c':
+            setTool('conveyor');
+            toast.success('Förderband-Werkzeug');
+            break;
+          case 'm':
+            setTool('measure');
+            toast.success('Mess-Werkzeug');
+            break;
+          case 'a':
+            setTool('auftrag');
+            toast.success('Auftrag-Werkzeug');
+            break;
           case 'g':
             toggleGrid();
             break;

@@ -92,10 +92,15 @@ export function StartTueren({
 
       {zeigeVorlage && <VorlagenFormular key={vorbelegung ? 'check' : 'manuell'} onModell={onModell} vorbelegung={vorbelegung} />}
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        Sie möchten die Halle zeichnen und Wege räumlich berechnen?{' '}
-        <a href={appUrl('/projekt/')} className="text-primary underline underline-offset-2">Zum Hallen-Editor</a>{' '}
-        — der berechnete Verteilweg fließt automatisch ins Cockpit.
+      {/* Optionalität ausdrücklich benennen — der Blindtest 21.07. las die
+          Bereiche als Pflicht-Kette. Zeichnen ist eine von vier Quellen für den
+          Verteilweg, nicht Voraussetzung. */}
+      <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+        Das Prozessmodell rechnet auch ohne Hallenplan — ohne Angabe wird der ROTH-Standardweg verwendet.{' '}
+        <br className="hidden sm:inline" />
+        Genauer wird es, wenn Sie den Verteilweg eintragen oder{' '}
+        <a href={appUrl('/projekt/')} className="text-primary underline underline-offset-2">die Halle zeichnen</a>{' '}
+        — der berechnete Weg fließt dann automatisch hierher.
       </p>
     </div>
   );
