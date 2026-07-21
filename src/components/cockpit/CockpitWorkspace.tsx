@@ -371,7 +371,7 @@ export function CockpitWorkspace() {
           <>
             <div className="flex items-center gap-2 min-w-0">
               <Calculator className="h-4 w-4 text-primary shrink-0" />
-              <h1 className="font-display font-semibold text-sm truncate">Prozessmodell-Cockpit</h1>
+              <h1 className="font-display font-semibold text-sm truncate">Prozessmodell</h1>
               {view && (
                 <Badge variant="secondary" className="font-normal shrink-0">{view.monat || fileName}</Badge>
               )}

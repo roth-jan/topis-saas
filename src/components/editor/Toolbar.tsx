@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useTopisStore, useTool, useZoom } from '@/lib/store';
 import type { Gang } from '@/types/topis';
 import { generateDemoRecordsFromLayout } from '@/lib/demo-records-generator';
@@ -196,7 +196,7 @@ const tools: { id: Tool; label: string; shortcut: string; icon: React.ReactNode;
   { id: 'regal', label: 'Regal', shortcut: 'R', icon: <RectangleHorizontal className="h-4 w-4" />, group: 2 },
   { id: 'bereich', label: 'Bereich', shortcut: 'B', icon: <Layers className="h-4 w-4" />, group: 2 },
   { id: 'path', label: 'Weg', shortcut: 'P', icon: <Route className="h-4 w-4" />, group: 3 },
-  { id: 'gang', label: 'Fahrgang', shortcut: 'G', icon: <Truck className="h-4 w-4" />, group: 3 },
+  { id: 'gang', label: 'Fahrgang', shortcut: 'F', icon: <Truck className="h-4 w-4" />, group: 3 },
   { id: 'conveyor', label: 'Förderband', shortcut: 'C', icon: <ArrowRight className="h-4 w-4" />, group: 3 },
   { id: 'measure', label: 'Messen', shortcut: 'M', icon: <Ruler className="h-4 w-4" />, group: 3 },
   { id: 'auftrag', label: 'Auftrag anlegen', shortcut: 'A', icon: <FileText className="h-4 w-4" />, group: 4 },
@@ -439,10 +439,12 @@ export function Toolbar() {
     { id: 'layout', label: 'Layout', hint: 'Halle aufbauen' },
     { id: 'wege', label: 'Wege', hint: 'Wegberechnung + Distanzmatrix' },
     { id: 'auswertung', label: 'Auswertung', hint: 'KPIs, Benchmark, Torbelegung' },
-    { id: 'pm-cockpit', label: 'Cockpit', hint: 'Prozessmodell: Monatsmengen pflegen, Min/Colli, Trend' },
-    { id: 'planung', label: 'Planung', hint: 'Aufträge zeilenweise editieren, Kosten spielen' },
     { id: 'vergleich', label: 'Vergleich', hint: 'Szenarien gegenüberstellen' },
-    { id: 'cockpit', label: 'Kennzahlen', hint: 'KPI-Übersicht: Aufträge, Mengen, Kosten (read-only)' },
+    // Ab hier: eigene Seiten, keine Editor-Phasen. Namen identisch zur AppNav,
+    // damit nicht derselbe Ort zwei Namen hat (Blindtest 21.07.).
+    { id: 'pm-cockpit', label: 'Prozessmodell', hint: 'Eigene Seite: Monatsmengen pflegen, Min/Colli, Trend' },
+    { id: 'planung', label: 'Auftragsplanung', hint: 'Eigene Seite: Aufträge zeilenweise editieren, Kosten spielen' },
+    { id: 'cockpit', label: 'Kennzahlen', hint: 'Eigene Seite: KPI-Übersicht, Aufträge, Mengen, Kosten (read-only)' },
   ];
 
   // Export handlers
@@ -621,11 +623,11 @@ export function Toolbar() {
 
       {/* ============ ROW 1: GLOBAL (Logo + Phasen-Tabs + globale Aktionen) ============ */}
       <div className="h-11 flex items-center px-2 gap-2 min-w-0 border-b border-border/40">
-        {/* Logo → Cockpit (Home; Jan 17.07. „Cockpit als Zentrum", Editor = Werkstatt) */}
-        <Link href="/cockpit/" className="flex items-center gap-2 px-1 shrink-0" title="Zum Cockpit (Start)">
+        {/* Logo → Prozessmodell (Start). „Werkstatt"-Badge entfernt 21.07. —
+            Blindtest: zu viele Namen für dieselbe Sache (Cockpit/Editor/Projekt/Werkstatt). */}
+        <Link href="/cockpit/" className="flex items-center gap-2 px-1 shrink-0" title="Zum Prozessmodell (Start)">
           <LogoMark size={28} />
           <span className="hidden xl:inline font-display text-[15px] tracking-tight" style={{ fontWeight: 800 }}>TOPIS</span>
-          <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">Werkstatt</Badge>
         </Link>
 
         <Separator orientation="vertical" className="h-6 mx-1" />
@@ -658,12 +660,22 @@ export function Toolbar() {
               </Button>
             );
             return (
-              <Tooltip key={p.id}>
-                <TooltipTrigger asChild>
-                  {externalHref ? <a href={externalHref} className="shrink-0">{btn}</a> : btn}
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{p.hint}</TooltipContent>
-              </Tooltip>
+              <Fragment key={p.id}>
+                {/* Trennstrich zwischen Editor-Phasen und eigenen Seiten — sonst
+                    liest sich beides als eine Kette (Blindtest 21.07.). */}
+                {/* Bewusst ein div statt <Separator>: dessen vertikale Variante
+                    setzt h-full und wird im items-center-Flex 0 px hoch (geprüft
+                    21.07. — war im DOM, aber unsichtbar). */}
+                {p.id === 'pm-cockpit' && (
+                  <div aria-hidden className="mx-1.5 h-5 w-px shrink-0 self-center bg-border" />
+                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {externalHref ? <a href={externalHref} className="shrink-0">{btn}</a> : btn}
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">{p.hint}</TooltipContent>
+                </Tooltip>
+              </Fragment>
             );
           })}
         </div>
@@ -1261,7 +1273,7 @@ export function Toolbar() {
           <div className={`flex items-center gap-1 flex-wrap ${objects.length === 0 ? 'pointer-events-none opacity-50' : ''}`}>
           <span id="tour-prozessmodell">
             <Link href="/cockpit/">
-              <Button variant="outline" size="sm" className="gap-1 text-xs" title="Prozessmodell-Cockpit: Excel/Vorlage laden, Mengen + Schritte editieren, Monats-Trend">
+              <Button variant="outline" size="sm" className="gap-1 text-xs" title="Prozessmodell: Excel/Vorlage laden, Mengen + Schritte editieren, Monats-Trend">
                 <Calculator className="h-3.5 w-3.5" />
                 Prozess-Cockpit
               </Button>
@@ -1420,7 +1432,7 @@ export function Toolbar() {
               understand why these buttons appear twice". */}
           <span className="text-[11px] text-muted-foreground ml-1">
             Kennzahlen und Auftrags-Planung oben in der Kopfzeile. Halle
-            und Volumen-Daten lädst du in Phase &bdquo;Daten&ldquo;.
+            und Volumen-Daten laden Sie in Phase &bdquo;Daten&ldquo;.
           </span>
         </div>
         )}

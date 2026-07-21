@@ -51,7 +51,7 @@ export function startTour() {
       {
         popover: {
           title: '👋 Willkommen in TOPIS',
-          description: 'TOPIS ist dein Hallenplanungs- und Analysetool. Diese kurze Tour zeigt dir wo du die wichtigsten Funktionen findest.',
+          description: 'TOPIS ist Ihr Hallenplanungs- und Analysetool. Diese kurze Tour zeigt Ihnen, wo Sie die wichtigsten Funktionen finden.',
           side: 'bottom' as const,
           align: 'center' as const,
         },
@@ -60,7 +60,7 @@ export function startTour() {
         element: 'canvas',
         popover: {
           title: '🏭 Hallenplan',
-          description: 'Hier siehst du den Grundriss deiner Halle mit Toren, Bereichen und Gängen. Du kannst zoomen (Mausrad), verschieben (rechte Maustaste) und Objekte anklicken.',
+          description: 'Hier sehen Sie den Grundriss Ihrer Halle mit Toren, Bereichen und Gängen. Sie können zoomen (Strg + Mausrad), verschieben (rechte Maustaste) und Objekte anklicken.',
           side: 'left' as const,
         },
       },
@@ -68,7 +68,7 @@ export function startTour() {
         element: '#tour-aktionen',
         popover: {
           title: '🔧 Aktionen & Berechnungen',
-          description: 'Hier findest du die wichtigsten Werkzeuge: Entfernungsmatrix, Wegeberechnung und Tor-Kalkulation.',
+          description: 'Hier finden Sie die wichtigsten Werkzeuge: Entfernungsmatrix, Wegeberechnung und Tor-Kalkulation.',
           side: 'bottom' as const,
         },
       },
@@ -84,7 +84,7 @@ export function startTour() {
         element: '#tour-torkalkulation',
         popover: {
           title: '🚪 Tor-Kalkulation',
-          description: 'Hier gibst du pro Tor ein: Paletten/Tag, Entladezeit, Zielbereich. TOPIS rechnet daraus den Tagesbedarf in Stunden.',
+          description: 'Hier geben Sie pro Tor ein: Paletten/Tag, Entladezeit, Zielbereich. TOPIS rechnet daraus den Tagesbedarf in Stunden.',
           side: 'bottom' as const,
         },
       },
@@ -100,7 +100,7 @@ export function startTour() {
         element: '#tour-betriebsdaten',
         popover: {
           title: '📂 Betriebsdaten importieren',
-          description: 'Lade Scandaten als CSV hoch (Datum, Messpunkt, Colli, Gewicht). Daraus berechnet TOPIS automatisch Heatmaps, Stundenprofile und den gewichteten Verteilweg.',
+          description: 'Laden Sie Scandaten als CSV hoch (Datum, Messpunkt, Colli, Gewicht). Daraus berechnet TOPIS automatisch Heatmaps, Stundenprofile und den gewichteten Verteilweg.',
           side: 'bottom' as const,
         },
       },
@@ -108,7 +108,7 @@ export function startTour() {
         element: '#tour-prozessmodell',
         popover: {
           title: '⚙️ Prozess-Cockpit (Min/Colli)',
-          description: 'DIE KERNBERECHNUNG: Das Cockpit rechnet dein Prozessmodell live — jeder Schritt (Entladen, Scannen, Verteilen) mit Zeiten, Anteilen und Häufigkeiten, voll editierbar. Excel importieren oder mit der ROTH-Vorlage starten, monatlich Mengen pflegen, Trend verfolgen.',
+          description: 'DIE KERNBERECHNUNG: Das Cockpit rechnet Ihr Prozessmodell live — jeder Schritt (Entladen, Scannen, Verteilen) mit Zeiten, Anteilen und Häufigkeiten, voll editierbar. Excel importieren oder mit der ROTH-Vorlage starten, monatlich Mengen pflegen, Trend verfolgen.',
           side: 'bottom' as const,
         },
       },
@@ -116,7 +116,7 @@ export function startTour() {
         element: '#tour-benchmark',
         popover: {
           title: '🏆 Benchmarking',
-          description: 'Vergleicht deine Halle mit 8 Referenzhallen. Zeigt den Rang und wo Optimierungspotenzial liegt.',
+          description: 'Vergleicht Ihre Halle mit 8 Referenzhallen. Zeigt den Rang und wo Optimierungspotenzial liegt.',
           side: 'bottom' as const,
         },
       },
@@ -132,14 +132,14 @@ export function startTour() {
         element: '#tour-szenarien',
         popover: {
           title: '💾 Szenarien',
-          description: 'Speichere verschiedene Layout-Varianten und vergleiche sie. Zum Beispiel: "Halle mit Kette" vs. "Halle ohne Kette".',
+          description: 'Speichern Sie verschiedene Layout-Varianten und vergleichen Sie sie. Zum Beispiel: "Halle mit Kette" vs. "Halle ohne Kette".',
           side: 'bottom' as const,
         },
       },
       {
         popover: {
           title: '✅ Fertig!',
-          description: 'Du kannst diese Tour jederzeit über den ❓-Button in der Toolbar erneut starten. Tipp: Starte mit "Betriebsdaten importieren" um Scandaten zu laden, dann öffne das "Prozessmodell" für die Min/Colli-Berechnung.',
+          description: 'Sie können diese Tour jederzeit über den ❓-Button in der Toolbar erneut starten. Tipp: Starten Sie mit "Betriebsdaten importieren", um Scandaten zu laden, und öffnen Sie dann das "Prozessmodell" für die Min/Colli-Berechnung.',
           side: 'bottom' as const,
           align: 'center' as const,
         },

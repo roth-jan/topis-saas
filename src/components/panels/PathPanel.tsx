@@ -170,7 +170,7 @@ export function PathPanel() {
 
         {!selectedPath && paths.length > 0 && (
           <div className="text-xs text-muted-foreground text-center py-2 bg-muted/50 rounded">
-            Klicke auf einen Weg um Details zu sehen
+            Klicken Sie auf einen Weg, um Details zu sehen
           </div>
         )}
 

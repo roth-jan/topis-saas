@@ -305,7 +305,7 @@ export function PropertiesPanel() {
           <Settings className="h-5 w-5" />
         </div>
         <p className="text-sm font-medium text-foreground">Kein Element ausgewählt</p>
-        <p className="max-w-[190px] text-xs leading-relaxed text-muted-foreground">Klicke im Plan auf ein Tor, einen Stellplatz oder eine Wand, um die Eigenschaften zu bearbeiten.</p>
+        <p className="max-w-[190px] text-xs leading-relaxed text-muted-foreground">Klicken Sie im Plan auf ein Tor, einen Stellplatz oder eine Wand, um die Eigenschaften zu bearbeiten.</p>
       </div>
     );
   }

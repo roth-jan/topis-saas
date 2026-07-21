@@ -21,13 +21,19 @@ export function AppNav({
   aktiv: 'editor' | 'pm-cockpit' | 'planung' | 'kennzahlen';
   zeile2?: React.ReactNode;
 }) {
-  // Cockpit ist Home (Jan 17.07.: „Cockpit als Zentrum") — steht zuerst,
-  // der Editor ist die „Werkstatt" für die Hallen-Geometrie.
-  const tabs: { id: typeof aktiv; label: string; href: string }[] = [
-    { id: 'pm-cockpit', label: 'Cockpit', href: '/cockpit/' },
-    { id: 'editor', label: 'Editor', href: '/projekt/' },
-    { id: 'planung', label: 'Planung', href: '/projekt/planung/' },
-    { id: 'kennzahlen', label: 'Kennzahlen', href: '/dashboard/' },
+  // Nav benennt ZIELE, keine Stufen (Jan 21.07. nach Blindtest): Die Bereiche
+  // stehen gleichrangig nebeneinander, jeder ist für sich benutzbar. Bewusst
+  // KEINE Ablaufleiste „Analyse → Halle → …" — sie würde suggerieren, man müsse
+  // erst zeichnen, um Kennzahlen zu bekommen. Das stimmt nicht: das Prozessmodell
+  // läuft ohne jede Halle (Verteilweg-Fallback = ROTH-Standard). Die Halle ist
+  // eine von vier Quellen für EIN Feld, kein Pflichtschritt.
+  // Namen sagen, was man bekommt — „Cockpit"/„Werkstatt"/„Projekt" sind raus
+  // (Blindtest: „Cockpit" weckte Hallen-Erwartung, lieferte Prozessmodell).
+  const tabs: { id: typeof aktiv; label: string; href: string; zweck: string }[] = [
+    { id: 'pm-cockpit', label: 'Prozessmodell', href: '/cockpit/', zweck: 'Zeiten je Packstück und Personalbedarf berechnen — geht ohne Hallenplan' },
+    { id: 'editor', label: 'Hallenplan', href: '/projekt/', zweck: 'Halle zeichnen und Wege messen — macht den Verteilweg exakt' },
+    { id: 'planung', label: 'Auftragsplanung', href: '/projekt/planung/', zweck: 'Aufträge auf Tore verteilen und Auslastung prüfen' },
+    { id: 'kennzahlen', label: 'Kennzahlen', href: '/dashboard/', zweck: 'Übersicht aller Kennwerte und Vergleich mit Referenzhallen' },
   ];
   return (
     <header className="sticky top-0 z-20 border-b bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
@@ -35,11 +41,10 @@ export function AppNav({
         <Link href="/cockpit/" className="flex items-center gap-2 px-1 shrink-0">
           <LogoMark size={28} />
           <span className="hidden xl:inline font-display text-[15px] tracking-tight" style={{ fontWeight: 800 }}>TOPIS</span>
-          <Badge variant="outline" className="text-[9px] font-mono uppercase tracking-wider hidden 2xl:inline-flex">SaaS</Badge>
         </Link>
         <div className="flex items-center gap-0.5 rounded-[10px] bg-muted/60 p-0.5">
           {tabs.map((t) => (
-            <Link key={t.id} href={t.href} className="shrink-0">
+            <Link key={t.id} href={t.href} className="shrink-0" title={t.zweck}>
               <span
                 className={`inline-flex h-7 items-center px-2.5 xl:px-3.5 text-xs xl:text-[13px] font-display rounded-[7px] transition-all cursor-pointer ${
                   aktiv === t.id

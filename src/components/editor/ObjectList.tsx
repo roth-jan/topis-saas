@@ -158,7 +158,7 @@ export function ObjectList() {
                 </div>
                 <div className="text-sm font-medium text-foreground">Noch keine Objekte</div>
                 <div className="max-w-[190px] text-xs leading-relaxed text-muted-foreground">
-                  Wähle oben ein Werkzeug (Tor, Stellplatz …) oder lade eine Halle über <span className="font-mono text-[11px]">Daten → Datei</span>.
+                  Wählen Sie oben ein Werkzeug (Tor, Stellplatz …) oder laden Sie eine Halle über <span className="font-mono text-[11px]">Daten → Datei</span>.
                 </div>
               </div>
             )}

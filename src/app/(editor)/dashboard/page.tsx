@@ -144,16 +144,25 @@ export default function DashboardPage() {
           {!hasData && !ergebnis ? (
             <div className="text-center text-muted-foreground py-20">
               <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-30" />
+              {/* Verwies bisher in den Editor, obwohl das Prozessmodell eine
+                  eigene Seite ist (Blindtest 21.07.). Jetzt beide Wege, mit dem
+                  richtigen zuerst. */}
               <h2 className="text-lg font-medium">Noch keine Daten</h2>
-              <p className="text-sm mt-1">
-                Importiere Betriebsdaten und berechne das Prozessmodell im Editor.
+              <p className="text-sm mt-1 max-w-md mx-auto">
+                Kennzahlen entstehen aus dem Prozessmodell. Legen Sie dort ein Modell an —
+                das geht in einer Minute und braucht keinen Hallenplan.
               </p>
-              <a href={appUrl('/projekt/')}>
-                <Button className="mt-4" size="sm">
-                  <ArrowLeft className="h-4 w-4 mr-1" />
-                  Zum Editor
-                </Button>
-              </a>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <a href={appUrl('/cockpit/')}>
+                  <Button size="sm">Prozessmodell anlegen</Button>
+                </a>
+                <a href={appUrl('/projekt/')}>
+                  <Button size="sm" variant="outline">
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    Zum Hallenplan
+                  </Button>
+                </a>
+              </div>
             </div>
           ) : (
             <>
