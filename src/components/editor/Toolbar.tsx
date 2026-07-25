@@ -109,6 +109,7 @@ import {
   MousePointer2,
   Hand,
   DoorOpen,
+  Stamp,
   LayoutGrid,
   Layers,
   CircleOff,
@@ -192,6 +193,7 @@ const tools: { id: Tool; label: string; shortcut: string; icon: React.ReactNode;
   { id: 'select', label: 'Auswahl', shortcut: 'V', icon: <MousePointer2 className="h-4 w-4" />, group: 1 },
   { id: 'pan', label: 'Verschieben', shortcut: 'H', icon: <Hand className="h-4 w-4" />, group: 1 },
   { id: 'tor', label: 'Tor', shortcut: 'T', icon: <DoorOpen className="h-4 w-4" />, group: 2 },
+  { id: 'tor-pinsel', label: 'Tor-Reihe (an Wand ziehen)', shortcut: '', icon: <Stamp className="h-4 w-4" />, group: 2 },
   { id: 'stellplatz', label: 'Stellplatz', shortcut: 'S', icon: <LayoutGrid className="h-4 w-4" />, group: 2 },
   { id: 'regal', label: 'Regal', shortcut: 'R', icon: <RectangleHorizontal className="h-4 w-4" />, group: 2 },
   { id: 'bereich', label: 'Bereich', shortcut: 'B', icon: <Layers className="h-4 w-4" />, group: 2 },
@@ -249,6 +251,8 @@ const objectTypes: { id: string; label: string; icon: React.ReactNode; shortcut?
 
 export function Toolbar() {
   const currentTool = useTool();
+  const nlBuilderOpen = useTopisStore((s) => s.nlBuilderOpen);
+  const setNlBuilderOpen = useTopisStore((s) => s.setNlBuilderOpen);
   const setTool = useTopisStore((s) => s.setTool);
   const toggleGrid = useTopisStore((s) => s.toggleGrid);
   const toggleSnap = useTopisStore((s) => s.toggleSnap);
@@ -1218,6 +1222,15 @@ export function Toolbar() {
         <div id="tour-aktionen" className="flex items-center gap-1">
           <MultiInsertDialog />
           <HallenAssistentDialog />
+          <Button
+            size="sm"
+            variant={nlBuilderOpen ? 'default' : 'outline'}
+            className="gap-1 text-xs"
+            onClick={() => setNlBuilderOpen(!nlBuilderOpen)}
+            title="Halle per Text bauen"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> KI-Bauen
+          </Button>
         </div>
         )}
 

@@ -1,0 +1,130 @@
+'use client';
+
+// KI-Textbuilder — Eingabefeld + „Das habe ich verstanden"-Karte + Ghost-Vorschau.
+// v1 nutzt den deterministischen Offline-Parser (parseCanonical). Der Edge-Function-/LLM-
+// Pfad für Fuzzy-Sprache wird später eingehängt (gleiche Datenform LayoutParams).
+// Spec: topis/SPEC-KI-TEXTBUILDER-2026-07-25.md
+
+import { useState } from 'react';
+import { useTopisStore } from '@/lib/store';
+import { parseCanonical, validateParams, paramsToLayout, type ValidationResult } from '@/lib/nl-layout';
+import { Button } from '@/components/ui/button';
+import { Sparkles, X, ArrowRight, AlertTriangle, CircleAlert } from 'lucide-react';
+import { toast } from 'sonner';
+
+const SIDE_LABEL: Record<string, string> = { north: 'Nord', south: 'Süd', east: 'Ost', west: 'West' };
+
+export function KiTextbuilder() {
+  const open = useTopisStore((s) => s.nlBuilderOpen);
+  const setOpen = useTopisStore((s) => s.setNlBuilderOpen);
+  const setGhost = useTopisStore((s) => s.setNlGhost);
+  const updateHall = useTopisStore((s) => s.updateHall);
+  const addObjects = useTopisStore((s) => s.addObjects);
+  const resetState = useTopisStore((s) => s.resetState);
+
+  const [text, setText] = useState('');
+  const [result, setResult] = useState<ValidationResult | null>(null);
+  const [notUnderstood, setNotUnderstood] = useState(false);
+
+  if (!open) return null;
+
+  const understand = () => {
+    setNotUnderstood(false);
+    const params = parseCanonical(text);
+    if (!params) {
+      setResult(null);
+      setGhost(null);
+      setNotUnderstood(true);
+      return;
+    }
+    const v = validateParams(params);
+    setResult(v);
+    setGhost(v.ok ? paramsToLayout(v.filled) : null);
+  };
+
+  const apply = () => {
+    if (!result?.ok) return;
+    const layout = paramsToLayout(result.filled);
+    // v1: „createHall" ersetzt das aktuelle Layout (wie der Assistent).
+    resetState();
+    updateHall(1, { width: layout.hall.width, height: layout.hall.height, name: layout.hall.name });
+    addObjects(layout.objects);
+    const torCount = layout.objects.filter((o) => o.type === 'tor').length;
+    toast.success(`Halle „${layout.hall.name}" mit ${torCount} ${torCount === 1 ? 'Tor' : 'Toren'} erstellt`);
+    close();
+  };
+
+  const close = () => {
+    setGhost(null);
+    setResult(null);
+    setNotUnderstood(false);
+    setText('');
+    setOpen(false);
+  };
+
+  const g = result?.filled;
+
+  return (
+    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 w-[480px] max-w-[calc(100%-2rem)]
+                    rounded-xl border bg-card/95 backdrop-blur shadow-2xl shadow-black/30 p-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <span className="text-sm font-semibold">Halle per Text bauen</span>
+        <button onClick={close} aria-label="Schließen" className="ml-auto rounded p-1 hover:bg-muted">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') understand(); }}
+          placeholder="z. B. Halle 210x58, 115 Tore Nord, Abstand 3,75"
+          aria-label="Hallenbeschreibung"
+          className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <Button size="sm" onClick={understand}>Verstehen</Button>
+      </div>
+
+      {notUnderstood && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Konnte ich nicht deuten. Beispiel: <span className="font-mono">Halle 210x58, 115 Tore Nord, Abstand 3,75</span>
+        </p>
+      )}
+
+      {result && g && (
+        <div className="mt-3 rounded-lg border bg-muted/40 p-3 text-sm">
+          <div className="mb-1 text-xs font-medium text-muted-foreground">Das habe ich verstanden</div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <span>📏 Halle <b>{g.hall.lengthM} × {g.hall.widthM} m</b></span>
+            {g.gates
+              ? <span>🚪 <b>{g.gates.count}</b> Tore · <b>{SIDE_LABEL[g.gates.side]}</b> · Abstand <b>{g.gates.spacingM} m</b></span>
+              : <span className="text-muted-foreground">keine Tore erkannt</span>}
+          </div>
+
+          {result.warnings.map((w, i) => (
+            <div key={i} className="mt-2 flex items-start gap-1.5 text-amber-600 dark:text-amber-500 text-xs">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> <span>{w}</span>
+            </div>
+          ))}
+          {result.errors.map((e, i) => (
+            <div key={i} className="mt-2 flex items-start gap-1.5 text-red-600 dark:text-red-500 text-xs">
+              <CircleAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" /> <span>{e}</span>
+            </div>
+          ))}
+
+          <div className="mt-3 flex items-center gap-2">
+            <Button size="sm" onClick={apply} disabled={!result.ok} className="gap-1">
+              Übernehmen <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {result.ok ? 'Ghost-Vorschau ist im Plan sichtbar' : 'Bitte Eingabe korrigieren'}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

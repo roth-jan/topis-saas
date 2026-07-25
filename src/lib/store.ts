@@ -24,6 +24,7 @@ import {
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
 import { findPathBetweenObjects, buildGangGraph, findPath } from './pathfinding';
 import { findNearestWall, torBoxFromAnchor, reanchorTore, deriveWalls } from './wall-anchor';
+import type { GeneratedLayout } from './nl-layout';
 import * as mengenActions from './mengen-store-actions';
 
 // Modul-lokaler Debounce-Timer für Path-Auto-Recompute beim Object-Move
@@ -82,6 +83,7 @@ interface TopisStore extends TopisState {
 
   // Object Actions
   addObject: (obj: Omit<TopisObject, 'id'>) => TopisObject;
+  addObjects: (objs: Omit<TopisObject, 'id'>[]) => TopisObject[];
   updateObject: (id: number, updates: Partial<TopisObject>) => void;
   deleteObject: (id: number) => void;
   selectObject: (obj: TopisObject | null) => void;
@@ -127,6 +129,9 @@ interface TopisStore extends TopisState {
   setTool: (tool: Tool) => void;
   toggleGrid: () => void;
   toggleSnap: () => void;
+  // KI-Textbuilder (Zustand in TopisState; hier nur die Actions).
+  setNlGhost: (g: GeneratedLayout | null) => void;
+  setNlBuilderOpen: (open: boolean) => void;
   setCockpitRoute: (route: { startId: number; endId: number } | null) => void;
 
   // SimAuftrag-Actions (visuelles Auftrags-Anlegen im Canvas)
@@ -240,6 +245,8 @@ const initialState: TopisState = {
   showGrid: true,
   snapToGrid: true,
   currentTool: 'select',
+  nlGhost: null,
+  nlBuilderOpen: false,
   filterType: 'all',
   projektVergleich: {
     vorher: null,
@@ -440,6 +447,53 @@ export const useTopisStore = create<TopisStore>()(
       objectIdCounter: state.objectIdCounter + 1
     }));
     return newObj;
+  },
+  // Batch-Insert (z.B. Tor-Pinsel „Tor-Reihe"): EIN Undo-Schritt für die ganze
+  // Reihe, EIN set(). Tore werden — wie in addObject — automatisch an die
+  // nächste Außenwand verankert (deriveWalls + findNearestWall).
+  addObjects: (objs) => {
+    if (objs.length === 0) return [];
+    get().pushSnapshot();
+    const activeHall = get().halls.find((h) => h.id === get().activeHallId);
+    const walls = activeHall ? deriveWalls(activeHall) : [];
+    let counter = get().objectIdCounter;
+    const created: TopisObject[] = [];
+    for (const obj of objs) {
+      let newObj = { ...obj, id: counter } as TopisObject;
+      if (newObj.type === 'tor' && !newObj.aussenwandRef && walls.length > 0) {
+        const px = newObj.x + newObj.width / 2;
+        const py = newObj.y + newObj.height / 2;
+        const nearest = findNearestWall(px, py, walls, 30);
+        if (nearest) {
+          const box = torBoxFromAnchor(
+            { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
+            walls,
+            newObj.width,
+            newObj.height,
+          );
+          if (box) {
+            newObj = {
+              ...newObj,
+              x: box.x,
+              y: box.y,
+              side: box.side ?? newObj.side,
+              aussenwandRef: {
+                wallIndex: nearest.wallIndex,
+                abstandS: nearest.abstandS,
+                abstandE: nearest.abstandE,
+              },
+            };
+          }
+        }
+      }
+      created.push(newObj);
+      counter += 1;
+    }
+    set((state) => ({
+      objects: [...state.objects, ...created],
+      objectIdCounter: counter,
+    }));
+    return created;
   },
   updateObject: (id, updates) => {
     get().pushSnapshot();
@@ -751,6 +805,8 @@ export const useTopisStore = create<TopisStore>()(
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
   setPan: (pan) => set({ pan }),
   setTool: (tool) => set({ currentTool: tool }),
+  setNlGhost: (g) => set({ nlGhost: g }),
+  setNlBuilderOpen: (open) => set({ nlBuilderOpen: open }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
   toggleSnap: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
   setCockpitRoute: (route) => set({ cockpitRoute: route }),
