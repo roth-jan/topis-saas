@@ -415,6 +415,7 @@ export type Tool =
   | 'select'
   | 'pan'
   | 'tor'
+  | 'tor-pinsel'         // Tor-Reihe: an der Wand ziehen → mehrere Tore auf einmal
   | 'stellplatz'
   | 'bereich'
   | 'regal'
@@ -537,6 +538,9 @@ export interface TopisState {
   // Tools
   currentTool: Tool;
   filterType: string;
+  // KI-Textbuilder (nicht persistiert): Ghost-Vorschau + Panel-Zustand.
+  nlGhost: { hall: { width: number; height: number; name: string }; objects: Omit<TopisObject, 'id'>[] } | null;
+  nlBuilderOpen: boolean;
 
   // Project
   projektVergleich: ProjektVergleich;

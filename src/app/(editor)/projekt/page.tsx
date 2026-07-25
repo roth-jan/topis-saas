@@ -7,6 +7,7 @@ import { Toolbar } from '@/components/editor/Toolbar';
 import { ObjectList } from '@/components/editor/ObjectList';
 import { PropertiesPanel } from '@/components/editor/PropertiesPanel';
 import { CommandPalette } from '@/components/editor/CommandPalette';
+import { KiTextbuilder } from '@/components/editor/KiTextbuilder';
 import { WelcomeOverlay } from '@/components/editor/WelcomeOverlay';
 import { GangPanel } from '@/components/panels/GangPanel';
 import { PathPanel } from '@/components/panels/PathPanel';
@@ -192,6 +193,7 @@ export default function EditorPage() {
               </button>
             )}
             <HallCanvas />
+            <KiTextbuilder />
           </div>
         </ResizablePanel>
 

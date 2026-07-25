@@ -77,6 +77,8 @@ export function HallCanvas() {
   const selectObject = useTopisStore((s) => s.selectObject);
   const updateObject = useTopisStore((s) => s.updateObject);
   const addObject = useTopisStore((s) => s.addObject);
+  const addObjects = useTopisStore((s) => s.addObjects);
+  const nlGhost = useTopisStore((s) => s.nlGhost);
   const addGang = useTopisStore((s) => s.addGang);
   const updateGang = useTopisStore((s) => s.updateGang);
   const selectGang = useTopisStore((s) => s.selectGang);
@@ -96,6 +98,11 @@ export function HallCanvas() {
   const dragThresholdPassedRef = useRef(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragObject, setDragObject] = useState<TopisObject | null>(null);
+  // Tor-Pinsel ("Tor-Reihe"): an einer Wand ziehen → Vorschau mehrerer Tore
+  // im festen Achsabstand, beim Loslassen als Batch anlegen (ein Undo-Schritt).
+  const [pinselStart, setPinselStart] = useState<{ x: number; y: number } | null>(null);
+  const [pinselSide, setPinselSide] = useState<'north' | 'south' | 'east' | 'west' | null>(null);
+  const [pinselGhosts, setPinselGhosts] = useState<{ x: number; y: number; width: number; height: number }[]>([]);
   // Resize-State: an welcher Ecke des selektierten Objekts wird gezogen
   const [resizeHandle, setResizeHandle] = useState<'nw' | 'ne' | 'sw' | 'se' | null>(null);
   const [resizeStart, setResizeStart] = useState<{ x: number; y: number; w: number; h: number; mx: number; my: number } | null>(null);
@@ -1661,6 +1668,77 @@ export function HallCanvas() {
       });
     }
 
+    // Tor-Pinsel: Geister-Tor-Reihe als halbtransparente Vorschau + Zähler
+    if (pinselGhosts.length > 0) {
+      ctx.save();
+      const torColor = OBJECT_COLORS.tor ?? '#3b82f6';
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = torColor;
+      ctx.strokeStyle = torColor;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      for (const g of pinselGhosts) {
+        const p = worldToScreen(g.x, g.y);
+        const w = g.width * SCALE * zoom;
+        const h = g.height * SCALE * zoom;
+        ctx.fillRect(p.x, p.y, w, h);
+        ctx.strokeRect(p.x, p.y, w, h);
+      }
+      // Zähler-Label am zuletzt gesetzten Tor
+      const last = pinselGhosts[pinselGhosts.length - 1];
+      const lp = worldToScreen(last.x, last.y);
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+      const label = `${pinselGhosts.length} ${pinselGhosts.length === 1 ? 'Tor' : 'Tore'}`;
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      const tw = ctx.measureText(label).width;
+      const lx = lp.x;
+      const ly = lp.y - 22;
+      ctx.fillStyle = torColor;
+      ctx.fillRect(lx, ly, tw + 12, 18);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, lx + 6, ly + 13);
+      ctx.restore();
+    }
+
+    // KI-Textbuilder: Ghost-Vorschau (neue Halle + Tore) halbtransparent
+    if (nlGhost) {
+      ctx.save();
+      // Ghost-Hallenumriss (gestrichelt)
+      const h0 = worldToScreen(0, 0);
+      const gw = nlGhost.hall.width * SCALE * zoom;
+      const gh = nlGhost.hall.height * SCALE * zoom;
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 5]);
+      ctx.strokeRect(h0.x, h0.y, gw, gh);
+      // Ghost-Tore
+      const torColor = OBJECT_COLORS.tor ?? '#3b82f6';
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = torColor;
+      ctx.strokeStyle = torColor;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      for (const o of nlGhost.objects) {
+        const p = worldToScreen(o.x, o.y);
+        ctx.fillRect(p.x, p.y, o.width * SCALE * zoom, o.height * SCALE * zoom);
+        ctx.strokeRect(p.x, p.y, o.width * SCALE * zoom, o.height * SCALE * zoom);
+      }
+      // Label
+      const torCount = nlGhost.objects.filter((o) => o.type === 'tor').length;
+      ctx.globalAlpha = 1;
+      ctx.setLineDash([]);
+      const label = `Vorschau: ${nlGhost.hall.name} · ${torCount} Tore`;
+      ctx.font = 'bold 13px system-ui, sans-serif';
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(h0.x, h0.y - 22, tw + 12, 18);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, h0.x + 6, h0.y - 9);
+      ctx.restore();
+    }
+
     // Draw gang preview line when drawing
     if (gangDrawStart && gangMousePos) {
       const start = worldToScreen(gangDrawStart.x, gangDrawStart.y);
@@ -1771,7 +1849,7 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2019,6 +2097,55 @@ export function HallCanvas() {
   }, [draw]);
 
   // Mouse handlers
+  // Tor-Pinsel: nächste Wand aus einem Klickpunkt bestimmen (wie das Tor-Tool).
+  const pinselNearestSide = (wx: number, wy: number, h: { width: number; height: number }): 'north' | 'south' | 'east' | 'west' => {
+    const distNorth = wy;
+    const distSouth = Math.abs(h.height - wy);
+    const distWest = wx;
+    const distEast = Math.abs(h.width - wx);
+    const m = Math.min(distNorth, distSouth, distWest, distEast);
+    if (m === distNorth) return 'north';
+    if (m === distSouth) return 'south';
+    if (m === distWest) return 'west';
+    return 'east';
+  };
+
+  // Tor-Pinsel: Geister-Tore entlang der Wand zwischen Start- und aktuellem
+  // Punkt berechnen — fester Achsabstand (Tor-Breite + 1 m), an die Hallenkante
+  // geclampt. Tor an N/S-Wänden liegt quer (B=3.5, T=1.5), an O/W hochkant.
+  const computePinselGhosts = (
+    side: 'north' | 'south' | 'east' | 'west',
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    h: { width: number; height: number },
+  ): { x: number; y: number; width: number; height: number }[] => {
+    const W = OBJECT_DEFAULTS.tor.width;   // entlang der Wand
+    const D = OBJECT_DEFAULTS.tor.height;  // in die Halle hinein
+    const pitch = W + 1;                   // Achsabstand Mitte-zu-Mitte
+    const horiz = side === 'north' || side === 'south';
+    const a0 = horiz ? start.x : start.y;
+    const a1 = horiz ? end.x : end.y;
+    const dir = a1 >= a0 ? 1 : -1;
+    const len = Math.abs(a1 - a0);
+    const count = Math.max(1, Math.floor(len / pitch) + 1);
+    const ghosts: { x: number; y: number; width: number; height: number }[] = [];
+    for (let i = 0; i < count; i++) {
+      const center = a0 + dir * i * pitch;
+      if (horiz) {
+        const gw = W, gh = D;
+        const x = Math.max(0, Math.min(h.width - gw, center - gw / 2));
+        const y = side === 'north' ? 0 : h.height - gh;
+        ghosts.push({ x, y, width: gw, height: gh });
+      } else {
+        const gw = D, gh = W;
+        const y = Math.max(0, Math.min(h.height - gh, center - gh / 2));
+        const x = side === 'west' ? 0 : h.width - gw;
+        ghosts.push({ x, y, width: gw, height: gh });
+      }
+    }
+    return ghosts;
+  };
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // Close context menus on any click
     if (contextMenu) setContextMenu(null);
@@ -2375,6 +2502,17 @@ export function HallCanvas() {
     } else if (tool === 'pan') {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    } else if (tool === 'tor-pinsel') {
+      if (!hall) {
+        toast.error('Erst eine Halle anlegen');
+        return;
+      }
+      const side = pinselNearestSide(world.x, world.y, hall);
+      const start = { x: world.x, y: world.y };
+      setPinselSide(side);
+      setPinselStart(start);
+      setPinselGhosts(computePinselGhosts(side, start, start, hall));
+      return;
     } else if (tool in OBJECT_DEFAULTS) {
       // Add new object using defaults - centered on click position
       const objectType = tool as ObjectType;
@@ -2476,6 +2614,12 @@ export function HallCanvas() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const world = screenToWorld(x, y);
+
+    // Tor-Pinsel: während des Ziehens die Geister-Tor-Reihe live nachführen.
+    if (pinselStart && pinselSide && hall) {
+      setPinselGhosts(computePinselGhosts(pinselSide, pinselStart, world, hall));
+      return;
+    }
 
     // Gang-Endpunkt-Drag mit Snap auf andere Gänge
     if (gangEndpointDrag && tool === 'select') {
@@ -2646,6 +2790,32 @@ export function HallCanvas() {
       setGangEndpointDrag(null);
       setGangSnap({ snapped: false });
       toast.success('Gang-Endpunkt verschoben');
+      return;
+    }
+
+    // Tor-Pinsel abschließen: Geister-Tore als Batch anlegen (ein Undo-Schritt).
+    if (pinselStart) {
+      if (pinselGhosts.length > 0) {
+        const base = objects.filter((o) => o.type === 'tor').length;
+        const newGates = pinselGhosts.map((g, i) => ({
+          type: 'tor' as ObjectType,
+          x: g.x,
+          y: g.y,
+          width: g.width,
+          height: g.height,
+          name: `Tor ${base + i + 1}`,
+          side: pinselSide ?? undefined,
+          torNummer: base + i + 1,
+          tags: ['messpunkt'],
+          meta: { code: `MP${base + i + 1}` },
+        }));
+        addObjects(newGates);
+        toast.success(`${newGates.length} ${newGates.length === 1 ? 'Tor' : 'Tore'} erstellt`);
+      }
+      setPinselStart(null);
+      setPinselSide(null);
+      setPinselGhosts([]);
+      setTool('select');
       return;
     }
 
