@@ -65,11 +65,18 @@ describe('nl-layout — parseCanonical', () => {
     expect(p.gates!.every((g) => g.count === 50)).toBe(true);
   });
 
-  it('P0: weitere Maße werden NICHT als Halle genommen, sondern gemeldet', () => {
-    const p = parseCanonical('Halle 210x58, Stellplätze 12x3, 20 Tore Nord')!;
+  it('P0: unbezogene Zusatzmaße werden NICHT als Halle genommen, sondern gemeldet', () => {
+    const p = parseCanonical('Halle 210x58, Bürocontainer 6x3, 20 Tore Nord')!;
     expect(p.hall.lengthM).toBe(210); // erstes Maß = Halle
-    expect(p.ignored?.some((x) => x.includes('12x3'))).toBe(true);
-    expect(p.ignored?.some((x) => x.includes('Stellplätze'))).toBe(true);
+    expect(p.ignored?.some((x) => x.includes('6x3'))).toBe(true);
+  });
+
+  it('Stellplatz-Maß neben "Stellplätze" wird als Maß erkannt (nicht ignoriert)', () => {
+    const p = parseCanonical('Halle 210x58, Stellplätze 12x3, 20 Tore Nord')!;
+    expect(p.hall.lengthM).toBe(210);
+    expect(p.stellplatzLaengeM).toBe(12);
+    expect(p.stellplatzBreiteM).toBe(3);
+    expect(p.ignored?.some((x) => x.includes('12x3'))).toBeFalsy();
   });
 
   it('P0: nicht unterstützte Elemente werden gemeldet (nicht still geschluckt)', () => {
@@ -241,5 +248,71 @@ describe('nl-layout — paramsToLayout (Geometrie exakt)', () => {
     const { filled } = validateParams({ action: 'createHall', hall: { lengthM: 80, widthM: 40 } });
     const { objects } = paramsToLayout(filled);
     expect(objects).toHaveLength(0);
+  });
+});
+
+describe('nl-layout — Cross-Dock (Stellplätze je Tor)', () => {
+  // Jans Abnahme-Szenario: N/S-Tore, ein Stellplatz vor jedem Tor (12×3), 2 Bereiche, 6m Mittelgang.
+  const scenario: LayoutParams = {
+    action: 'createHall', hall: { lengthM: 150, widthM: 42 },
+    gates: [{ count: 20, side: 'north', spacingM: 6 }, { count: 20, side: 'south', spacingM: 6 }],
+    stellplaetzeJeTor: true, stellplatzLaengeM: 12, stellplatzBreiteM: 3,
+    bereiche: 2, mittelgangM: 6,
+  };
+
+  it('baut genau einen Stellplatz je Tor mit korrekten Maßen (Länge in die Halle)', () => {
+    const { filled } = validateParams(scenario);
+    const { objects } = paramsToLayout(filled);
+    const tore = objects.filter((o) => o.type === 'tor');
+    const sp = objects.filter((o) => o.type === 'stellplatz');
+    expect(tore).toHaveLength(40);
+    expect(sp).toHaveLength(40); // je Tor genau einer
+    // Breite entlang der Wand = 3, Tiefe in die Halle = 12.
+    expect(sp.every((s) => s.width === 3 && s.height === 12)).toBe(true);
+  });
+
+  it('Stellplatz sitzt zentriert vor seinem Tor und außerhalb des Mittelgangs', () => {
+    const { filled } = validateParams(scenario);
+    const { objects } = paramsToLayout(filled);
+    const tor = objects.find((o) => o.type === 'tor' && o.side === 'north')!;
+    const sp = objects.find((o) => o.type === 'stellplatz' && o.y < 21)!;
+    // Zentriert: gleiche Mitte-X wie das Tor.
+    expect(sp.x + sp.width / 2).toBeCloseTo(tor.x + tor.width / 2, 1);
+    // Mittelgang 6m mittig (y 18..24) bleibt frei.
+    expect(sp.y + sp.height).toBeLessThanOrEqual(18 + 0.01);
+  });
+
+  it('baut genau 2 Bereiche (Nord-/Süd-Band), keine Grid-Stellplätze', () => {
+    const { filled } = validateParams(scenario);
+    const { objects } = paramsToLayout(filled);
+    const bereiche = objects.filter((o) => o.type === 'bereich');
+    expect(bereiche).toHaveLength(2);
+    expect(bereiche[0].name).toBe('Bereich 1');
+    expect(bereiche[1].name).toBe('Bereich 2');
+    // Nord-Band oberhalb, Süd-Band unterhalb des Mittelgangs.
+    expect(bereiche.some((b) => b.y < 18)).toBe(true);
+    expect(bereiche.some((b) => b.y >= 24)).toBe(true);
+  });
+
+  it('End-to-End: freie Sprache → Cross-Dock-Halle', () => {
+    const p = parseCanonical('Halle 150x42, 20 Tore Nord, 20 Tore Süd, ein Stellplatz je Tor 12x3, 2 Bereiche, 6 m Mittelgang')!;
+    expect(p.stellplaetzeJeTor).toBe(true);
+    expect(p.stellplatzLaengeM).toBe(12);
+    expect(p.mittelgangM).toBe(6);
+    const v = validateParams(p);
+    expect(v.ok).toBe(true);
+    const { objects } = paramsToLayout(v.filled);
+    expect(objects.filter((o) => o.type === 'stellplatz')).toHaveLength(40);
+    expect(objects.filter((o) => o.type === 'bereich')).toHaveLength(2);
+  });
+
+  it('Grid-Modus bleibt erhalten, wenn NICHT je Tor', () => {
+    const { filled } = validateParams({
+      action: 'createHall', hall: { lengthM: 120, widthM: 50 },
+      gates: [{ count: 10, side: 'north', spacingM: 6 }], bereiche: 2, stellplaetze: 6,
+    });
+    const { objects } = paramsToLayout(filled);
+    expect(objects.filter((o) => o.type === 'bereich').length).toBeGreaterThan(0);
+    expect(objects.filter((o) => o.type === 'stellplatz').length).toBeGreaterThan(0);
   });
 });

@@ -950,7 +950,7 @@ export const useTopisStore = create<TopisStore>()(
   },
 
   // Bulk Actions
-  resetState: () => set({ ...initialState, undoStack: [], redoStack: [], originalLayout: null }),
+  resetState: () => set({ ...initialState, undoStack: [], redoStack: [], originalLayout: null, _hydrated: true }),
   loadState: (newState) => set((state) => ({ ...state, ...newState })),
 
   /**

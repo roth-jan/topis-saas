@@ -24,7 +24,11 @@ export interface LayoutParams {
   hall: { lengthM: number; widthM: number; name?: string };
   gates?: GateGroup[];      // mehrere Torreihen möglich
   bereiche?: number;        // Anzahl Lagerbereiche im Innenraum
-  stellplaetze?: number;    // Anzahl Stellplätze im Innenraum
+  stellplaetze?: number;    // Anzahl Stellplätze im Innenraum (Grid-Modus)
+  stellplaetzeJeTor?: boolean; // Stellplatz VOR JEDEM Tor (Cross-Dock-Vorfeld) statt Grid
+  stellplatzLaengeM?: number;  // Stellplatz-Tiefe in die Halle (Default 12)
+  stellplatzBreiteM?: number;  // Stellplatz-Breite entlang der Wand (Default 3)
+  mittelgangM?: number;     // Breite des zentralen Längsgangs (Default 4)
   flaechen?: { art: string; count: number }[]; // Sonderflächen (AV/ÜZ/Wertverschlag/…)
   nummerierung?: 'fortlaufend' | 'seite' | 'alpha'; // Tor-Nummerierungsschema
   startNr?: number;         // Startwert bei fortlaufender Nummerierung
@@ -114,7 +118,37 @@ export function validateParams(params: LayoutParams): ValidationResult {
   const bereiche = params.bereiche != null ? Math.max(0, Math.round(params.bereiche)) : 0;
   const stellplaetze = params.stellplaetze != null ? Math.max(0, Math.round(params.stellplaetze)) : 0;
   if (bereiche > 0) filled.bereiche = bereiche;
-  if (stellplaetze > 0) filled.stellplaetze = stellplaetze;
+
+  // Zentraler Längsgang (Mittelgang) — Breite übernehmen, sonst Default.
+  const mittelgangM = params.mittelgangM != null && params.mittelgangM > 0 ? toM(params.mittelgangM) : DEFAULT_MITTELGANG_M;
+  filled.mittelgangM = Math.max(MITTELGANG_MIN_M, mittelgangM);
+  if (params.mittelgangM != null && toM(params.mittelgangM) < MITTELGANG_MIN_M) {
+    warnings.push(`Mittelgang ${toM(params.mittelgangM).toFixed(1)} m ist sehr schmal — auf ${MITTELGANG_MIN_M} m angehoben.`);
+  }
+
+  // Cross-Dock-Vorfeld: ein Stellplatz VOR JEDEM Tor.
+  const jeTor = !!params.stellplaetzeJeTor && filledGates.length > 0;
+  if (jeTor) {
+    filled.stellplaetzeJeTor = true;
+    filled.stellplatzLaengeM = params.stellplatzLaengeM != null && params.stellplatzLaengeM > 0
+      ? toM(params.stellplatzLaengeM) : DEFAULT_STELLPLATZ_LAENGE_M;
+    filled.stellplatzBreiteM = params.stellplatzBreiteM != null && params.stellplatzBreiteM > 0
+      ? toM(params.stellplatzBreiteM) : DEFAULT_STELLPLATZ_BREITE_M;
+    // Tiefen-Fit: Tor + Stellplatz + halber Mittelgang müssen in die halbe Halle passen (N/S).
+    const hasNS = filledGates.some((g) => g.side === 'north' || g.side === 'south');
+    const hasEW = filledGates.some((g) => g.side === 'east' || g.side === 'west');
+    const halfDepth = (v: number) => v / 2 - filled.mittelgangM! / 2 - TOR_D;
+    if (hasNS && filled.stellplatzLaengeM > halfDepth(widthM) + 0.01) {
+      warnings.push(`Stellplatz-Tiefe ${filled.stellplatzLaengeM.toFixed(1)} m + Mittelgang passt nicht in die ${widthM.toFixed(0)} m tiefe Halle — Tiefe wird gekürzt.`);
+    }
+    if (hasEW && filled.stellplatzLaengeM > halfDepth(lengthM) + 0.01) {
+      warnings.push(`Stellplatz-Tiefe ${filled.stellplatzLaengeM.toFixed(1)} m + Mittelgang passt nicht in die ${lengthM.toFixed(0)} m lange Halle — Tiefe wird gekürzt.`);
+    }
+  } else if (stellplaetze > 0) {
+    filled.stellplaetze = stellplaetze;
+    if (params.stellplatzLaengeM != null && params.stellplatzLaengeM > 0) filled.stellplatzLaengeM = toM(params.stellplatzLaengeM);
+    if (params.stellplatzBreiteM != null && params.stellplatzBreiteM > 0) filled.stellplatzBreiteM = toM(params.stellplatzBreiteM);
+  }
   const flaechen = (params.flaechen ?? [])
     .filter((f) => FLAECHEN_BY_ART.has(f.art))
     .map((f) => ({ art: f.art, count: Math.max(0, Math.round(f.count)) }))
@@ -126,11 +160,15 @@ export function validateParams(params: LayoutParams): ValidationResult {
   const startNr = params.startNr ?? gAny.find((g) => g.startNr != null)?.startNr;
   if (nummerierung) filled.nummerierung = nummerierung;
   if (startNr != null && startNr >= 1) filled.startNr = Math.round(startNr);
-  const interiorTotal = bereiche + stellplaetze + flaechen.reduce((a, f) => a + f.count, 0);
-  if (errors.length === 0 && interiorTotal > 0) {
-    const cap = interiorCapacity(lengthM, widthM);
-    if (interiorTotal > cap) {
-      warnings.push(`Nur ~${cap} Innenraum-Felder passen — ${interiorTotal - cap} Objekte werden nicht platziert.`);
+  // Nur Grid-Objekte gegen die Kapazität prüfen: Cross-Dock-Stellplätze hängen an den Toren,
+  // Cross-Dock-Bereiche sind Bänder — beide brauchen keine Grid-Buchten.
+  const gridItems = flaechen.reduce((a, f) => a + f.count, 0)
+    + (jeTor ? 0 : stellplaetze)
+    + (jeTor ? 0 : bereiche);
+  if (errors.length === 0 && gridItems > 0) {
+    const cap = interiorCapacity(lengthM, widthM, filled.mittelgangM! / 2);
+    if (gridItems > cap) {
+      warnings.push(`Nur ~${cap} Innenraum-Felder passen — ${gridItems - cap} Objekte werden nicht platziert.`);
     }
   }
 
@@ -146,6 +184,12 @@ export const AISLE_FRACTIONS = [0.2, 0.5, 0.8]; // vertikale Quergänge (× Hall
 export const AISLE_HALF = 2;   // halbe Gangbreite (Gang-breite = 4)
 export const AISLE_H_HALF = 2; // halber zentraler Längsgang (Gang-breite 4)
 export const SAFETY_M = 1.5;   // Sicherheitsabstand Objekt ↔ Gang/Wand
+
+// Cross-Dock-Vorfeld (Stellplätze je Tor)
+export const DEFAULT_STELLPLATZ_LAENGE_M = 12; // Tiefe in die Halle
+export const DEFAULT_STELLPLATZ_BREITE_M = 3;  // Breite entlang der Wand
+export const DEFAULT_MITTELGANG_M = 4;         // zentraler Längsgang
+const MITTELGANG_MIN_M = 2;
 const INT_GAP = 2;
 const INT_CELL_H = 8;
 const MIN_CELL_W = 10;
@@ -164,7 +208,7 @@ function freeSegments(lo: number, hi: number, blocked: [number, number][]): [num
   return segs.filter(([a, b]) => b - a > 0.01);
 }
 
-function interiorCells(width: number, height: number): { x: number; y: number; w: number; h: number }[] {
+function interiorCells(width: number, height: number, aisleHHalf: number = AISLE_H_HALF): { x: number; y: number; w: number; h: number }[] {
   const x0 = INT_MARGIN, x1 = width - INT_MARGIN;
   if (x1 - x0 < MIN_CELL_W || height < 2 * INT_MARGIN + INT_CELL_H) return [];
   // Sperrzonen X: vertikale Quergänge + Sicherheitsabstand
@@ -172,9 +216,9 @@ function interiorCells(width: number, height: number): { x: number; y: number; w
     .map((f) => width * f)
     .map((cx) => [cx - AISLE_HALF - SAFETY_M, cx + AISLE_HALF + SAFETY_M] as [number, number]);
   const xSegs = freeSegments(x0, x1, xBlocked).filter(([a, b]) => b - a >= MIN_CELL_W);
-  // Sperrzone Y: zentraler Längsgang + Sicherheitsabstand
+  // Sperrzone Y: zentraler Längsgang (Mittelgang) + Sicherheitsabstand
   const aisleY = height / 2;
-  const yBlocked: [number, number][] = [[aisleY - AISLE_H_HALF - SAFETY_M, aisleY + AISLE_H_HALF + SAFETY_M]];
+  const yBlocked: [number, number][] = [[aisleY - aisleHHalf - SAFETY_M, aisleY + aisleHHalf + SAFETY_M]];
   const ySegs = freeSegments(INT_MARGIN, height - INT_MARGIN, yBlocked).filter(([a, b]) => b - a >= INT_CELL_H);
 
   const cells: { x: number; y: number; w: number; h: number }[] = [];
@@ -193,8 +237,8 @@ function interiorCells(width: number, height: number): { x: number; y: number; w
   return cells;
 }
 
-export function interiorCapacity(width: number, height: number): number {
-  return interiorCells(width, height).length;
+export function interiorCapacity(width: number, height: number, aisleHHalf: number = AISLE_H_HALF): number {
+  return interiorCells(width, height, aisleHHalf).length;
 }
 
 // Sonderflächen, die im Innenraum-Grid platzierbar sind (Typ existiert in OBJECT_DEFAULTS
@@ -271,31 +315,120 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
     }
   }
 
-  // Innenraum: Bereiche → Stellplätze → Sonderflächen in ein gemeinsames, kreuzungsfreies
-  // Grid (Buchten zwischen den Gängen). Reihenfolge bestimmt die Belegung der Buchten.
+  const mittelgangM = filled.mittelgangM ?? DEFAULT_MITTELGANG_M;
+  const aisleHHalf = mittelgangM / 2;
+  const jeTor = !!filled.stellplaetzeJeTor && (filled.gates?.length ?? 0) > 0;
+
+  // Cross-Dock-Modus: Bereiche als Vorfeld-Bänder + ein Stellplatz VOR JEDEM Tor.
+  if (jeTor) {
+    const tore = objects.filter((o) => o.type === 'tor');
+    // 1) Bereiche als Halbband-Zonen (hinter den Stellplätzen gezeichnet).
+    if ((filled.bereiche ?? 0) > 0) buildBereichBaender(objects, tore, width, height, aisleHHalf, filled.bereiche!);
+    // 2) Ein Stellplatz vor jedem Tor (Torrelation via meta.torNummer).
+    const laenge = filled.stellplatzLaengeM ?? DEFAULT_STELLPLATZ_LAENGE_M;
+    const breite = filled.stellplatzBreiteM ?? DEFAULT_STELLPLATZ_BREITE_M;
+    for (const t of tore) {
+      const r = stellplatzForTor(t, width, height, laenge, breite, aisleHHalf);
+      if (!r) continue;
+      objects.push({
+        type: 'stellplatz', x: r.x, y: r.y, width: r.width, height: r.height,
+        name: `SP ${t.torNummer ?? ''}`.trim(),
+        meta: t.torNummer != null ? { tor: String(t.torNummer) } : undefined,
+      });
+    }
+  }
+
+  // Grid: Sonderflächen immer; Bereiche/Stellplätze nur im NICHT-Cross-Dock-Fall.
+  // Buchten liegen zwischen den Gängen (kreuzungsfrei); Reihenfolge = Belegung.
   const specs: { type: ObjectType; label: string }[] = [];
-  for (let i = 0; i < (filled.bereiche ?? 0); i++) specs.push({ type: 'bereich', label: 'Bereich' });
-  for (let i = 0; i < (filled.stellplaetze ?? 0); i++) specs.push({ type: 'stellplatz', label: 'Stellplatz' });
+  if (!jeTor) {
+    for (let i = 0; i < (filled.bereiche ?? 0); i++) specs.push({ type: 'bereich', label: 'Bereich' });
+    for (let i = 0; i < (filled.stellplaetze ?? 0); i++) specs.push({ type: 'stellplatz', label: 'Stellplatz' });
+  }
   for (const grp of filled.flaechen ?? []) {
     const def = FLAECHEN_BY_ART.get(grp.art);
     if (!def) continue;
     for (let i = 0; i < grp.count; i++) specs.push({ type: def.type, label: def.label });
   }
   if (specs.length > 0) {
-    const cells = interiorCells(width, height);
+    const cells = interiorCells(width, height, aisleHHalf);
     const counters: Record<string, number> = {};
     for (let i = 0; i < cells.length && i < specs.length; i++) {
       const s = specs[i];
       const cell = cells[i];
       counters[s.type] = (counters[s.type] || 0) + 1;
       const def = OBJECT_DEFAULTS[s.type];
-      const w = s.type === 'bereich' ? cell.w : Math.min(cell.w, def?.width ?? cell.w);
-      const h = s.type === 'bereich' ? cell.h : Math.min(cell.h, def?.height ?? cell.h);
+      const wantW = s.type === 'stellplatz' ? (filled.stellplatzBreiteM ?? def?.width) : def?.width;
+      const wantH = s.type === 'stellplatz' ? (filled.stellplatzLaengeM ?? def?.height) : def?.height;
+      const w = s.type === 'bereich' ? cell.w : Math.min(cell.w, wantW ?? cell.w);
+      const h = s.type === 'bereich' ? cell.h : Math.min(cell.h, wantH ?? cell.h);
       objects.push({ type: s.type, x: cell.x, y: cell.y, width: w, height: h, name: `${s.label} ${counters[s.type]}` });
     }
   }
 
   return { hall: { width, height, name }, objects };
+}
+
+// Ein Stellplatz vor einem Tor: Breite entlang der Wand, Länge in die Halle,
+// gekürzt sodass der zentrale Mittelgang frei bleibt. Null, wenn keine Tiefe übrig.
+function stellplatzForTor(
+  t: Omit<TopisObject, 'id'>, width: number, height: number,
+  laenge: number, breite: number, aisleHHalf: number,
+): { x: number; y: number; width: number; height: number } | null {
+  const mgTop = height / 2 - aisleHHalf, mgBottom = height / 2 + aisleHHalf;
+  if (t.side === 'north' || t.side === 'south') {
+    const cx = t.x + t.width / 2;
+    const w = Math.min(breite, width);
+    const x = Math.max(0, Math.min(width - w, cx - w / 2));
+    if (t.side === 'north') {
+      const y0 = t.height, h = Math.min(laenge, mgTop - y0);
+      return h < 1 ? null : { x, y: y0, width: w, height: h };
+    }
+    const inner = height - t.height, h = Math.min(laenge, inner - mgBottom);
+    return h < 1 ? null : { x, y: inner - h, width: w, height: h };
+  }
+  const cy = t.y + t.height / 2;
+  const h = Math.min(breite, height);
+  const y = Math.max(0, Math.min(height - h, cy - h / 2));
+  const mgL = width / 2 - aisleHHalf, mgR = width / 2 + aisleHHalf;
+  if (t.side === 'west') {
+    const x0 = t.width, w = Math.min(laenge, mgL - x0);
+    return w < 1 ? null : { x: x0, y, width: w, height: h };
+  }
+  const inner = width - t.width, w = Math.min(laenge, inner - mgR);
+  return w < 1 ? null : { x: inner - w, y, width: w, height: h };
+}
+
+// Bereiche als Vorfeld-Bänder: je bestückter Hallenhälfte ein Band; höhere Anzahl →
+// Aufteilung in gleich breite Spalten. Deckt Tore nicht ab (startet hinter der Tortiefe).
+function buildBereichBaender(
+  objects: Omit<TopisObject, 'id'>[], tore: Omit<TopisObject, 'id'>[],
+  width: number, height: number, aisleHHalf: number, n: number,
+): void {
+  const mgTop = height / 2 - aisleHHalf, mgBottom = height / 2 + aisleHHalf;
+  const hasN = tore.some((t) => t.side === 'north'), hasS = tore.some((t) => t.side === 'south');
+  const hasW = tore.some((t) => t.side === 'west'), hasE = tore.some((t) => t.side === 'east');
+  const regions: { x: number; y: number; w: number; h: number }[] = [];
+  if (hasN) regions.push({ x: 0, y: TOR_D, w: width, h: Math.max(0, mgTop - TOR_D) });
+  if (hasS) regions.push({ x: 0, y: mgBottom, w: width, h: Math.max(0, height - TOR_D - mgBottom) });
+  if (!hasN && !hasS) {
+    const mgL = width / 2 - aisleHHalf, mgR = width / 2 + aisleHHalf;
+    if (hasW) regions.push({ x: TOR_D, y: 0, w: Math.max(0, mgL - TOR_D), h: height });
+    if (hasE) regions.push({ x: mgR, y: 0, w: Math.max(0, width - TOR_D - mgR), h: height });
+  }
+  if (regions.length === 0) regions.push({ x: 0, y: TOR_D, w: width, h: Math.max(0, mgTop - TOR_D) });
+
+  const per = Math.ceil(n / regions.length);
+  let made = 0;
+  for (const reg of regions) {
+    if (made >= n) break;
+    const cols = Math.min(per, n - made);
+    const cw = reg.w / cols;
+    for (let c = 0; c < cols; c++) {
+      objects.push({ type: 'bereich', x: reg.x + c * cw, y: reg.y, width: cw, height: reg.h, name: `Bereich ${made + 1}` });
+      made++;
+    }
+  }
 }
 
 // ---- Offline-Parser (Standardformat) -------------------------------------------------
@@ -311,7 +444,8 @@ const SIDE_KEYWORDS: [RegExp, GateSide][] = [
 // (Stellplätze + Bereiche werden inzwischen gebaut → nicht mehr hier.)
 const UNSUPPORTED: [RegExp, string][] = [
   [/regal/, 'Regale'],
-  [/(fahr)?g(a|ä)ng/, 'Gänge/Fahrgänge'],
+  // Mittelgang wird gebaut → nur sonstige Gänge/Fahrgänge sind noch unsupported.
+  [/\b(?:fahr)?g(?:a|ä)ng/, 'Gänge/Fahrgänge'],
   [/\bweg(e|en)?\b/, 'Wege'],
   [/sicherheitsabstand/, 'Sicherheitsabstände'],
   [/rampe/, 'Rampen'],
@@ -358,7 +492,21 @@ export function parseCanonical(input: string): LayoutParams | null {
     hall: { lengthM: parseFloat(dims[0][1]), widthM: parseFloat(dims[0][2]) },
     unit,
   };
-  for (let i = 1; i < dims.length; i++) ignored.push(`Maß „${dims[i][0]}" (nicht als Hallenmaß verwendet)`);
+
+  // Stellplatz-Maße (z.B. „12x3 Stellplätze" oder „Stellplätze 12x3") — vor dem Zusatz-Maß-Ignore.
+  let stellplatzDimStr: string | undefined;
+  const spDim = low.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*m?\b[^.,;]{0,18}?stellpl/)
+    ?? low.match(/stellpl[aä]tze?\b[^.,;]{0,18}?(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
+  if (spDim) {
+    stellplatzDimStr = spDim[0].match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/)?.[0];
+    params.stellplatzLaengeM = parseFloat(spDim[1]); // Länge = in die Halle
+    params.stellplatzBreiteM = parseFloat(spDim[2]); // Breite = entlang der Wand
+  }
+  // Zusatz-Maße melden — außer es ist das Stellplatz-Maß.
+  for (let i = 1; i < dims.length; i++) {
+    if (stellplatzDimStr && dims[i][0].replace(/\s/g, '') === stellplatzDimStr.replace(/\s/g, '')) continue;
+    ignored.push(`Maß „${dims[i][0]}" (nicht als Hallenmaß verwendet)`);
+  }
 
   // Globaler Abstand als Fallback für Torreihen ohne eigenen Abstand.
   const globalSpacing = matchSpacing(low, false);
@@ -381,9 +529,17 @@ export function parseCanonical(input: string): LayoutParams | null {
   const bm = low.match(/(\d+)\s*(?:lager)?bereich/);
   if (bm) params.bereiche = parseInt(bm[1], 10);
   else if (/bereich/.test(low)) ignored.push('Bereiche (Anzahl unklar — bitte angeben)');
+  // „je Tor" / „pro Tor" / „vor jedem Tor" → ein Stellplatz vor jedem Tor (Cross-Dock).
+  const jeTor = /\b(?:je|pro)\s*tor\b|vor\s*jedem\s*tor|an\s*jedem\s*tor|je\s*dock/.test(low);
+  if (jeTor) params.stellplaetzeJeTor = true;
   const sm = low.match(/(\d+)\s*(?:stell|lager)pl(?:a|ä)tz/);
-  if (sm) params.stellplaetze = parseInt(sm[1], 10);
-  else if (/stellpl(?:a|ä)tz/.test(low)) ignored.push('Stellplätze (Anzahl unklar — bitte angeben)');
+  if (sm && !jeTor) params.stellplaetze = parseInt(sm[1], 10);
+  else if (!jeTor && !sm && /stellpl(?:a|ä)tz/.test(low)) ignored.push('Stellplätze (Anzahl unklar — bitte angeben)');
+
+  // Zentraler Mittelgang (Breite) — „6 m Mittelgang" / „Mittelgang 6".
+  const mgM = low.match(/(\d+(?:\.\d+)?)\s*m?\s*(?:breiter?\s*)?mittelgang/)
+    ?? low.match(/mittelgang[^\d]{0,8}(\d+(?:\.\d+)?)/);
+  if (mgM) params.mittelgangM = parseFloat(mgM[1]);
 
   // Sonderflächen (AV/ÜZ/Wertverschlag/Kommissionier/…)
   const flaechen: { art: string; count: number }[] = [];

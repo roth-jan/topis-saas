@@ -29,8 +29,10 @@ export function KiTextbuilder() {
 
   const [text, setText] = useState('');
   const [result, setResult] = useState<ValidationResult | null>(null);
+  const [built, setBuilt] = useState<ReturnType<typeof paramsToLayout> | null>(null);
   const [notUnderstood, setNotUnderstood] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmPartial, setConfirmPartial] = useState(false);
 
   if (!open) return null;
 
@@ -38,46 +40,51 @@ export function KiTextbuilder() {
     if (!text.trim() || busy) return;
     setNotUnderstood(false);
     setBusy(true);
+    setConfirmPartial(false);
     try {
       const params = await resolveLayoutParams(text, 'm');
       if (!params) {
-        setResult(null);
-        setGhost(null);
-        setNotUnderstood(true);
+        setResult(null); setGhost(null); setBuilt(null); setNotUnderstood(true);
         return;
       }
       const v = validateParams(params);
+      const layout = v.ok ? paramsToLayout(v.filled) : null;
       setResult(v);
-      setGhost(v.ok ? paramsToLayout(v.filled) : null);
+      setBuilt(layout);
+      setGhost(layout);
     } finally {
       setBusy(false);
     }
   };
 
   const apply = () => {
-    if (!result?.ok) return;
-    const layout = paramsToLayout(result.filled);
-    // v1: „createHall" ersetzt das aktuelle Layout (wie der Assistent).
-    resetState();
-    updateHall(1, { width: layout.hall.width, height: layout.hall.height, name: layout.hall.name });
-    const created = addObjects(layout.objects);
-    // Basis-Gangnetz erzeugen, damit die Halle sofort wegefähig ist (A*, Aufträge).
-    const gaenge = generateBasicGangNet(created, layout.hall.width, layout.hall.height, 1);
+    if (!result?.ok || !built) return;
+    if (dropped > 0 && !confirmPartial) return; // Teilresultat muss bestätigt werden
+    resetState(); // v1: „createHall" ersetzt das aktuelle Layout (wie der Assistent).
+    updateHall(1, { width: built.hall.width, height: built.hall.height, name: built.hall.name });
+    const created = addObjects(built.objects);
+    const gaenge = generateBasicGangNet(created, built.hall.width, built.hall.height, 1, result.filled.mittelgangM ?? 4);
     if (gaenge.length > 0) setGaenge(gaenge);
-    const torCount = layout.objects.filter((o) => o.type === 'tor').length;
-    toast.success(`Halle „${layout.hall.name}" mit ${torCount} ${torCount === 1 ? 'Tor' : 'Toren'} + Gangnetz erstellt`);
+    const n = built.objects.length;
+    toast.success(`Halle „${built.hall.name}" mit ${n} Objekten + Gangnetz erstellt`);
     close();
   };
 
   const close = () => {
-    setGhost(null);
-    setResult(null);
-    setNotUnderstood(false);
-    setText('');
-    setOpen(false);
+    setGhost(null); setResult(null); setBuilt(null); setNotUnderstood(false);
+    setConfirmPartial(false); setText(''); setOpen(false);
   };
 
   const g = result?.filled;
+  // Angefordert vs. tatsächlich platziert (Ehrlichkeit statt stiller Verlust).
+  const torCount = g ? (g.gates ?? []).reduce((a, gr) => a + gr.count, 0) : 0;
+  const requested = g
+    ? torCount + (g.bereiche ?? 0)
+      + (g.stellplaetzeJeTor ? torCount : (g.stellplaetze ?? 0))
+      + (g.flaechen ?? []).reduce((a, f) => a + f.count, 0)
+    : 0;
+  const placed = built?.objects.length ?? 0;
+  const dropped = Math.max(0, requested - placed);
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 w-[480px] max-w-[calc(100%-2rem)]
@@ -120,9 +127,16 @@ export function KiTextbuilder() {
                   <span key={i}>🚪 <b>{grp.count}</b> Tore · <b>{SIDE_LABEL[grp.side]}</b> · Abstand <b>{grp.spacingM} m</b></span>
                 ))
               : <span className="text-muted-foreground">keine Tore erkannt</span>}
-            {(g.bereiche || g.stellplaetze) && (
-              <span>📦 {[g.bereiche ? `${g.bereiche} Bereiche` : null, g.stellplaetze ? `${g.stellplaetze} Stellplätze` : null].filter(Boolean).join(' · ')}</span>
+            {g.stellplaetzeJeTor && (
+              <span>📥 Stellplatz vor jedem Tor · <b>{g.stellplatzLaengeM ?? 12} × {g.stellplatzBreiteM ?? 3} m</b></span>
             )}
+            {(g.bereiche || (g.stellplaetze && !g.stellplaetzeJeTor)) && (
+              <span>📦 {[g.bereiche ? `${g.bereiche} Bereiche` : null, (g.stellplaetze && !g.stellplaetzeJeTor) ? `${g.stellplaetze} Stellplätze` : null].filter(Boolean).join(' · ')}</span>
+            )}
+            <span>🛣️ Mittelgang <b>{g.mittelgangM ?? 4} m</b></span>
+            {g.stellplatzLaengeM && !g.stellplaetzeJeTor && g.stellplaetze ? (
+              <span className="text-muted-foreground text-xs">Stellplatz-Maß {g.stellplatzLaengeM} × {g.stellplatzBreiteM} m</span>
+            ) : null}
             {g.flaechen && g.flaechen.length > 0 && (
               <span>🔧 {g.flaechen.map((f) => `${f.count} ${FLAECHE_LABEL[f.art] ?? f.art}`).join(' · ')}</span>
             )}
@@ -153,12 +167,25 @@ export function KiTextbuilder() {
             </div>
           ))}
 
+          {result.ok && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              Wird gebaut: <b className="text-foreground">{placed}</b> von {requested} Objekten
+              {dropped > 0 && <span className="text-amber-600 dark:text-amber-500"> · {dropped} passen nicht in die Halle</span>}
+            </div>
+          )}
+          {result.ok && dropped > 0 && (
+            <label className="mt-2 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 cursor-pointer">
+              <input type="checkbox" checked={confirmPartial} onChange={(e) => setConfirmPartial(e.target.checked)} />
+              Teilresultat mit {dropped} fehlenden Objekten trotzdem übernehmen
+            </label>
+          )}
+
           <div className="mt-3 flex items-center gap-2">
-            <Button size="sm" onClick={apply} disabled={!result.ok} className="gap-1">
+            <Button size="sm" onClick={apply} disabled={!result.ok || (dropped > 0 && !confirmPartial)} className="gap-1">
               Übernehmen <ArrowRight className="h-3.5 w-3.5" />
             </Button>
             <span className="text-xs text-muted-foreground">
-              {result.ok ? 'Ghost-Vorschau ist im Plan sichtbar' : 'Bitte Eingabe korrigieren'}
+              {!result.ok ? 'Bitte Eingabe korrigieren' : dropped > 0 && !confirmPartial ? 'Teilresultat bestätigen' : 'Ghost-Vorschau ist im Plan sichtbar'}
             </span>
           </div>
         </div>

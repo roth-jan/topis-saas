@@ -806,6 +806,7 @@ export function generateBasicGangNet(
   hallWidth: number,
   hallHeight: number,
   startId: number = 1,
+  centralAisleWidth: number = 4,
 ): Gang[] {
   const tore = objects.filter((o) => o.type === 'tor');
   if (tore.length < 2) return [];
@@ -825,7 +826,7 @@ export function generateBasicGangNet(
   // diese Zone frei (kreuzungsfrei, siehe interiorCells in nl-layout.ts).
   {
     const y = Math.round(hallHeight * 0.5 * 100) / 100;
-    connectors.push({ id: id++, name: 'Längsgang Mitte', points: [{ x: 0, y }, { x: hallWidth, y }], breite: 4 } as Gang);
+    connectors.push({ id: id++, name: 'Längsgang Mitte', points: [{ x: 0, y }, { x: hallWidth, y }], breite: centralAisleWidth } as Gang);
   }
   void hasEW;
   return connectGangsToBounds([...anbindungen, ...connectors], 0, hallHeight, 0, hallWidth);
