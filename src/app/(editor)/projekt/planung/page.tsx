@@ -493,8 +493,10 @@ export default function PlanungPage() {
                     </div>
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-2">
-                    {istAgg.meta.zeilenAnzahl} Auftragszeilen · {istAgg.meta.arbeitstage} Arbeitstage ·
-                    Ø Weg {fmtNum(istAgg.meta.durchschnittWegM, 1)} m
+                    {allIstZeilen.length} Auftragszeilen
+                    {istAgg.meta.zeilenAnzahl > 0 && (
+                      <> · {istAgg.meta.arbeitstage} Arbeitstage · Ø Weg {fmtNum(istAgg.meta.durchschnittWegM, 1)} m</>
+                    )}
                     {istAgg.meta.warnungen > 0 && (
                       <span className="text-amber-500 ml-2">
                         · {istAgg.meta.warnungen} Zeilen ohne sauberes Mapping

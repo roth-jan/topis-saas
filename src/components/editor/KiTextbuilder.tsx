@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { parseCanonical, validateParams, paramsToLayout, type ValidationResult } from '@/lib/nl-layout';
+import { generateBasicGangNet } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
 import { Sparkles, X, ArrowRight, AlertTriangle, CircleAlert } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ export function KiTextbuilder() {
   const setGhost = useTopisStore((s) => s.setNlGhost);
   const updateHall = useTopisStore((s) => s.updateHall);
   const addObjects = useTopisStore((s) => s.addObjects);
+  const setGaenge = useTopisStore((s) => s.setGaenge);
   const resetState = useTopisStore((s) => s.resetState);
 
   const [text, setText] = useState('');
@@ -48,9 +50,12 @@ export function KiTextbuilder() {
     // v1: „createHall" ersetzt das aktuelle Layout (wie der Assistent).
     resetState();
     updateHall(1, { width: layout.hall.width, height: layout.hall.height, name: layout.hall.name });
-    addObjects(layout.objects);
+    const created = addObjects(layout.objects);
+    // Basis-Gangnetz erzeugen, damit die Halle sofort wegefähig ist (A*, Aufträge).
+    const gaenge = generateBasicGangNet(created, layout.hall.width, layout.hall.height, 1);
+    if (gaenge.length > 0) setGaenge(gaenge);
     const torCount = layout.objects.filter((o) => o.type === 'tor').length;
-    toast.success(`Halle „${layout.hall.name}" mit ${torCount} ${torCount === 1 ? 'Tor' : 'Toren'} erstellt`);
+    toast.success(`Halle „${layout.hall.name}" mit ${torCount} ${torCount === 1 ? 'Tor' : 'Toren'} + Gangnetz erstellt`);
     close();
   };
 

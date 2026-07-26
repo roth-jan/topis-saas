@@ -22,7 +22,7 @@ import {
   Verlader,
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
-import { findPathBetweenObjects, buildGangGraph, findPath } from './pathfinding';
+import { findPathBetweenObjects, buildGangGraph, findPath, generateBasicGangNet } from './pathfinding';
 import { findNearestWall, torBoxFromAnchor, reanchorTore, deriveWalls } from './wall-anchor';
 import type { GeneratedLayout } from './nl-layout';
 import * as mengenActions from './mengen-store-actions';
@@ -247,6 +247,7 @@ const initialState: TopisState = {
   currentTool: 'select',
   nlGhost: null,
   nlBuilderOpen: false,
+  _hydrated: false,
   filterType: 'all',
   projektVergleich: {
     vorher: null,
@@ -900,9 +901,20 @@ export const useTopisStore = create<TopisStore>()(
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
+    // Ohne Gangnetz finden die Aufträge keine Wege ("Pfad nicht gefunden").
+    // Wenn noch keine Gänge existieren, ein Basis-Netz aus den Toren erzeugen.
+    let gaengePatch: Partial<TopisState> = {};
+    if (state.gaenge.length === 0) {
+      const hall = state.halls.find((h) => h.id === state.activeHallId) ?? state.halls[0];
+      if (hall) {
+        const net = generateBasicGangNet(tore, hall.width, hall.height, 1);
+        if (net.length > 0) gaengePatch = { gaenge: net };
+      }
+    }
     set({
       simAuftraege: [...state.simAuftraege, ...neu],
       simAuftragPending: null,
+      ...gaengePatch,
     });
     return neu.length;
   },
@@ -1206,6 +1218,7 @@ export const useTopisStore = create<TopisStore>()(
     // jedes unverankerte Tor an die nächste abgeleitete Außenwand binden.
     onRehydrateStorage: () => (state) => {
       if (!state) return;
+      state._hydrated = true; // Rehydration abgeschlossen → Empty-State-Flash vermeiden
       const activeHall = state.halls?.find((h) => h.id === state.activeHallId);
       const walls = activeHall ? deriveWalls(activeHall) : [];
       if (walls.length === 0) return;
@@ -1275,6 +1288,14 @@ export const useHalls = () => useTopisStore((state) => state.halls);
 export const useActiveHall = () => useTopisStore((state) =>
   state.halls.find(h => h.id === state.activeHallId) || state.halls[0]
 );
+
+// Rehydration-Flag zuverlässig setzen (Draft-Mutation in onRehydrateStorage greift in
+// zustand v5 NICHT auf den Live-State) → verhindert den "0 Objekte"-Flash beim Reload.
+if (typeof window !== 'undefined') {
+  const markHydrated = () => useTopisStore.setState({ _hydrated: true });
+  useTopisStore.persist.onFinishHydration(markHydrated);
+  if (useTopisStore.persist.hasHydrated()) markHydrated();
+}
 
 // E2E-Hook: Store im Browser zugänglich machen, damit Tests den Live-Zustand
 // (inkl. nicht-persistiertem selectedObject) lesen können. Read-only Referenz.

@@ -541,6 +541,9 @@ export interface TopisState {
   // KI-Textbuilder (nicht persistiert): Ghost-Vorschau + Panel-Zustand.
   nlGhost: { hall: { width: number; height: number; name: string }; objects: Omit<TopisObject, 'id'>[] } | null;
   nlBuilderOpen: boolean;
+  // true, sobald der persist-Store aus localStorage rehydriert ist (verhindert
+  // den "0 Objekte"-Flash beim Reload). Nicht persistiert.
+  _hydrated: boolean;
 
   // Project
   projektVergleich: ProjektVergleich;

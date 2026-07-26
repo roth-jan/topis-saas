@@ -794,6 +794,41 @@ export function generateTorAnbindungsGaenge(
   return out;
 }
 
+/**
+ * Erzeugt ein zusammenhängendes Basis-Gangnetz aus Halle + Toren:
+ * je Wand (mit ≥3 Toren) eine Tor-Anbindung, plus Quer-/Längsgänge, damit
+ * gegenüberliegende Wände verbunden sind — dann per connectGangsToBounds
+ * verschweißt. Ergebnis ist A*-tauglich (Tore hängen sich an den nächsten Gang).
+ * Genutzt vom KI-Textbuilder und beim Laden der Beispiel-Aufträge.
+ */
+export function generateBasicGangNet(
+  objects: TopisObject[],
+  hallWidth: number,
+  hallHeight: number,
+  startId: number = 1,
+): Gang[] {
+  const tore = objects.filter((o) => o.type === 'tor');
+  if (tore.length < 2) return [];
+  const anbindungen = generateTorAnbindungsGaenge(tore, hallWidth, hallHeight, startId);
+  const connectors: Gang[] = [];
+  let id = startId + anbindungen.length;
+  const hasNS = tore.some((t) => t.side === 'north' || t.side === 'south');
+  const hasEW = tore.some((t) => t.side === 'east' || t.side === 'west');
+  // Vertikale Quergänge verbinden Nord- und Süd-Anbindung.
+  if (hasNS) {
+    for (const f of [0.2, 0.5, 0.8]) {
+      const x = Math.round(hallWidth * f * 100) / 100;
+      connectors.push({ id: id++, name: `Quergang ${Math.round(f * 100)}%`, points: [{ x, y: 0 }, { x, y: hallHeight }], breite: 4 } as Gang);
+    }
+  }
+  // Horizontaler Längsgang verbindet Ost- und West-Anbindung (und N/S-Reihen).
+  if (hasEW || !hasNS) {
+    const y = Math.round(hallHeight * 0.5 * 100) / 100;
+    connectors.push({ id: id++, name: 'Längsgang Mitte', points: [{ x: 0, y }, { x: hallWidth, y }], breite: 4 } as Gang);
+  }
+  return connectGangsToBounds([...anbindungen, ...connectors], 0, hallHeight, 0, hallWidth);
+}
+
 export function connectGangsToBounds(
   gaenge: Gang[],
   _yMin: number,

@@ -35,6 +35,7 @@ const typeColors: Record<string, string> = {
 
 export function ObjectList() {
   const objects = useObjects();
+  const hydrated = useTopisStore((s) => s._hydrated);
   const selectedObject = useSelectedObject();
   const selectObject = useTopisStore((s) => s.selectObject);
   const hall = useActiveHall();
@@ -151,7 +152,13 @@ export function ObjectList() {
               </div>
             ))}
 
-            {objects.length === 0 && (
+            {objects.length === 0 && !hydrated && (
+              <div className="flex flex-col items-center gap-2.5 px-4 py-10 text-center">
+                <div className="h-11 w-11 animate-pulse rounded-lg border border-dashed border-border" />
+                <div className="text-sm font-medium text-muted-foreground">Lädt gespeicherte Halle …</div>
+              </div>
+            )}
+            {objects.length === 0 && hydrated && (
               <div className="flex flex-col items-center gap-2.5 px-4 py-10 text-center">
                 <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
                   <LayoutGrid className="h-5 w-5" />

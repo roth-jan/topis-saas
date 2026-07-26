@@ -73,3 +73,28 @@ describe('findPath — A* über Gang-Graph', () => {
     expect(result!.distance).toBeCloseTo(20, 1);
   });
 });
+
+import { generateBasicGangNet } from './pathfinding';
+import type { TopisObject } from '@/types/topis';
+
+describe('generateBasicGangNet', () => {
+  const tor = (id: number, side: string, x: number, y: number): TopisObject =>
+    ({ id, type: 'tor', side, x, y, width: side === 'north' || side === 'south' ? 3.5 : 1.5, height: side === 'north' || side === 'south' ? 1.5 : 3.5, name: `Tor ${id}` } as unknown as TopisObject);
+
+  it('erzeugt ein zusammenhängendes Netz für Nord+Süd-Tore (A*-tauglich)', () => {
+    const tore: TopisObject[] = [];
+    let id = 1;
+    for (let i = 0; i < 5; i++) tore.push(tor(id++, 'north', 5 + i * 10, 0));
+    for (let i = 0; i < 5; i++) tore.push(tor(id++, 'south', 5 + i * 10, 58 - 1.5));
+    const net = generateBasicGangNet(tore, 60, 58, 1);
+    expect(net.length).toBeGreaterThan(0);
+    // Graph ist verbunden: ein Pfad zwischen einem Punkt nahe Nordwand und Südwand existiert
+    const graph = buildGangGraph(net);
+    const path = findPath(5, 2, 5, 56, graph);
+    expect(path).not.toBeNull();
+  });
+
+  it('leeres Netz bei < 2 Toren', () => {
+    expect(generateBasicGangNet([tor(1, 'north', 5, 0)], 60, 58, 1)).toHaveLength(0);
+  });
+});
