@@ -142,7 +142,7 @@ interface TopisStore extends TopisState {
   removeSimAuftrag: (id: string) => void;
   clearSimAuftraege: () => void;
   /** Lädt eine vorgefertigte Liste von Beispiel-Aufträgen (für Demo-Zwecke) */
-  seedBeispielAuftraege: () => void;
+  seedBeispielAuftraege: () => number;
   /**
    * Forkt einen IST-Auftrag zu einer SIM-Variante (was-wäre-wenn).
    * Wenn der parent schon eine SIM hat, wird die alte ersetzt.
@@ -856,11 +856,12 @@ export const useTopisStore = create<TopisStore>()(
   setFocusedTor: (id) => set({ focusedTorId: id }),
   toggleShowAllSimRoutes: () => set((state) => ({ showAllSimRoutes: !state.showAllSimRoutes })),
   setAnimationActive: (id) => set({ animationActiveId: id }),
-  seedBeispielAuftraege: () => set((state) => {
+  seedBeispielAuftraege: () => {
     // Dynamic import nicht möglich in der Set-Funktion; wir lassen die
     // Beispielliste hier inline (klein, Demo-Zweck).
+    const state = get();
     const tore = state.objects.filter((o) => o.type === 'tor');
-    if (tore.length < 2) return state;
+    if (tore.length < 2) return 0;
     const samples: Array<{ vonNr: number; nachNr: number; colli: number; notiz: string }> = [
       { vonNr: 5,   nachNr: 88,  colli: 1200, notiz: 'Süd → Nord, lang' },
       { vonNr: 12,  nachNr: 102, colli: 800,  notiz: 'Süd → Nord-Ost' },
@@ -899,11 +900,12 @@ export const useTopisStore = create<TopisStore>()(
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
-    return {
+    set({
       simAuftraege: [...state.simAuftraege, ...neu],
       simAuftragPending: null,
-    };
-  }),
+    });
+    return neu.length;
+  },
 
   // Project Actions
   saveVorher: (snapshot, screenshot) => set((state) => ({

@@ -812,11 +812,6 @@ export function Toolbar() {
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            <DropdownMenuItem>
-              <Upload className="mr-2 h-4 w-4" />
-              Importieren...
-              <DropdownMenuShortcut>⌘I</DropdownMenuShortcut>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => {
               const canvas = document.querySelector('canvas');
@@ -1352,8 +1347,8 @@ export function Toolbar() {
             variant="outline"
             size="sm"
             className="gap-1.5 text-xs"
-            onClick={() => { seedBeispielAuftraege(); toast.success('10 Beispiel-Aufträge geladen'); }}
-            title="Lädt 10 vordefinierte Tor→Tor-Aufträge zum Spielen"
+            onClick={() => { const n = seedBeispielAuftraege(); n > 0 ? toast.success(`${n} Beispiel-Aufträge geladen`) : toast.error('Keine Tore vorhanden — erst eine Halle mit Toren anlegen'); }}
+            title="Lädt vordefinierte Tor→Tor-Aufträge zum Spielen"
           >
             <Zap className="h-3.5 w-3.5" />
             10 Beispiele laden

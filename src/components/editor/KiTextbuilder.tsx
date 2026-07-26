@@ -81,7 +81,7 @@ export function KiTextbuilder() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') understand(); }}
-          placeholder="z. B. Halle 210x58, 115 Tore Nord, Abstand 3,75"
+          placeholder="z. B. Halle 100x50, 20 Tore Nord, Abstand 4,5"
           aria-label="Hallenbeschreibung"
           className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
         />
@@ -90,19 +90,32 @@ export function KiTextbuilder() {
 
       {notUnderstood && (
         <p className="mt-2 text-xs text-muted-foreground">
-          Konnte ich nicht deuten. Beispiel: <span className="font-mono">Halle 210x58, 115 Tore Nord, Abstand 3,75</span>
+          Konnte ich nicht deuten. Beispiel: <span className="font-mono">Halle 100x50, 20 Tore Nord, Abstand 4,5</span>
         </p>
       )}
 
       {result && g && (
         <div className="mt-3 rounded-lg border bg-muted/40 p-3 text-sm">
           <div className="mb-1 text-xs font-medium text-muted-foreground">Das habe ich verstanden</div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <div className="flex flex-col gap-1">
             <span>📏 Halle <b>{g.hall.lengthM} × {g.hall.widthM} m</b></span>
-            {g.gates
-              ? <span>🚪 <b>{g.gates.count}</b> Tore · <b>{SIDE_LABEL[g.gates.side]}</b> · Abstand <b>{g.gates.spacingM} m</b></span>
+            {g.gates && g.gates.length > 0
+              ? g.gates.map((grp, i) => (
+                  <span key={i}>🚪 <b>{grp.count}</b> Tore · <b>{SIDE_LABEL[grp.side]}</b> · Abstand <b>{grp.spacingM} m</b></span>
+                ))
               : <span className="text-muted-foreground">keine Tore erkannt</span>}
           </div>
+
+          {g.ignored && g.ignored.length > 0 && (
+            <div className="mt-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 text-xs font-medium">
+                <AlertTriangle className="h-3.5 w-3.5" /> Nicht übernommen
+              </div>
+              <ul className="mt-1 ml-1 list-disc list-inside text-xs text-amber-700/90 dark:text-amber-300/90">
+                {g.ignored.map((it, i) => <li key={i}>{it}</li>)}
+              </ul>
+            </div>
+          )}
 
           {result.warnings.map((w, i) => (
             <div key={i} className="mt-2 flex items-start gap-1.5 text-amber-600 dark:text-amber-500 text-xs">

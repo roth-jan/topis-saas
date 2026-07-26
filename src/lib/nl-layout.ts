@@ -1,9 +1,9 @@
 // KI-Textbuilder — deterministischer Kern.
 //
-// Architektur (Council 25.07.2026, einstimmig): Das LLM liefert NUR strukturierte
-// Parameter (LayoutParams). Die Geometrie/Koordinaten entstehen AUSSCHLIESSLICH hier —
-// deterministisch, testbar, reproduzierbar (Voraussetzung für die Min/Colli-Rechnung).
-// Dieser Kern hat KEINE LLM-/Netz-/Store-Abhängigkeit und ist rein unit-testbar.
+// Architektur (Council 25.07.2026): Parameter → deterministische Geometrie. Koordinaten
+// entstehen AUSSCHLIESSLICH hier — testbar, reproduzierbar. Keine LLM-/Netz-/Store-Abhängigkeit.
+// v1-Parser (parseCanonical) versteht das Standardformat; alles Nicht-Unterstützte wird
+// EXPLIZIT als `ignored` gemeldet (kein stilles Schlucken). Fuzzy-Sprache → später via LLM.
 //
 // Spec: topis/SPEC-KI-TEXTBUILDER-2026-07-25.md
 
@@ -11,43 +11,40 @@ import { OBJECT_DEFAULTS, TopisObject, ObjectType } from '@/types/topis';
 
 export type GateSide = 'north' | 'south' | 'east' | 'west';
 
-/** Rohausgabe des LLM (Edge Function) — striktes Schema, v1. */
+export interface GateGroup {
+  count: number;
+  side: GateSide;
+  spacingM?: number;      // Achsabstand Mitte-zu-Mitte
+  firstOffsetM?: number;  // Mitte des ersten Tors, Abstand von der Wandecke
+}
+
+/** Rohausgabe des Parsers/LLM — striktes Schema. */
 export interface LayoutParams {
   action: 'createHall';
   hall: { lengthM: number; widthM: number; name?: string };
-  gates?: {
-    count: number;
-    side: GateSide;
-    spacingM?: number;      // Achsabstand Mitte-zu-Mitte
-    firstOffsetM?: number;  // Abstand des ersten Tors von der Wandecke
-  };
+  gates?: GateGroup[];      // mehrere Torreihen möglich
   unit?: 'm' | 'ft';
-  unresolved?: string[];    // Felder, die das LLM nicht sicher ableiten konnte
+  unresolved?: string[];    // Felder, die nicht sicher ableitbar waren
+  ignored?: string[];       // erkannte, aber (noch) nicht unterstützte Angaben
 }
 
 export interface ValidationResult {
   ok: boolean;
   errors: string[];
   warnings: string[];
-  /** Normalisierte Parameter in Metern, mit gefüllten Defaults. */
-  filled: LayoutParams;
+  filled: LayoutParams;     // normalisiert (Meter), Defaults gefüllt
 }
 
 const FT_TO_M = 0.3048;
-const DEFAULT_FIRST_OFFSET_M = 1.0;
-// Plausible Torabstand-Grenzen (Zahlendreher-Erkennung).
+const TOR_W = OBJECT_DEFAULTS.tor.width;   // 3.5 — entlang der Wand
+const TOR_D = OBJECT_DEFAULTS.tor.height;  // 1.5 — in die Halle
+// Erstes Tor bündig in der Ecke → exakter Achsabstand ohne Rand-Clamping.
+const DEFAULT_FIRST_OFFSET_M = TOR_W / 2;  // 1.75
+const DEFAULT_SPACING_M = TOR_W + 1;       // 4.5
 const SPACING_MIN_WARN = 2.0;
 const SPACING_MAX_WARN = 20.0;
+const SIDE_LABEL: Record<GateSide, string> = { north: 'Nord', south: 'Süd', east: 'Ost', west: 'West' };
 
-function defaultSpacingM(): number {
-  return OBJECT_DEFAULTS.tor.width + 1; // 4,5 m — identisch zum Tor-Pinsel
-}
-
-/**
- * Validiert + normalisiert die LLM-Parameter: Einheiten → Meter, Defaults füllen,
- * Plausibilität prüfen. Gibt Fehler (blockierend) + Warnungen (Hinweis) zurück.
- * KEINE Geometrie hier — nur Zahlenprüfung.
- */
 export function validateParams(params: LayoutParams): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -56,7 +53,6 @@ export function validateParams(params: LayoutParams): ValidationResult {
 
   const lengthM = toM(params.hall?.lengthM);
   const widthM = toM(params.hall?.widthM);
-
   if (!Number.isFinite(lengthM) || lengthM <= 0) errors.push('Hallenlänge fehlt oder ist ungültig.');
   if (!Number.isFinite(widthM) || widthM <= 0) errors.push('Hallenbreite fehlt oder ist ungültig.');
 
@@ -65,93 +61,40 @@ export function validateParams(params: LayoutParams): ValidationResult {
     hall: { lengthM, widthM, name: params.hall?.name?.trim() || 'Neue Halle' },
     unit: 'm',
     unresolved: params.unresolved ?? [],
+    ignored: params.ignored ?? [],
   };
 
-  if (params.gates) {
-    const count = Math.round(params.gates.count);
-    const side = params.gates.side;
-    const spacingM = params.gates.spacingM != null ? toM(params.gates.spacingM) : defaultSpacingM();
-    const firstOffsetM = params.gates.firstOffsetM != null ? toM(params.gates.firstOffsetM) : DEFAULT_FIRST_OFFSET_M;
+  const filledGates: GateGroup[] = [];
+  const seenSides = new Set<GateSide>();
+  for (const g of params.gates ?? []) {
+    const count = Math.round(g.count);
+    const side = g.side;
+    const spacingM = g.spacingM != null ? toM(g.spacingM) : DEFAULT_SPACING_M;
+    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : DEFAULT_FIRST_OFFSET_M;
 
-    if (!Number.isFinite(count) || count < 1) errors.push('Toranzahl fehlt oder ist ungültig.');
-    if (!['north', 'south', 'east', 'west'].includes(side)) errors.push('Tor-Seite (Nord/Süd/Ost/West) fehlt oder ist ungültig.');
-    if (!Number.isFinite(spacingM) || spacingM <= 0) errors.push('Torabstand ist ungültig.');
+    if (!Number.isFinite(count) || count < 1) { errors.push('Toranzahl fehlt oder ist ungültig.'); continue; }
+    if (!['north', 'south', 'east', 'west'].includes(side)) { errors.push('Tor-Seite (Nord/Süd/Ost/West) fehlt oder ist ungültig.'); continue; }
+    if (!Number.isFinite(spacingM) || spacingM <= 0) { errors.push('Torabstand ist ungültig.'); continue; }
 
-    if (errors.length === 0) {
-      // Passt die Reihe auf die Wand? (Wandlänge = Länge bei N/S, Breite bei O/W)
-      const horiz = side === 'north' || side === 'south';
-      const wallLen = horiz ? lengthM : widthM;
-      const torSizeAlong = OBJECT_DEFAULTS.tor.width; // Tor liegt mit Breite entlang der Wand
-      const requiredSpan = firstOffsetM + (count - 1) * spacingM + torSizeAlong / 2;
-      if (requiredSpan > wallLen + 0.01) {
-        errors.push(
-          `${count} Tore mit ${spacingM.toFixed(2)} m Abstand brauchen ~${requiredSpan.toFixed(0)} m, ` +
-          `die ${horiz ? 'lange' : 'kurze'} Wand hat aber nur ${wallLen.toFixed(0)} m.`,
-        );
-      }
-      if (spacingM < SPACING_MIN_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m ist ungewöhnlich eng — bitte prüfen (Zahlendreher?).`);
-      if (spacingM > SPACING_MAX_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m ist ungewöhnlich groß — bitte prüfen.`);
+    const horiz = side === 'north' || side === 'south';
+    const wallLen = horiz ? lengthM : widthM;
+    const requiredSpan = firstOffsetM + (count - 1) * spacingM + TOR_W / 2;
+    if (requiredSpan > wallLen + 0.01) {
+      errors.push(
+        `${count} Tore (${SIDE_LABEL[side]}) mit ${spacingM.toFixed(2)} m Abstand brauchen ~${requiredSpan.toFixed(0)} m, ` +
+        `die Wand hat aber nur ${wallLen.toFixed(0)} m.`,
+      );
     }
+    if (spacingM < SPACING_MIN_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m (${SIDE_LABEL[side]}) ist ungewöhnlich eng — Zahlendreher?`);
+    if (spacingM > SPACING_MAX_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m (${SIDE_LABEL[side]}) ist ungewöhnlich groß.`);
+    if (seenSides.has(side)) warnings.push(`Mehrere Torreihen an der ${SIDE_LABEL[side]}-Wand — sie können sich überlappen.`);
+    seenSides.add(side);
 
-    filled.gates = { count, side, spacingM, firstOffsetM };
+    filledGates.push({ count, side, spacingM, firstOffsetM });
   }
+  if (filledGates.length > 0) filled.gates = filledGates;
 
   return { ok: errors.length === 0, errors, warnings, filled };
-}
-
-/**
- * Kanonischer Offline-Parser für das Standardformat, z.B.
- *   „Halle 210x58, 115 Tore Nord 3,75"  ·  „100 x 50 m, 20 Tore im Norden, Abstand 5"
- * Best-effort, regelbasiert — KEIN LLM. Dient als (a) Dev-Stub ohne Edge Function und
- * (b) Offline-/Kostenlos-Fallback. Fuzzy-Sprache übernimmt später das LLM.
- * Gibt null zurück, wenn keine Hallenmaße erkennbar sind.
- */
-export function parseCanonical(input: string): LayoutParams | null {
-  if (!input || !input.trim()) return null;
-  // Dezimal-Komma → Punkt (nur zwischen Ziffern), Vergleichs-Text kleingeschrieben.
-  const t = input.replace(/(\d),(\d)/g, '$1.$2');
-  const low = t.toLowerCase();
-
-  const dims = low.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
-  if (!dims) return null;
-  const lengthM = parseFloat(dims[1]);
-  const widthM = parseFloat(dims[2]);
-
-  const unit: 'm' | 'ft' = /\bft\b|fuß|feet/.test(low) ? 'ft' : 'm';
-
-  const params: LayoutParams = {
-    action: 'createHall',
-    hall: { lengthM, widthM },
-    unit,
-  };
-
-  const countMatch = low.match(/(\d+)\s*tore?\b/);
-  let side: GateSide | undefined;
-  if (/\bnord|norden\b/.test(low)) side = 'north';
-  else if (/\bsüd|sud|süden|sueden\b/.test(low)) side = 'south';
-  else if (/\bost|osten\b/.test(low)) side = 'east';
-  else if (/\bwest|westen\b/.test(low)) side = 'west';
-
-  if (countMatch && side) {
-    // Abstand/Raster erkennen — mehrere Formen:
-    //  a) Zahl vor Schlüsselwort: „3.75-m-Raster", „3.75er Raster", „5 Abstand"
-    //  b) Schlüsselwort vor Zahl: „Abstand 5", „Raster 3.75"
-    //  c) Fallback: eine Dezimalzahl (enthält Punkt), die nicht Teil der Maße ist
-    //     (z.B. „115 Tore Nord 3,75" ohne Schlüsselwort)
-    let spacingM: number | undefined;
-    const a = low.match(/(\d+(?:\.\d+)?)[^\d]{0,4}(?:raster|abstand)/);
-    const b = low.match(/(?:raster|abstand)[^\d]{0,4}(\d+(?:\.\d+)?)/);
-    if (a) spacingM = parseFloat(a[1]);
-    else if (b) spacingM = parseFloat(b[1]);
-    else {
-      const dimStrs = [dims[1], dims[2]];
-      const decimals = (low.match(/\d+\.\d+/g) ?? []).filter((d) => !dimStrs.includes(d));
-      if (decimals.length > 0) spacingM = parseFloat(decimals[0]);
-    }
-    params.gates = { count: parseInt(countMatch[1], 10), side, ...(spacingM != null ? { spacingM } : {}) };
-  }
-
-  return params;
 }
 
 export interface GeneratedLayout {
@@ -160,41 +103,39 @@ export interface GeneratedLayout {
 }
 
 /**
- * Deterministisch: normalisierte Parameter → Halle + Tor-Objekte.
- * Gleiche Tor-Mathematik wie der Tor-Pinsel (computePinselGhosts): fester Achsabstand,
- * N/S quer (B×T = 3.5×1.5), O/W hochkant (1.5×3.5), an die Hallenkante geclampt.
- * Liefert reine Daten — kein Store, kein Reset. `filled` MUSS validiert (ok) sein.
+ * Deterministisch: normalisierte Parameter → Halle + Tor-Objekte (alle Torreihen).
+ * Exakter Achsabstand (erstes Tor bündig in der Ecke), N/S quer / O/W hochkant.
+ * `filled` MUSS validiert (ok) sein.
  */
 export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
-  const width = filled.hall.lengthM;   // X (horizontal)
-  const height = filled.hall.widthM;   // Y (Tiefe)
+  const width = filled.hall.lengthM;
+  const height = filled.hall.widthM;
   const name = filled.hall.name ?? 'Neue Halle';
   const objects: Omit<TopisObject, 'id'>[] = [];
+  let nr = 0;
 
-  if (filled.gates) {
-    const { count, side, spacingM = defaultSpacingM(), firstOffsetM = DEFAULT_FIRST_OFFSET_M } = filled.gates;
-    const W = OBJECT_DEFAULTS.tor.width;   // entlang der Wand
-    const D = OBJECT_DEFAULTS.tor.height;  // in die Halle hinein
-    const horiz = side === 'north' || side === 'south';
-
-    for (let i = 0; i < count; i++) {
+  for (const grp of filled.gates ?? []) {
+    const spacingM = grp.spacingM ?? DEFAULT_SPACING_M;
+    const firstOffsetM = grp.firstOffsetM ?? DEFAULT_FIRST_OFFSET_M;
+    const horiz = grp.side === 'north' || grp.side === 'south';
+    for (let i = 0; i < grp.count; i++) {
       const center = firstOffsetM + i * spacingM;
       let x: number, y: number, w: number, h: number;
       if (horiz) {
-        w = W; h = D;
+        w = TOR_W; h = TOR_D;
         x = Math.max(0, Math.min(width - w, center - w / 2));
-        y = side === 'north' ? 0 : height - h;
+        y = grp.side === 'north' ? 0 : height - h;
       } else {
-        w = D; h = W;
+        w = TOR_D; h = TOR_W;
         y = Math.max(0, Math.min(height - h, center - h / 2));
-        x = side === 'west' ? 0 : width - w;
+        x = grp.side === 'west' ? 0 : width - w;
       }
-      const nr = i + 1;
+      nr++;
       objects.push({
         type: 'tor' as ObjectType,
         x, y, width: w, height: h,
         name: `Tor ${nr}`,
-        side,
+        side: grp.side,
         torNummer: nr,
         tags: ['messpunkt'],
         meta: { code: `MP${nr}` },
@@ -203,4 +144,95 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
   }
 
   return { hall: { width, height, name }, objects };
+}
+
+// ---- Offline-Parser (Standardformat) -------------------------------------------------
+
+const SIDE_KEYWORDS: [RegExp, GateSide][] = [
+  [/\bnord(en)?\b/, 'north'],
+  [/\b(süd|sud|sueden|süden)\b/, 'south'],
+  [/\bost(en)?\b/, 'east'],
+  [/\bwest(en)?\b/, 'west'],
+];
+
+// Nicht unterstützte Elemente → werden offen gemeldet statt still geschluckt.
+const UNSUPPORTED: [RegExp, string][] = [
+  [/stellpl(a|ä)tz/, 'Stellplätze'],
+  [/bereich/, 'Bereiche'],
+  [/regal/, 'Regale'],
+  [/(fahr)?g(a|ä)ng/, 'Gänge/Fahrgänge'],
+  [/\bweg(e|en)?\b/, 'Wege'],
+  [/sicherheitsabstand/, 'Sicherheitsabstände'],
+  [/rampe/, 'Rampen'],
+  [/b(ü|ue)ro/, 'Büro'],
+];
+
+function matchSpacing(seg: string, allowBareDecimal: boolean): number | undefined {
+  const a = seg.match(/(\d+(?:\.\d+)?)[^\d]{0,4}(?:raster|abstand)/);
+  if (a) return parseFloat(a[1]);
+  const b = seg.match(/(?:raster|abstand)[^\d]{0,4}(\d+(?:\.\d+)?)/);
+  if (b) return parseFloat(b[1]);
+  if (allowBareDecimal) {
+    const d = seg.match(/(\d+\.\d+)/);
+    if (d) return parseFloat(d[1]);
+  }
+  return undefined;
+}
+
+function sideOf(seg: string): GateSide | null {
+  for (const [re, side] of SIDE_KEYWORDS) if (re.test(seg)) return side;
+  return null;
+}
+
+/**
+ * Parst das Standardformat, z.B.
+ *   „Halle 210x58, 50 Tore Nord Abstand 3,75, 50 Tore Süd"
+ * Mehrere Maße → erstes = Halle, weitere → `ignored`. Mehrere Torreihen möglich.
+ * Nicht unterstützte Elemente (Stellplätze, Bereiche, Gänge, Wege …) → `ignored`.
+ * Gibt null zurück, wenn keine Hallenmaße erkennbar sind.
+ */
+export function parseCanonical(input: string): LayoutParams | null {
+  if (!input || !input.trim()) return null;
+  const t = input.replace(/(\d),(\d)/g, '$1.$2');
+  const low = t.toLowerCase();
+
+  const dimRe = /(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/g;
+  const dims = [...low.matchAll(dimRe)];
+  if (dims.length === 0) return null;
+
+  const unit: 'm' | 'ft' = /\bft\b|fuß|feet/.test(low) ? 'ft' : 'm';
+  const ignored: string[] = [];
+  const params: LayoutParams = {
+    action: 'createHall',
+    hall: { lengthM: parseFloat(dims[0][1]), widthM: parseFloat(dims[0][2]) },
+    unit,
+  };
+  for (let i = 1; i < dims.length; i++) ignored.push(`Maß „${dims[i][0]}" (nicht als Hallenmaß verwendet)`);
+
+  // Globaler Abstand als Fallback für Torreihen ohne eigenen Abstand.
+  const globalSpacing = matchSpacing(low, false);
+
+  // Torreihen aus Segmenten (getrennt durch , ; oder „und").
+  const segments = low.split(/[,;]|\bund\b/);
+  const gates: GateGroup[] = [];
+  for (const seg of segments) {
+    const cm = seg.match(/(\d+)\s*tore?\b/);
+    const side = sideOf(seg);
+    if (cm && side) {
+      const noDims = !/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/.test(seg);
+      const sp = matchSpacing(seg, noDims) ?? globalSpacing;
+      gates.push({ count: parseInt(cm[1], 10), side, ...(sp != null ? { spacingM: sp } : {}) });
+    }
+  }
+  if (gates.length > 0) params.gates = gates;
+
+  // Nicht unterstützte Elemente offen melden.
+  for (const [re, label] of UNSUPPORTED) {
+    if (re.test(low) && !ignored.some((x) => x.includes(label))) {
+      ignored.push(`${label} (noch nicht unterstützt — bitte von Hand ergänzen)`);
+    }
+  }
+  if (ignored.length > 0) params.ignored = ignored;
+
+  return params;
 }

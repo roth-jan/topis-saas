@@ -421,7 +421,7 @@ export default function PlanungPage() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button
                         size="sm"
-                        onClick={() => { seedBeispielAuftraege(); toast.success('10 Beispiel-Aufträge geladen'); }}
+                        onClick={() => { const n = seedBeispielAuftraege(); n > 0 ? toast.success(`${n} Beispiel-Aufträge geladen`) : toast.error('Keine Tore vorhanden — erst eine Halle mit Toren anlegen'); }}
                       >
                         10 Beispiel-Aufträge laden
                       </Button>
