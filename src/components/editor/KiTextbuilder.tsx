@@ -7,7 +7,8 @@
 
 import { useState } from 'react';
 import { useTopisStore } from '@/lib/store';
-import { parseCanonical, validateParams, paramsToLayout, type ValidationResult } from '@/lib/nl-layout';
+import { validateParams, paramsToLayout, type ValidationResult } from '@/lib/nl-layout';
+import { resolveLayoutParams, llmVerfuegbar } from '@/lib/nl-llm';
 import { generateBasicGangNet } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
 import { Sparkles, X, ArrowRight, AlertTriangle, CircleAlert } from 'lucide-react';
@@ -27,21 +28,28 @@ export function KiTextbuilder() {
   const [text, setText] = useState('');
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [notUnderstood, setNotUnderstood] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   if (!open) return null;
 
-  const understand = () => {
+  const understand = async () => {
+    if (!text.trim() || busy) return;
     setNotUnderstood(false);
-    const params = parseCanonical(text);
-    if (!params) {
-      setResult(null);
-      setGhost(null);
-      setNotUnderstood(true);
-      return;
+    setBusy(true);
+    try {
+      const params = await resolveLayoutParams(text, 'm');
+      if (!params) {
+        setResult(null);
+        setGhost(null);
+        setNotUnderstood(true);
+        return;
+      }
+      const v = validateParams(params);
+      setResult(v);
+      setGhost(v.ok ? paramsToLayout(v.filled) : null);
+    } finally {
+      setBusy(false);
     }
-    const v = validateParams(params);
-    setResult(v);
-    setGhost(v.ok ? paramsToLayout(v.filled) : null);
   };
 
   const apply = () => {
@@ -86,11 +94,12 @@ export function KiTextbuilder() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') understand(); }}
-          placeholder="z. B. Halle 100x50, 20 Tore Nord, Abstand 4,5"
+          placeholder={llmVerfuegbar() ? 'z. B. Halle mit 210×58 m, 50 Tore im Norden und 50 im Süden' : 'z. B. Halle 100x50, 20 Tore Nord, Abstand 4,5'}
           aria-label="Hallenbeschreibung"
-          className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+          disabled={busy}
+          className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
         />
-        <Button size="sm" onClick={understand}>Verstehen</Button>
+        <Button size="sm" onClick={understand} disabled={busy}>{busy ? 'Verstehe …' : 'Verstehen'}</Button>
       </div>
 
       {notUnderstood && (

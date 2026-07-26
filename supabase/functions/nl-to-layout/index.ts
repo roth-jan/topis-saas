@@ -1,14 +1,14 @@
 // Supabase Edge Function: nl-to-layout
-// ⚠️ NOCH NICHT DEPLOYT — wartet auf Supabase-Deploy-Zugang (siehe README.md).
+// Freie Sprache → strukturierte LayoutParams (JSON). Das LLM extrahiert NUR Parameter,
+// NIE Geometrie/Koordinaten (Council-Beschluss). Die Geometrie baut der Client
+// deterministisch (src/lib/nl-layout.ts paramsToLayout).
 //
-// Zweck: freie Sprache → strukturierte LayoutParams (JSON). Das LLM extrahiert NUR
-// Parameter, NIE Geometrie/Koordinaten (Council-Beschluss). Die Geometrie baut der
-// Client deterministisch aus diesen Parametern (src/lib/nl-layout.ts paramsToLayout).
+// Provider: OpenAI gpt-4o-mini (Function-Calling erzwingt gültiges JSON). Umstellbar auf
+// Claude Haiku, sobald ein ANTHROPIC_API_KEY vorliegt.
 //
 // Deploy:  supabase functions deploy nl-to-layout --project-ref febebiqrjvazjozyowdt
-// Secret:  supabase secrets set ANTHROPIC_API_KEY=sk-ant-... --project-ref febebiqrjvazjozyowdt
-//
-// Datenschutz: nur der Eingabetext geht ans LLM, keine Kundendaten/Geometrie. Kein Logging.
+// Secret:  supabase secrets set OPENAI_API_KEY=sk-... --project-ref febebiqrjvazjozyowdt
+// Datenschutz: nur der Eingabetext geht ans LLM, kein Logging.
 
 const ALLOWED_ORIGINS = [
   'https://topis.ntc.software',
@@ -17,72 +17,64 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3100',
 ];
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = 'gpt-4o-mini';
 
-// JSON-Schema für die erzwungene Tool-Ausgabe (= LayoutParams in src/lib/nl-layout.ts).
-const LAYOUT_TOOL = {
-  name: 'set_layout_params',
-  description: 'Gibt die aus der Beschreibung extrahierten Hallen-Layout-Parameter zurück.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      hall: {
+const PARAMS_SCHEMA = {
+  type: 'object',
+  properties: {
+    hall: {
+      type: 'object',
+      properties: {
+        lengthM: { type: 'number', description: 'Hallenlänge in der angegebenen Einheit' },
+        widthM: { type: 'number', description: 'Hallenbreite/-tiefe' },
+        name: { type: 'string' },
+      },
+      required: ['lengthM', 'widthM'],
+    },
+    gates: {
+      type: 'array',
+      description: 'Eine Gruppe pro Torreihe/Wandseite',
+      items: {
         type: 'object',
         properties: {
-          lengthM: { type: 'number', description: 'Hallenlänge in der angegebenen Einheit' },
-          widthM: { type: 'number', description: 'Hallenbreite/-tiefe' },
-          name: { type: 'string' },
+          count: { type: 'integer' },
+          side: { type: 'string', enum: ['north', 'south', 'east', 'west'] },
+          spacingM: { type: 'number', description: 'Achsabstand Mitte-zu-Mitte, optional' },
+          firstOffsetM: { type: 'number', description: 'Abstand erstes Tor von der Ecke, optional' },
         },
-        required: ['lengthM', 'widthM'],
+        required: ['count', 'side'],
       },
-      gates: {
-        type: 'array',
-        description: 'Eine Gruppe pro Torreihe/Wandseite',
-        items: {
-          type: 'object',
-          properties: {
-            count: { type: 'integer' },
-            side: { type: 'string', enum: ['north', 'south', 'east', 'west'] },
-            spacingM: { type: 'number', description: 'Achsabstand Mitte-zu-Mitte, optional' },
-            firstOffsetM: { type: 'number', description: 'Abstand des ersten Tors von der Ecke, optional' },
-          },
-          required: ['count', 'side'],
-        },
-      },
-      unit: { type: 'string', enum: ['m', 'ft'] },
-      unresolved: { type: 'array', items: { type: 'string' }, description: 'Nicht sicher ableitbare Felder' },
-      ignored: { type: 'array', items: { type: 'string' }, description: 'Erkannte, aber nicht unterstützte Angaben (Stellplätze, Bereiche, Gänge, Wege, Sicherheitsabstände …)' },
     },
-    required: ['hall'],
+    unit: { type: 'string', enum: ['m', 'ft'] },
+    unresolved: { type: 'array', items: { type: 'string' } },
+    ignored: { type: 'array', items: { type: 'string' } },
   },
-} as const;
+  required: ['hall'],
+};
 
 const SYSTEM = [
   'Du extrahierst aus einer deutschen Beschreibung NUR strukturierte Parameter für ein',
-  'Logistik-Hallenlayout und rufst dafür das Tool set_layout_params auf.',
-  'REGELN:',
-  '- Gib NIEMALS Koordinaten oder Geometrie aus, nur Parameter (Maße, Toranzahl, Seite, Abstand).',
-  '- Erfinde keine Werte. Was nicht klar ist → in "unresolved".',
-  '- Alles, was das Schema nicht abbildet (Stellplätze, Bereiche, Regale, Gänge/Fahrgänge,',
-  '  Wege, Sicherheitsabstände, Büros …) NICHT ignorieren, sondern in "ignored" auflisten.',
-  '- Mehrere Torreihen/Seiten sind erlaubt (ein Eintrag pro Reihe in "gates").',
-  '- Das erste genannte Maß ist die Halle; weitere Maße gehören zu "ignored".',
+  'Logistik-Hallenlayout und rufst dafür die Funktion set_layout_params auf.',
+  'REGELN: Gib NIEMALS Koordinaten/Geometrie aus, nur Parameter (Maße, Toranzahl, Seite, Abstand).',
+  'Erfinde keine Werte; Unklares → "unresolved". Alles, was das Schema nicht abbildet',
+  '(Stellplätze, Bereiche, Regale, Gänge/Fahrgänge, Wege, Sicherheitsabstände, Büros …)',
+  'NICHT ignorieren, sondern in "ignored" auflisten. Mehrere Torreihen/Seiten erlaubt.',
+  'Das erste genannte Maß ist die Halle; weitere Maße gehören zu "ignored".',
 ].join(' ');
 
-function corsHeaders(origin: string | null): Record<string, string> {
+function cors(origin: string | null): Record<string, string> {
   const allow = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json',
   };
 }
 
 // @ts-expect-error Deno global im Supabase-Edge-Runtime
 Deno.serve(async (req: Request) => {
-  const origin = req.headers.get('origin');
-  const headers = corsHeaders(origin);
+  const headers = cors(req.headers.get('origin'));
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'POST erwartet' }), { status: 405, headers });
 
@@ -92,19 +84,21 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Ungültiger Text' }), { status: 400, headers });
     }
     // @ts-expect-error Deno global
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
     if (!apiKey) return new Response(JSON.stringify({ error: 'Kein API-Key konfiguriert' }), { status: 500, headers });
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 1024,
-        system: SYSTEM,
-        tools: [LAYOUT_TOOL],
-        tool_choice: { type: 'tool', name: 'set_layout_params' },
-        messages: [{ role: 'user', content: `Einheit-Voreinstellung: ${unit ?? 'm'}. Beschreibung: ${text}` }],
+        temperature: 0,
+        messages: [
+          { role: 'system', content: SYSTEM },
+          { role: 'user', content: `Einheit-Voreinstellung: ${unit ?? 'm'}. Beschreibung: ${text}` },
+        ],
+        tools: [{ type: 'function', function: { name: 'set_layout_params', description: 'Extrahierte Hallen-Layout-Parameter', parameters: PARAMS_SCHEMA } }],
+        tool_choice: { type: 'function', function: { name: 'set_layout_params' } },
       }),
     });
     if (!resp.ok) {
@@ -112,10 +106,12 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: `LLM-Fehler ${resp.status}`, detail: t.slice(0, 300) }), { status: 502, headers });
     }
     const data = await resp.json();
-    const toolUse = (data.content ?? []).find((c: { type: string }) => c.type === 'tool_use');
-    if (!toolUse) return new Response(JSON.stringify({ error: 'Keine Parameter extrahiert' }), { status: 422, headers });
+    const args = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    if (!args) return new Response(JSON.stringify({ error: 'Keine Parameter extrahiert' }), { status: 422, headers });
+    let parsed: Record<string, unknown>;
+    try { parsed = JSON.parse(args); } catch { return new Response(JSON.stringify({ error: 'Ungültiges JSON vom LLM' }), { status: 502, headers }); }
 
-    const params = { action: 'createHall', ...toolUse.input, unit: toolUse.input.unit ?? unit ?? 'm' };
+    const params = { action: 'createHall', ...parsed, unit: parsed.unit ?? unit ?? 'm' };
     return new Response(JSON.stringify(params), { headers });
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers });
