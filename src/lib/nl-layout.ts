@@ -8,6 +8,7 @@
 // Spec: topis/SPEC-KI-TEXTBUILDER-2026-07-25.md
 
 import { OBJECT_DEFAULTS, TopisObject, ObjectType } from '@/types/topis';
+import { findFreeSpot, findOverlaps } from '@/lib/geometry';
 
 export type GateSide = 'north' | 'south' | 'east' | 'west';
 
@@ -24,7 +25,7 @@ export interface LayoutParams {
   hall: { lengthM: number; widthM: number; name?: string };
   gates?: GateGroup[];      // mehrere Torreihen möglich
   bereiche?: number;        // Anzahl (unbenannter) Lagerbereiche im Innenraum
-  zonen?: { name: string; side?: GateSide }[]; // benannte Zonen (Wareneingang West, Warenausgang Ost …)
+  zonen?: { name: string; side?: GateSide; laengeM?: number; breiteM?: number }[]; // benannte Zonen (Wareneingang West 20×15 …)
   stellplaetze?: number;    // Anzahl Stellplätze im Innenraum (Grid-Modus)
   stellplaetzeJeTor?: boolean; // Stellplatz VOR JEDEM Tor (Cross-Dock-Vorfeld) statt Grid
   stellplatzLaengeM?: number;  // Stellplatz-Tiefe in die Halle (Default 12)
@@ -122,7 +123,12 @@ export function validateParams(params: LayoutParams): ValidationResult {
   const validSides: GateSide[] = ['north', 'south', 'east', 'west'];
   const zonen = (params.zonen ?? [])
     .filter((z) => z && typeof z.name === 'string' && z.name.trim())
-    .map((z) => ({ name: z.name.trim(), side: validSides.includes(z.side as GateSide) ? z.side : undefined }));
+    .map((z) => ({
+      name: z.name.trim(),
+      side: validSides.includes(z.side as GateSide) ? z.side : undefined,
+      laengeM: z.laengeM != null && z.laengeM > 0 ? toM(z.laengeM) : undefined,
+      breiteM: z.breiteM != null && z.breiteM > 0 ? toM(z.breiteM) : undefined,
+    }));
   if (zonen.length > 0) filled.zonen = zonen;
   else if (bereiche > 0) filled.bereiche = bereiche;
 
@@ -197,6 +203,9 @@ export const DEFAULT_STELLPLATZ_LAENGE_M = 12; // Tiefe in die Halle
 export const DEFAULT_STELLPLATZ_BREITE_M = 3;  // Breite entlang der Wand
 export const DEFAULT_MITTELGANG_M = 4;         // zentraler Längsgang
 const MITTELGANG_MIN_M = 2;
+// Standardmaß für benannte Zonen OHNE explizite Angabe (kein Halbhallen-Klotz).
+export const DEFAULT_ZONE_LAENGE_M = 20;
+export const DEFAULT_ZONE_BREITE_M = 15;
 const INT_GAP = 2;
 const INT_CELL_H = 8;
 const MIN_CELL_W = 10;
@@ -269,6 +278,13 @@ export interface GeneratedLayout {
   objects: Omit<TopisObject, 'id'>[];
 }
 
+/** Überlappende Objektpaare im generierten Layout (für die Kollisionswarnung). */
+export function findLayoutCollisions(objects: Omit<TopisObject, 'id'>[]): [string, string][] {
+  const rects = objects.map((o, i) => ({ x: o.x, y: o.y, width: o.width, height: o.height, name: o.name ?? `#${i}` }));
+  // margin -0.05 → Kanten dürfen sich berühren; erst echte Überlappung > 5 cm zählt.
+  return findOverlaps(rects, -0.05).map(([a, b]) => [a.name!, b.name!]);
+}
+
 /**
  * Deterministisch: normalisierte Parameter → Halle + Tor-Objekte (alle Torreihen).
  * Exakter Achsabstand (erstes Tor bündig in der Ecke), N/S quer / O/W hochkant.
@@ -326,11 +342,6 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
   const aisleHHalf = mittelgangM / 2;
   const jeTor = !!filled.stellplaetzeJeTor && (filled.gates?.length ?? 0) > 0;
 
-  // Benannte Zonen (Wareneingang West / Warenausgang Ost …) als Hintergrund-Bereiche.
-  // Werden am Ende VOR alles andere gezeichnet (unshift) → verdecken Tore nicht.
-  const zoneObjs: Omit<TopisObject, 'id'>[] = [];
-  if (filled.zonen && filled.zonen.length > 0) buildZonen(zoneObjs, width, height, filled.zonen);
-
   // Cross-Dock-Modus: ein Stellplatz VOR JEDEM Tor (+ Bereich-Bänder falls keine Zonen).
   if (jeTor) {
     const tore = objects.filter((o) => o.type === 'tor');
@@ -378,37 +389,59 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
     }
   }
 
-  // Benannte Zonen als Hintergrund voranstellen (werden zuerst gezeichnet).
-  if (zoneObjs.length > 0) objects.unshift(...zoneObjs);
+  // Benannte Zonen ZULETZT platzieren (kollisionsfrei gegen alle bereits gesetzten Objekte),
+  // aber als Hintergrund voranstellen (unshift → zuerst gezeichnet).
+  if (filled.zonen && filled.zonen.length > 0) {
+    const zoneObjs = buildZonen(width, height, filled.zonen, objects, aisleHHalf);
+    if (zoneObjs.length > 0) objects.unshift(...zoneObjs);
+  }
 
   return { hall: { width, height, name }, objects };
 }
 
-// Benannte Zonen (Wareneingang West etc.) als Bereich-Rechtecke nach Himmelsrichtung.
-// Zonen mit Seite belegen die entsprechende Hallenhälfte; Zonen ohne Seite werden als
-// gleich breite Spalten über die volle Halle verteilt.
+// Benannte Zonen (Wareneingang West etc.) als Bereich-Rechtecke mit ECHTEN Maßen,
+// KOLLISIONSFREI platziert — keine „halbe Halle". Explizite Maße werden geehrt; fehlt ein
+// Maß, wird ein moderater Standard genommen (nummeriert in `unresolved`-Manier über den Namen).
+// Bevorzugte Lage: an der genannten Himmelsrichtung (West→links, Ost→rechts, N→oben, S→unten).
 function buildZonen(
-  out: Omit<TopisObject, 'id'>[], width: number, height: number,
-  zonen: { name: string; side?: GateSide }[],
-): void {
-  const regionForSide = (side: GateSide) => {
+  width: number, height: number,
+  zonen: { name: string; side?: GateSide; laengeM?: number; breiteM?: number }[],
+  placed: Omit<TopisObject, 'id'>[], aisleHHalf: number,
+): Omit<TopisObject, 'id'>[] {
+  const out: Omit<TopisObject, 'id'>[] = [];
+  const obstacles = placed.map((o) => ({ x: o.x, y: o.y, width: o.width, height: o.height }));
+  // Mittelgang als gesperrte Zone (Zonen dürfen ihn nicht überdecken).
+  const mgTop = height / 2 - aisleHHalf, mgBottom = height / 2 + aisleHHalf;
+  const blocked = [{ x: 0, y: mgTop, width, height: mgBottom - mgTop }];
+  const preferForSide = (side: GateSide | undefined, w: number, h: number) => {
     switch (side) {
-      case 'west': return { x: 0, y: 0, w: width / 2, h: height };
-      case 'east': return { x: width / 2, y: 0, w: width / 2, h: height };
-      case 'north': return { x: 0, y: 0, w: width, h: height / 2 };
-      case 'south': return { x: 0, y: height / 2, w: width, h: height / 2 };
+      case 'west': return { x: 1, y: height / 2 };
+      case 'east': return { x: width - w - 1, y: height / 2 };
+      case 'north': return { x: width / 2, y: 1 };
+      case 'south': return { x: width / 2, y: height - h - 1 };
+      default: return { x: width / 2, y: height / 2 };
     }
   };
-  const sided = zonen.filter((z) => z.side);
-  const unsided = zonen.filter((z) => !z.side);
-  for (const z of sided) {
-    const r = regionForSide(z.side!)!;
-    out.push({ type: 'bereich', x: r.x, y: r.y, width: r.w, height: r.h, name: z.name });
+  for (const z of zonen) {
+    // Explizite Maße (z. B. 20×15). Fehlt eines → moderater Standard, kein Halbhallen-Klotz.
+    const wantW = Math.min(z.laengeM ?? DEFAULT_ZONE_LAENGE_M, width);
+    const wantH = Math.min(z.breiteM ?? DEFAULT_ZONE_BREITE_M, height);
+    const pref = preferForSide(z.side, wantW, wantH);
+    const all = [...obstacles, ...out.map((o) => ({ x: o.x, y: o.y, width: o.width, height: o.height }))];
+    const find = (w: number, h: number) => findFreeSpot(w, h, width, height, all, { margin: 0.5, step: 2, blocked, preferX: pref.x, preferY: pref.y });
+    let w = wantW, h = wantH;
+    let spot = find(w, h);
+    // Kein Platz → schrittweise verkleinern (Baukatalog-Garantie: skalieren statt still verlieren).
+    while (!spot && (h > 4 || w > 4)) {
+      if (h >= w && h > 4) h = Math.max(4, Math.round((h - 2) * 10) / 10);
+      else if (w > 4) w = Math.max(4, Math.round((w - 2) * 10) / 10);
+      spot = find(w, h);
+    }
+    if (!spot) continue; // kein Platz überhaupt → Karte meldet fehlende Zone (placed < requested)
+    const skaliert = w < wantW - 0.01 || h < wantH - 0.01;
+    out.push({ type: 'bereich', x: spot.x, y: spot.y, width: w, height: h, name: z.name, ...(skaliert ? { meta: { skaliert: `${wantW}x${wantH}` } } : {}) });
   }
-  unsided.forEach((z, i) => {
-    const cw = width / unsided.length;
-    out.push({ type: 'bereich', x: i * cw, y: 0, width: cw, height, name: z.name });
-  });
+  return out;
 }
 
 // Ein Stellplatz vor einem Tor: Breite entlang der Wand, Länge in die Halle,
@@ -568,12 +601,17 @@ export function parseCanonical(input: string): LayoutParams | null {
   if (gates.length > 0) params.gates = gates;
 
   // Benannte Zonen (Wareneingang West / Warenausgang Ost …) — Seite aus dem Umfeld ableiten.
-  const zonen: { name: string; side?: GateSide }[] = [];
+  const zonen: { name: string; side?: GateSide; laengeM?: number; breiteM?: number }[] = [];
   for (const [re, label] of [[/wareneingang/, 'Wareneingang'], [/warenausgang/, 'Warenausgang']] as [RegExp, string][]) {
     const m = low.match(re);
     if (m) {
-      const after = low.slice(m.index ?? 0, (m.index ?? 0) + 30);
-      zonen.push({ name: label, side: sideOf(after) ?? undefined });
+      const after = low.slice(m.index ?? 0, (m.index ?? 0) + 40);
+      const dim = after.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
+      zonen.push({
+        name: label,
+        side: sideOf(after) ?? undefined,
+        ...(dim ? { laengeM: parseFloat(dim[1]), breiteM: parseFloat(dim[2]) } : {}),
+      });
     }
   }
   if (zonen.length > 0) params.zonen = zonen;
@@ -607,6 +645,17 @@ export function parseCanonical(input: string): LayoutParams | null {
   else if (/alphabet|buchstaben|a\s*,\s*b\s*,\s*c/.test(low)) params.nummerierung = 'alpha';
   const startM = low.match(/(?:ab|start(?:wert|nummer)?)\s*(?:nr\.?|nummer)?\s*(\d+)/);
   if (startM) params.startNr = parseInt(startM[1], 10);
+
+  // Zonen-Maße (z. B. „20x15" bei Wareneingang) dürfen NICHT als „ignoriertes Maß" auftauchen.
+  const zoneDims = zonen.filter((z) => z.laengeM);
+  if (zoneDims.length > 0) {
+    const norm = (s: string) => s.replace(/\s/g, '').replace('×', 'x');
+    const zset = new Set(zoneDims.map((z) => norm(`${z.laengeM}x${z.breiteM}`)));
+    for (let i = ignored.length - 1; i >= 0; i--) {
+      const m = ignored[i].match(/(\d+(?:\.\d+)?\s*[x×]\s*\d+(?:\.\d+)?)/);
+      if (m && zset.has(norm(m[1]))) ignored.splice(i, 1);
+    }
+  }
 
   // Nicht unterstützte Elemente offen melden.
   for (const [re, label] of UNSUPPORTED) {

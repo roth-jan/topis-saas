@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateParams, paramsToLayout, parseCanonical, LayoutParams, AISLE_FRACTIONS, AISLE_HALF, AISLE_H_HALF } from './nl-layout';
+import { validateParams, paramsToLayout, parseCanonical, findLayoutCollisions, LayoutParams, AISLE_FRACTIONS, AISLE_HALF, AISLE_H_HALF } from './nl-layout';
 
 describe('nl-layout — validateParams', () => {
   it('akzeptiert gültige Halle + Tor-Reihe, füllt Defaults (Offset = halbe Torbreite)', () => {
@@ -306,26 +306,39 @@ describe('nl-layout — Cross-Dock (Stellplätze je Tor)', () => {
     expect(objects.filter((o) => o.type === 'bereich')).toHaveLength(2);
   });
 
-  it('benannte Zonen (Wareneingang West / Warenausgang Ost) werden gebaut + benannt', () => {
-    const p = parseCanonical('Halle 210x58, 50 Tore Nord, 50 Tore Süd, Wareneingang im Westen, Warenausgang im Osten, ein Stellplatz je Tor 12x3, 6 m Mittelgang')!;
+  it('benannte Zonen (Wareneingang West / Warenausgang Ost) werden gebaut, benannt + kollisionsfrei', () => {
+    const p = parseCanonical('Halle 210x58, 50 Tore Nord Abstand 3,75, 50 Tore Süd Abstand 3,75, Wareneingang im Westen, Warenausgang im Osten, ein Stellplatz je Tor 12x3, 6 m Mittelgang')!;
     expect(p.zonen).toEqual([
       { name: 'Wareneingang', side: 'west' },
       { name: 'Warenausgang', side: 'east' },
     ]);
     const { objects } = paramsToLayout(validateParams(p).filled);
     const zonen = objects.filter((o) => o.type === 'bereich');
-    expect(zonen.map((z) => z.name)).toEqual(['Wareneingang', 'Warenausgang']);
-    // West-Zone links, Ost-Zone rechts.
+    expect(zonen.map((z) => z.name).sort()).toEqual(['Warenausgang', 'Wareneingang']);
+    // KEINE halbe Halle mehr — Zonen sind moderat dimensioniert (≤ Default 20×15).
+    expect(zonen.every((z) => z.width <= 20.01 && z.height <= 15.01)).toBe(true);
+    // West-Zone links vom Warenausgang (Ost).
     const we = zonen.find((z) => z.name === 'Wareneingang')!;
     const wa = zonen.find((z) => z.name === 'Warenausgang')!;
-    expect(we.x).toBe(0);
-    expect(wa.x).toBeCloseTo(105, 0); // width/2
-    // Stellplätze je Tor bleiben trotz Zonen erhalten.
+    expect(we.x).toBeLessThan(wa.x);
+    // Stellplätze je Tor bleiben erhalten; nichts überlappt.
     expect(objects.filter((o) => o.type === 'stellplatz')).toHaveLength(100);
+    expect(findLayoutCollisions(objects)).toHaveLength(0);
+  });
+
+  it('explizite Zonenmaße (20×15) werden geehrt bzw. ehrlich verkleinert (nie halbe Halle)', () => {
+    // Kleine, leere Halle → 20×15 passt exakt.
+    const p = parseCanonical('Halle 80x40, 4 Tore Nord, Wareneingang West 20x15')!;
+    expect(p.zonen?.[0]).toEqual({ name: 'Wareneingang', side: 'west', laengeM: 20, breiteM: 15 });
+    const { objects } = paramsToLayout(validateParams(p).filled);
+    const we = objects.find((o) => o.type === 'bereich')!;
+    expect(we.width).toBeCloseTo(20, 1);
+    expect(we.height).toBeCloseTo(15, 1);
+    expect(findLayoutCollisions(objects)).toHaveLength(0);
   });
 
   it('Zonen liegen als Hintergrund VOR den Toren (unshift → zuerst gezeichnet)', () => {
-    const p = parseCanonical('Halle 210x58, 50 Tore Nord, 50 Tore Süd, Wareneingang West, Warenausgang Ost, ein Stellplatz je Tor 12x3')!;
+    const p = parseCanonical('Halle 210x58, 50 Tore Nord Abstand 3,75, 50 Tore Süd Abstand 3,75, Wareneingang West, Warenausgang Ost, ein Stellplatz je Tor 12x3')!;
     const { objects } = paramsToLayout(validateParams(p).filled);
     expect(objects[0].type).toBe('bereich'); // Zone zuerst → hinter allem
     expect(objects[0].name).toBe('Wareneingang');

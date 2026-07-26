@@ -54,6 +54,8 @@ const PARAMS_SCHEMA = {
         properties: {
           name: { type: 'string', description: 'Name der Zone, z.B. "Wareneingang"' },
           side: { type: 'string', enum: ['north', 'south', 'east', 'west'], description: 'Himmelsrichtung der Zone, falls genannt' },
+          laengeM: { type: 'number', description: 'Länge der Zone in m, falls genannt (z.B. 20 bei "20x15")' },
+          breiteM: { type: 'number', description: 'Breite der Zone in m, falls genannt (z.B. 15 bei "20x15")' },
         },
         required: ['name'],
       },
@@ -90,7 +92,8 @@ const SYSTEM = [
   'REGELN: Gib NIEMALS Koordinaten/Geometrie aus, nur Parameter (Maße, Toranzahl, Seite, Abstand).',
   'Erfinde keine Werte; Unklares → "unresolved". Unbenannte Lagerbereiche → "bereiche" (Anzahl).',
   'BENANNTE Zonen ("Wareneingang West", "Warenausgang Ost", "WE", "WA", "Kommissionierzone Nord") →',
-  '"zonen" [{name, side}] mit Himmelsrichtung als side — NICHT in "ignored" und NICHT als "bereiche".',
+  '"zonen" [{name, side, laengeM, breiteM}] mit Himmelsrichtung als side und Maßen wie "20x15"',
+  'als laengeM/breiteM — NICHT in "ignored" und NICHT als "bereiche".',
   'Stellplätze: "ein Stellplatz je/pro/vor jedem Tor" → stellplaetzeJeTor=true (NICHT stellplaetze setzen);',
   'eine feste Gesamtzahl im Innenraum → "stellplaetze". Stellplatz-Maße wie "12x3" → stellplatzLaengeM',
   '(Tiefe, größerer/erster Wert) + stellplatzBreiteM (Wand, zweiter Wert). Mittelgang/Längsgang-Breite',
