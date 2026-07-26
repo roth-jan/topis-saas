@@ -93,6 +93,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: MODEL,
         temperature: 0,
+        max_tokens: 700, // Kostendeckel — Ausgabe ist klein (nur Parameter-JSON)
         messages: [
           { role: 'system', content: SYSTEM },
           { role: 'user', content: `Einheit-Voreinstellung: ${unit ?? 'm'}. Beschreibung: ${text}` },
