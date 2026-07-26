@@ -32,10 +32,36 @@ describe('nl-layout — validateParams', () => {
     expect(r.errors.some((e) => e.includes('Wand'))).toBe(true);
   });
 
-  it('warnt bei ungewöhnlich engem Torabstand', () => {
-    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 5, side: 'north', spacingM: 1.0 }] });
+  it('warnt bei sehr enger (aber positiver) Torlücke', () => {
+    // Achsabstand 3.7 bei Tor-Breite 3.5 → Lücke 0.2 m → Warnung, kein Fehler.
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 5, side: 'north', spacingM: 3.7 }] });
     expect(r.ok).toBe(true);
-    expect(r.warnings.some((w) => w.includes('eng'))).toBe(true);
+    expect(r.warnings.some((w) => /eng|Lücke/.test(w))).toBe(true);
+  });
+
+  it('FEHLER bei überlappenden Toren (Achsabstand < Tor-Breite)', () => {
+    // 5 Tore, Achsabstand 1.0 m, Breite 3.5 m → Überlappung → Fehler, nicht ok.
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 5, side: 'north', spacingM: 1.0 }] });
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /überlapp/i.test(e))).toBe(true);
+  });
+
+  it('Tor-Breite + Lücke: Pitch = Breite + Lücke, Kapazität geprüft', () => {
+    // Jans Szenario: 50 Tore à 4 m + 3 m Lücke = 347 m > 200 m → Fehler.
+    const r = validateParams({
+      action: 'createHall', hall: { lengthM: 200, widthM: 100 },
+      gates: [{ count: 50, side: 'north', torBreiteM: 4, lueckeM: 3 }],
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => /347|brauchen|nur 200/.test(e))).toBe(true);
+  });
+
+  it('Tor-Breite wird gebaut (nicht auf 3.5 hart)', () => {
+    const { objects } = paramsToLayout(validateParams({
+      action: 'createHall', hall: { lengthM: 200, widthM: 100 },
+      gates: [{ count: 5, side: 'north', torBreiteM: 4, lueckeM: 3 }],
+    }).filled);
+    expect(objects.every((o) => o.type === 'tor' && o.width === 4)).toBe(true);
   });
 
   it('validiert mehrere Torreihen unabhängig', () => {
@@ -50,12 +76,25 @@ describe('nl-layout — validateParams', () => {
 });
 
 describe('nl-layout — parseCanonical', () => {
-  it('parst „Halle 210x58, 50 Tore Nord Abstand 3,75"', () => {
+  it('parst „Halle 210x58, 50 Tore Nord Abstand 3,75" (Abstand ohne Breite = Achsabstand)', () => {
     const p = parseCanonical('Halle 210x58, 50 Tore Nord Abstand 3,75')!;
     expect(p.hall.lengthM).toBe(210);
     expect(p.hall.widthM).toBe(58);
     expect(p.gates).toHaveLength(1);
-    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', spacingM: 3.75 });
+    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', lueckeM: 3.75 });
+    // Ohne Tor-Breite meint „Abstand" den Achsabstand → Pitch bleibt 3.75 (AS-konform, passt in 210 m).
+    const v = validateParams(p);
+    expect(v.ok).toBe(true);
+    expect(v.filled.gates![0].spacingM).toBeCloseTo(3.75, 6);
+  });
+
+  it('Tor-Breite + „Abstand zum nächsten Tor" (Lücke): Pitch = Breite + Lücke', () => {
+    const p = parseCanonical('Halle 200x100, 50 Tore Nord, jedes Tor 4 m breit mit 3 m Abstand zum nächsten Tor')!;
+    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', torBreiteM: 4, lueckeM: 3 });
+    const v = validateParams(p);
+    // 50 × 4 + 49 × 3 = 347 m > 200 m → Fehler.
+    expect(v.ok).toBe(false);
+    expect(v.errors.some((e) => /nur 200|brauchen/.test(e))).toBe(true);
   });
 
   it('P0: mehrere Torseiten — Nord UND Süd', () => {
@@ -87,9 +126,11 @@ describe('nl-layout — parseCanonical', () => {
     expect(ign).toContain('Sicherheitsabstände');
   });
 
-  it('bare Abstand „115 Tore Nord 3,75" (ohne Schlüsselwort)', () => {
+  it('bare Abstand „115 Tore Nord 3,75" (ohne Schlüsselwort) → Achsabstand', () => {
     const p = parseCanonical('Halle 210x58, 115 Tore Nord 3,75')!;
-    expect(p.gates![0].spacingM).toBe(3.75);
+    expect(p.gates![0].lueckeM).toBe(3.75);
+    // Ohne Tor-Breite = Achsabstand → validiert zu spacingM 3.75.
+    expect(validateParams(p).filled.gates![0].spacingM).toBeCloseTo(3.75, 6);
   });
 
   it('gibt null ohne erkennbare Maße', () => {

@@ -15,7 +15,9 @@ export type GateSide = 'north' | 'south' | 'east' | 'west';
 export interface GateGroup {
   count: number;
   side: GateSide;
-  spacingM?: number;      // Achsabstand Mitte-zu-Mitte
+  torBreiteM?: number;    // Tor-Länge entlang der Wand (Lastenheft §1.1.2.1 „Length"), Default 3.5
+  lueckeM?: number;       // LÜCKE zwischen benachbarten Toren (Lastenheft „distance between the gates")
+  spacingM?: number;      // Achsabstand Mitte-zu-Mitte (= Breite + Lücke). Intern/Back-compat.
   firstOffsetM?: number;  // Mitte des ersten Tors, Abstand von der Wandecke
 }
 
@@ -88,7 +90,19 @@ export function validateParams(params: LayoutParams): ValidationResult {
   for (const g of params.gates ?? []) {
     const count = Math.round(g.count);
     const side = g.side;
-    const spacingM = g.spacingM != null ? toM(g.spacingM) : DEFAULT_SPACING_M;
+    // Tor-Länge/Breite entlang der Wand (Lastenheft-Eigenschaft), Default 3.5 m.
+    const hasExplicitBreite = g.torBreiteM != null && g.torBreiteM > 0;
+    const torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : TOR_W;
+    // Achsabstand (Pitch). Disambiguierung von „Abstand":
+    //  - explizit spacingM → immer Achsabstand.
+    //  - lueckeM + explizite Tor-Breite → „Abstand" = Lücke → Pitch = Breite + Lücke (Lastenheft).
+    //  - lueckeM OHNE Breite → „Abstand 3,75" meint konventionell den Achsabstand (wie AS Halle 6).
+    //  - nichts → Default (Lücke 1 m).
+    const spacingM = g.spacingM != null ? toM(g.spacingM)
+      : g.lueckeM != null && g.lueckeM >= 0
+        ? (hasExplicitBreite ? torBreiteM + toM(g.lueckeM) : toM(g.lueckeM))
+        : torBreiteM + 1;
+    const lueckeEff = spacingM - torBreiteM; // effektive Lücke (kann negativ = Überlappung sein)
 
     if (!Number.isFinite(count) || count < 1) { errors.push('Toranzahl fehlt oder ist ungültig.'); continue; }
     if (!['north', 'south', 'east', 'west'].includes(side)) { errors.push('Tor-Seite (Nord/Süd/Ost/West) fehlt oder ist ungültig.'); continue; }
@@ -99,20 +113,31 @@ export function validateParams(params: LayoutParams): ValidationResult {
     // Torreihe standardmäßig ZENTRIEREN (gleicher Randabstand links/rechts) —
     // außer der Nutzer gibt explizit einen Anfangsabstand vor.
     const rowLen = (count - 1) * spacingM;
-    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(TOR_W / 2, (wallLen - rowLen) / 2);
-    const requiredSpan = firstOffsetM + rowLen + TOR_W / 2;
+    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(torBreiteM / 2, (wallLen - rowLen) / 2);
+    const requiredSpan = firstOffsetM + rowLen + torBreiteM / 2;
+    // Kapazität VOR dem Bau (Lastenheft: Anzahl × Breite + (Anzahl−1) × Lücke ≤ Wandlänge).
     if (requiredSpan > wallLen + 0.01) {
+      const bedarf = count * torBreiteM + (count - 1) * Math.max(0, lueckeEff);
       errors.push(
-        `${count} Tore (${SIDE_LABEL[side]}) mit ${spacingM.toFixed(2)} m Abstand brauchen ~${requiredSpan.toFixed(0)} m, ` +
-        `die Wand hat aber nur ${wallLen.toFixed(0)} m.`,
+        `${count} Tore à ${torBreiteM.toFixed(1)} m + ${Math.max(0, lueckeEff).toFixed(1)} m Lücke (${SIDE_LABEL[side]}) ` +
+        `brauchen ~${bedarf.toFixed(0)} m, die Wand hat aber nur ${wallLen.toFixed(0)} m.`,
       );
     }
-    if (spacingM < SPACING_MIN_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m (${SIDE_LABEL[side]}) ist ungewöhnlich eng — Zahlendreher?`);
+    // Negative Lücke = Tore überlappen sich → Fehler (nicht bloß Warnung), das Lastenheft
+    // kennt keine überlappenden Tore.
+    if (lueckeEff < -0.01) {
+      errors.push(
+        `Tore (${SIDE_LABEL[side]}) überlappen sich: Breite ${torBreiteM.toFixed(1)} m ist größer als der Achsabstand ${spacingM.toFixed(1)} m ` +
+        `(Lücke ${lueckeEff.toFixed(1)} m). Bitte größere Lücke oder schmalere Tore.`,
+      );
+    } else if (lueckeEff >= 0 && lueckeEff < 0.5) {
+      warnings.push(`Sehr enge Torlücke (${lueckeEff.toFixed(1)} m, ${SIDE_LABEL[side]}) — bewusst so knapp?`);
+    }
     if (spacingM > SPACING_MAX_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m (${SIDE_LABEL[side]}) ist ungewöhnlich groß.`);
     if (seenSides.has(side)) warnings.push(`Mehrere Torreihen an der ${SIDE_LABEL[side]}-Wand — sie können sich überlappen.`);
     seenSides.add(side);
 
-    filledGates.push({ count, side, spacingM, firstOffsetM });
+    filledGates.push({ count, side, spacingM, firstOffsetM, torBreiteM });
   }
   if (filledGates.length > 0) filled.gates = filledGates;
 
@@ -301,18 +326,19 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
   let nr = 0;
 
   for (const grp of filled.gates ?? []) {
-    const spacingM = grp.spacingM ?? DEFAULT_SPACING_M;
-    const firstOffsetM = grp.firstOffsetM ?? DEFAULT_FIRST_OFFSET_M;
+    const torBreite = grp.torBreiteM ?? TOR_W;
+    const spacingM = grp.spacingM ?? (torBreite + 1);
+    const firstOffsetM = grp.firstOffsetM ?? (torBreite / 2);
     const horiz = grp.side === 'north' || grp.side === 'south';
     for (let i = 0; i < grp.count; i++) {
       const center = firstOffsetM + i * spacingM;
       let x: number, y: number, w: number, h: number;
       if (horiz) {
-        w = TOR_W; h = TOR_D;
+        w = torBreite; h = TOR_D;
         x = Math.max(0, Math.min(width - w, center - w / 2));
         y = grp.side === 'north' ? 0 : height - h;
       } else {
-        w = TOR_D; h = TOR_W;
+        w = TOR_D; h = torBreite;
         y = Math.max(0, Math.min(height - h, center - h / 2));
         x = grp.side === 'west' ? 0 : width - w;
       }
@@ -583,8 +609,15 @@ export function parseCanonical(input: string): LayoutParams | null {
     ignored.push(`Maß „${dims[i][0]}" (nicht als Hallenmaß verwendet)`);
   }
 
-  // Globaler Abstand als Fallback für Torreihen ohne eigenen Abstand.
-  const globalSpacing = matchSpacing(low, false);
+  // Tor-Breite (Lastenheft: „Length") + Lücke (Lastenheft: „distance between the gates").
+  // Können global („jedes Tor 4 m breit mit 3 m Abstand zum nächsten Tor") oder je Segment stehen.
+  // Tor-Breite NUR im Tor-Kontext (sonst würde „100 m breite" der HALLE als Tor-Breite gelesen).
+  const matchBreite = (s: string) => s.match(/tor\w*[^.,;]{0,20}?(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*breit/)?.[1]
+    ?? s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*breit(?:e)?[^.,;]{0,20}?\btore?\b/)?.[1];
+  const matchLuecke = (s: string) => s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:abstand|l[üu]cke)/)?.[1]
+    ?? s.match(/(?:abstand|l[üu]cke)[^\d]{0,10}(\d+(?:\.\d+)?)/)?.[1];
+  const globalBreite = matchBreite(low);
+  const globalLuecke = matchLuecke(low) ?? (matchSpacing(low, false) != null ? String(matchSpacing(low, false)) : undefined);
 
   // Torreihen aus Segmenten (getrennt durch , ; oder „und").
   const segments = low.split(/[,;]|\bund\b/);
@@ -594,8 +627,13 @@ export function parseCanonical(input: string): LayoutParams | null {
     const side = sideOf(seg);
     if (cm && side) {
       const noDims = !/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/.test(seg);
-      const sp = matchSpacing(seg, noDims) ?? globalSpacing;
-      gates.push({ count: parseInt(cm[1], 10), side, ...(sp != null ? { spacingM: sp } : {}) });
+      const breite = matchBreite(seg) ?? globalBreite;
+      const luecke = matchLuecke(seg) ?? (matchSpacing(seg, noDims) != null ? String(matchSpacing(seg, noDims)) : undefined) ?? globalLuecke;
+      gates.push({
+        count: parseInt(cm[1], 10), side,
+        ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
+        ...(luecke != null ? { lueckeM: parseFloat(luecke) } : {}),
+      });
     }
   }
   if (gates.length > 0) params.gates = gates;
