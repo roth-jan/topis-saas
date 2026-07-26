@@ -306,6 +306,31 @@ describe('nl-layout — Cross-Dock (Stellplätze je Tor)', () => {
     expect(objects.filter((o) => o.type === 'bereich')).toHaveLength(2);
   });
 
+  it('benannte Zonen (Wareneingang West / Warenausgang Ost) werden gebaut + benannt', () => {
+    const p = parseCanonical('Halle 210x58, 50 Tore Nord, 50 Tore Süd, Wareneingang im Westen, Warenausgang im Osten, ein Stellplatz je Tor 12x3, 6 m Mittelgang')!;
+    expect(p.zonen).toEqual([
+      { name: 'Wareneingang', side: 'west' },
+      { name: 'Warenausgang', side: 'east' },
+    ]);
+    const { objects } = paramsToLayout(validateParams(p).filled);
+    const zonen = objects.filter((o) => o.type === 'bereich');
+    expect(zonen.map((z) => z.name)).toEqual(['Wareneingang', 'Warenausgang']);
+    // West-Zone links, Ost-Zone rechts.
+    const we = zonen.find((z) => z.name === 'Wareneingang')!;
+    const wa = zonen.find((z) => z.name === 'Warenausgang')!;
+    expect(we.x).toBe(0);
+    expect(wa.x).toBeCloseTo(105, 0); // width/2
+    // Stellplätze je Tor bleiben trotz Zonen erhalten.
+    expect(objects.filter((o) => o.type === 'stellplatz')).toHaveLength(100);
+  });
+
+  it('Zonen liegen als Hintergrund VOR den Toren (unshift → zuerst gezeichnet)', () => {
+    const p = parseCanonical('Halle 210x58, 50 Tore Nord, 50 Tore Süd, Wareneingang West, Warenausgang Ost, ein Stellplatz je Tor 12x3')!;
+    const { objects } = paramsToLayout(validateParams(p).filled);
+    expect(objects[0].type).toBe('bereich'); // Zone zuerst → hinter allem
+    expect(objects[0].name).toBe('Wareneingang');
+  });
+
   it('Grid-Modus bleibt erhalten, wenn NICHT je Tor', () => {
     const { filled } = validateParams({
       action: 'createHall', hall: { lengthM: 120, widthM: 50 },

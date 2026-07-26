@@ -23,7 +23,8 @@ export interface LayoutParams {
   action: 'createHall';
   hall: { lengthM: number; widthM: number; name?: string };
   gates?: GateGroup[];      // mehrere Torreihen möglich
-  bereiche?: number;        // Anzahl Lagerbereiche im Innenraum
+  bereiche?: number;        // Anzahl (unbenannter) Lagerbereiche im Innenraum
+  zonen?: { name: string; side?: GateSide }[]; // benannte Zonen (Wareneingang West, Warenausgang Ost …)
   stellplaetze?: number;    // Anzahl Stellplätze im Innenraum (Grid-Modus)
   stellplaetzeJeTor?: boolean; // Stellplatz VOR JEDEM Tor (Cross-Dock-Vorfeld) statt Grid
   stellplatzLaengeM?: number;  // Stellplatz-Tiefe in die Halle (Default 12)
@@ -117,7 +118,13 @@ export function validateParams(params: LayoutParams): ValidationResult {
   // Innenraum-Objekte (Bereiche/Stellplätze)
   const bereiche = params.bereiche != null ? Math.max(0, Math.round(params.bereiche)) : 0;
   const stellplaetze = params.stellplaetze != null ? Math.max(0, Math.round(params.stellplaetze)) : 0;
-  if (bereiche > 0) filled.bereiche = bereiche;
+  // Benannte Zonen (Wareneingang West etc.) haben Vorrang vor der reinen Bereich-Anzahl.
+  const validSides: GateSide[] = ['north', 'south', 'east', 'west'];
+  const zonen = (params.zonen ?? [])
+    .filter((z) => z && typeof z.name === 'string' && z.name.trim())
+    .map((z) => ({ name: z.name.trim(), side: validSides.includes(z.side as GateSide) ? z.side : undefined }));
+  if (zonen.length > 0) filled.zonen = zonen;
+  else if (bereiche > 0) filled.bereiche = bereiche;
 
   // Zentraler Längsgang (Mittelgang) — Breite übernehmen, sonst Default.
   const mittelgangM = params.mittelgangM != null && params.mittelgangM > 0 ? toM(params.mittelgangM) : DEFAULT_MITTELGANG_M;
@@ -164,7 +171,7 @@ export function validateParams(params: LayoutParams): ValidationResult {
   // Cross-Dock-Bereiche sind Bänder — beide brauchen keine Grid-Buchten.
   const gridItems = flaechen.reduce((a, f) => a + f.count, 0)
     + (jeTor ? 0 : stellplaetze)
-    + (jeTor ? 0 : bereiche);
+    + (jeTor || filled.zonen ? 0 : bereiche);
   if (errors.length === 0 && gridItems > 0) {
     const cap = interiorCapacity(lengthM, widthM, filled.mittelgangM! / 2);
     if (gridItems > cap) {
@@ -319,11 +326,16 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
   const aisleHHalf = mittelgangM / 2;
   const jeTor = !!filled.stellplaetzeJeTor && (filled.gates?.length ?? 0) > 0;
 
-  // Cross-Dock-Modus: Bereiche als Vorfeld-Bänder + ein Stellplatz VOR JEDEM Tor.
+  // Benannte Zonen (Wareneingang West / Warenausgang Ost …) als Hintergrund-Bereiche.
+  // Werden am Ende VOR alles andere gezeichnet (unshift) → verdecken Tore nicht.
+  const zoneObjs: Omit<TopisObject, 'id'>[] = [];
+  if (filled.zonen && filled.zonen.length > 0) buildZonen(zoneObjs, width, height, filled.zonen);
+
+  // Cross-Dock-Modus: ein Stellplatz VOR JEDEM Tor (+ Bereich-Bänder falls keine Zonen).
   if (jeTor) {
     const tore = objects.filter((o) => o.type === 'tor');
-    // 1) Bereiche als Halbband-Zonen (hinter den Stellplätzen gezeichnet).
-    if ((filled.bereiche ?? 0) > 0) buildBereichBaender(objects, tore, width, height, aisleHHalf, filled.bereiche!);
+    // 1) Bereiche als Halbband-Zonen — nur wenn keine benannten Zonen gesetzt sind.
+    if (!filled.zonen && (filled.bereiche ?? 0) > 0) buildBereichBaender(objects, tore, width, height, aisleHHalf, filled.bereiche!);
     // 2) Ein Stellplatz vor jedem Tor (Torrelation via meta.torNummer).
     const laenge = filled.stellplatzLaengeM ?? DEFAULT_STELLPLATZ_LAENGE_M;
     const breite = filled.stellplatzBreiteM ?? DEFAULT_STELLPLATZ_BREITE_M;
@@ -342,7 +354,7 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
   // Buchten liegen zwischen den Gängen (kreuzungsfrei); Reihenfolge = Belegung.
   const specs: { type: ObjectType; label: string }[] = [];
   if (!jeTor) {
-    for (let i = 0; i < (filled.bereiche ?? 0); i++) specs.push({ type: 'bereich', label: 'Bereich' });
+    if (!filled.zonen) for (let i = 0; i < (filled.bereiche ?? 0); i++) specs.push({ type: 'bereich', label: 'Bereich' });
     for (let i = 0; i < (filled.stellplaetze ?? 0); i++) specs.push({ type: 'stellplatz', label: 'Stellplatz' });
   }
   for (const grp of filled.flaechen ?? []) {
@@ -366,7 +378,37 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
     }
   }
 
+  // Benannte Zonen als Hintergrund voranstellen (werden zuerst gezeichnet).
+  if (zoneObjs.length > 0) objects.unshift(...zoneObjs);
+
   return { hall: { width, height, name }, objects };
+}
+
+// Benannte Zonen (Wareneingang West etc.) als Bereich-Rechtecke nach Himmelsrichtung.
+// Zonen mit Seite belegen die entsprechende Hallenhälfte; Zonen ohne Seite werden als
+// gleich breite Spalten über die volle Halle verteilt.
+function buildZonen(
+  out: Omit<TopisObject, 'id'>[], width: number, height: number,
+  zonen: { name: string; side?: GateSide }[],
+): void {
+  const regionForSide = (side: GateSide) => {
+    switch (side) {
+      case 'west': return { x: 0, y: 0, w: width / 2, h: height };
+      case 'east': return { x: width / 2, y: 0, w: width / 2, h: height };
+      case 'north': return { x: 0, y: 0, w: width, h: height / 2 };
+      case 'south': return { x: 0, y: height / 2, w: width, h: height / 2 };
+    }
+  };
+  const sided = zonen.filter((z) => z.side);
+  const unsided = zonen.filter((z) => !z.side);
+  for (const z of sided) {
+    const r = regionForSide(z.side!)!;
+    out.push({ type: 'bereich', x: r.x, y: r.y, width: r.w, height: r.h, name: z.name });
+  }
+  unsided.forEach((z, i) => {
+    const cw = width / unsided.length;
+    out.push({ type: 'bereich', x: i * cw, y: 0, width: cw, height, name: z.name });
+  });
 }
 
 // Ein Stellplatz vor einem Tor: Breite entlang der Wand, Länge in die Halle,
@@ -525,10 +567,21 @@ export function parseCanonical(input: string): LayoutParams | null {
   }
   if (gates.length > 0) params.gates = gates;
 
+  // Benannte Zonen (Wareneingang West / Warenausgang Ost …) — Seite aus dem Umfeld ableiten.
+  const zonen: { name: string; side?: GateSide }[] = [];
+  for (const [re, label] of [[/wareneingang/, 'Wareneingang'], [/warenausgang/, 'Warenausgang']] as [RegExp, string][]) {
+    const m = low.match(re);
+    if (m) {
+      const after = low.slice(m.index ?? 0, (m.index ?? 0) + 30);
+      zonen.push({ name: label, side: sideOf(after) ?? undefined });
+    }
+  }
+  if (zonen.length > 0) params.zonen = zonen;
+
   // Bereiche / Stellplätze (Anzahl) — „6 Bereiche", „20 Lagerplätze/Stellplätze".
   const bm = low.match(/(\d+)\s*(?:lager)?bereich/);
   if (bm) params.bereiche = parseInt(bm[1], 10);
-  else if (/bereich/.test(low)) ignored.push('Bereiche (Anzahl unklar — bitte angeben)');
+  else if (zonen.length === 0 && /bereich/.test(low)) ignored.push('Bereiche (Anzahl unklar — bitte angeben)');
   // „je Tor" / „pro Tor" / „vor jedem Tor" → ein Stellplatz vor jedem Tor (Cross-Dock).
   const jeTor = /\b(?:je|pro)\s*tor\b|vor\s*jedem\s*tor|an\s*jedem\s*tor|je\s*dock/.test(low);
   if (jeTor) params.stellplaetzeJeTor = true;

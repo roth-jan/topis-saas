@@ -79,7 +79,7 @@ export function KiTextbuilder() {
   // Angefordert vs. tatsächlich platziert (Ehrlichkeit statt stiller Verlust).
   const torCount = g ? (g.gates ?? []).reduce((a, gr) => a + gr.count, 0) : 0;
   const requested = g
-    ? torCount + (g.bereiche ?? 0)
+    ? torCount + (g.zonen?.length ?? g.bereiche ?? 0)
       + (g.stellplaetzeJeTor ? torCount : (g.stellplaetze ?? 0))
       + (g.flaechen ?? []).reduce((a, f) => a + f.count, 0)
     : 0;
@@ -130,8 +130,11 @@ export function KiTextbuilder() {
             {g.stellplaetzeJeTor && (
               <span>📥 Stellplatz vor jedem Tor · <b>{g.stellplatzLaengeM ?? 12} × {g.stellplatzBreiteM ?? 3} m</b></span>
             )}
-            {(g.bereiche || (g.stellplaetze && !g.stellplaetzeJeTor)) && (
-              <span>📦 {[g.bereiche ? `${g.bereiche} Bereiche` : null, (g.stellplaetze && !g.stellplaetzeJeTor) ? `${g.stellplaetze} Stellplätze` : null].filter(Boolean).join(' · ')}</span>
+            {g.zonen && g.zonen.length > 0 && (
+              <span>🏷️ {g.zonen.map((z) => z.side ? `${z.name} (${SIDE_LABEL[z.side]})` : z.name).join(' · ')}</span>
+            )}
+            {((!g.zonen && g.bereiche) || (g.stellplaetze && !g.stellplaetzeJeTor)) && (
+              <span>📦 {[(!g.zonen && g.bereiche) ? `${g.bereiche} Bereiche` : null, (g.stellplaetze && !g.stellplaetzeJeTor) ? `${g.stellplaetze} Stellplätze` : null].filter(Boolean).join(' · ')}</span>
             )}
             <span>🛣️ Mittelgang <b>{g.mittelgangM ?? 4} m</b></span>
             {g.stellplatzLaengeM && !g.stellplaetzeJeTor && g.stellplaetze ? (
