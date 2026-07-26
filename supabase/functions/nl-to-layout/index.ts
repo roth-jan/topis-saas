@@ -47,6 +47,20 @@ const PARAMS_SCHEMA = {
     },
     bereiche: { type: 'integer', description: 'Anzahl Lagerbereiche im Innenraum' },
     stellplaetze: { type: 'integer', description: 'Anzahl Stellplätze im Innenraum' },
+    flaechen: {
+      type: 'array',
+      description: 'Sonderflächen im Innenraum (Anzahl je Art)',
+      items: {
+        type: 'object',
+        properties: {
+          art: { type: 'string', enum: ['kommissionierflaeche', 'av_platz', 'uz_platz', 'wertverschlag', 'palettenlager', 'sperrplatz', 'klaerplatz', 'gefahrgut', 'ladestation', 'hallenterminal'] },
+          count: { type: 'integer' },
+        },
+        required: ['art', 'count'],
+      },
+    },
+    nummerierung: { type: 'string', enum: ['fortlaufend', 'seite', 'alpha'], description: 'Tor-Nummerierung: fortlaufend (1,2,3), seite (N1,S1…), alpha (A,B,C)' },
+    startNr: { type: 'integer', description: 'Startwert bei fortlaufender Nummerierung' },
     unit: { type: 'string', enum: ['m', 'ft'] },
     unresolved: { type: 'array', items: { type: 'string' } },
     ignored: { type: 'array', items: { type: 'string' } },
@@ -59,9 +73,12 @@ const SYSTEM = [
   'Logistik-Hallenlayout und rufst dafür die Funktion set_layout_params auf.',
   'REGELN: Gib NIEMALS Koordinaten/Geometrie aus, nur Parameter (Maße, Toranzahl, Seite, Abstand).',
   'Erfinde keine Werte; Unklares → "unresolved". Lagerbereiche → "bereiche" (Anzahl),',
-  'Stellplätze → "stellplaetze" (Anzahl). Alles Übrige, was das Schema nicht abbildet',
-  '(Regale, Gänge/Fahrgänge, Wege, Sicherheitsabstände, Büros …) NICHT ignorieren,',
-  'sondern in "ignored" auflisten. Mehrere Torreihen/Seiten erlaubt.',
+  'Stellplätze → "stellplaetze" (Anzahl). Sonderflächen (Kommissionierfläche, AV/Annahme-',
+  'verweigerung, ÜZ/Überzähligkeit, Wertverschlag/Käfig, Palettenlager, Sperrplatz, Klärplatz,',
+  'Gefahrgut, Ladestation, Hallenterminal) → "flaechen" [{art,count}]. Tor-Nummerierung →',
+  '"nummerierung" (fortlaufend/seite/alpha) + ggf. "startNr". Alles Übrige, was das Schema',
+  'nicht abbildet (Regale, Gänge/Fahrgänge, Wege, Sicherheitsabstände, Büros …) NICHT',
+  'ignorieren, sondern in "ignored" auflisten. Mehrere Torreihen/Seiten erlaubt.',
   'Das erste genannte Maß ist die Halle; weitere Maße gehören zu "ignored".',
 ].join(' ');
 

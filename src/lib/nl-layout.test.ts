@@ -161,6 +161,46 @@ describe('nl-layout — paramsToLayout (Geometrie exakt)', () => {
     }
   });
 
+  it('#2: Sonderflächen — Parser + Generierung (Typen + Namen)', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord, 3 Kommissionierflächen, 4 Wertverschläge, 2 AV-Plätze')!;
+    expect(p.flaechen).toEqual(expect.arrayContaining([
+      { art: 'kommissionierflaeche', count: 3 },
+      { art: 'wertverschlag', count: 4 },
+      { art: 'av_platz', count: 2 },
+    ]));
+    const { objects } = paramsToLayout(validateParams(p).filled);
+    expect(objects.filter((o) => o.type === 'kommissionierflaeche').length).toBe(3);
+    expect(objects.filter((o) => o.type === 'wertverschlag').length).toBe(4);
+    expect(objects.filter((o) => o.type === 'av_platz').length).toBe(2);
+    expect(objects.find((o) => o.type === 'wertverschlag')?.name).toBe('Wertverschlag 1');
+  });
+
+  it('#3: Nummerierungsschema seite (N1,S1) / alpha (A,B,C) / startNr', () => {
+    const seite = paramsToLayout(validateParams({
+      action: 'createHall', hall: { lengthM: 100, widthM: 50 },
+      gates: [{ count: 3, side: 'north', spacingM: 6 }, { count: 2, side: 'south', spacingM: 6 }],
+      nummerierung: 'seite',
+    }).filled).objects.filter((o) => o.type === 'tor').map((o) => o.name);
+    expect(seite).toEqual(['N1', 'N2', 'N3', 'S1', 'S2']);
+
+    const alpha = paramsToLayout(validateParams({
+      action: 'createHall', hall: { lengthM: 100, widthM: 50 },
+      gates: [{ count: 3, side: 'north', spacingM: 6 }], nummerierung: 'alpha',
+    }).filled).objects.map((o) => o.name);
+    expect(alpha).toEqual(['A', 'B', 'C']);
+
+    const start = paramsToLayout(validateParams({
+      action: 'createHall', hall: { lengthM: 100, widthM: 50 },
+      gates: [{ count: 2, side: 'north', spacingM: 6 }], startNr: 10,
+    }).filled).objects.map((o) => o.name);
+    expect(start).toEqual(['Tor 10', 'Tor 11']);
+  });
+
+  it('#3: Parser erkennt „nach Seite" + „ab Nummer 10"', () => {
+    expect(parseCanonical('Halle 100x50, 10 Tore Nord, nach Seite nummeriert')!.nummerierung).toBe('seite');
+    expect(parseCanonical('Halle 100x50, 10 Tore Nord, ab Nummer 10')!.startNr).toBe(10);
+  });
+
   it('parseCanonical erkennt Bereiche + Stellplätze (nicht mehr „ignoriert")', () => {
     const p = parseCanonical('Halle 120x50, 10 Tore Nord, 6 Bereiche, 20 Stellplätze')!;
     expect(p.bereiche).toBe(6);

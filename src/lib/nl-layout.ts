@@ -25,6 +25,9 @@ export interface LayoutParams {
   gates?: GateGroup[];      // mehrere Torreihen möglich
   bereiche?: number;        // Anzahl Lagerbereiche im Innenraum
   stellplaetze?: number;    // Anzahl Stellplätze im Innenraum
+  flaechen?: { art: string; count: number }[]; // Sonderflächen (AV/ÜZ/Wertverschlag/…)
+  nummerierung?: 'fortlaufend' | 'seite' | 'alpha'; // Tor-Nummerierungsschema
+  startNr?: number;         // Startwert bei fortlaufender Nummerierung
   unit?: 'm' | 'ft';
   unresolved?: string[];    // Felder, die nicht sicher ableitbar waren
   ignored?: string[];       // erkannte, aber (noch) nicht unterstützte Angaben
@@ -46,6 +49,14 @@ const DEFAULT_SPACING_M = TOR_W + 1;       // 4.5
 const SPACING_MIN_WARN = 2.0;
 const SPACING_MAX_WARN = 20.0;
 const SIDE_LABEL: Record<GateSide, string> = { north: 'Nord', south: 'Süd', east: 'Ost', west: 'West' };
+const SIDE_LETTER: Record<GateSide, string> = { north: 'N', south: 'S', east: 'O', west: 'W' };
+
+// 1→A, 26→Z, 27→AA … (für alphabetisches Nummerierungsschema)
+function numToAlpha(n: number): string {
+  let s = '';
+  while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+  return s || 'A';
+}
 
 export function validateParams(params: LayoutParams): ValidationResult {
   const errors: string[] = [];
@@ -104,10 +115,22 @@ export function validateParams(params: LayoutParams): ValidationResult {
   const stellplaetze = params.stellplaetze != null ? Math.max(0, Math.round(params.stellplaetze)) : 0;
   if (bereiche > 0) filled.bereiche = bereiche;
   if (stellplaetze > 0) filled.stellplaetze = stellplaetze;
-  if (errors.length === 0 && (bereiche + stellplaetze) > 0) {
+  const flaechen = (params.flaechen ?? [])
+    .filter((f) => FLAECHEN_BY_ART.has(f.art))
+    .map((f) => ({ art: f.art, count: Math.max(0, Math.round(f.count)) }))
+    .filter((f) => f.count > 0);
+  if (flaechen.length > 0) filled.flaechen = flaechen;
+  // Robustheit: das LLM legt nummerierung/startNr manchmal in gates[] statt oben ab.
+  const gAny = (params.gates ?? []) as Array<GateGroup & { nummerierung?: LayoutParams['nummerierung']; startNr?: number }>;
+  const nummerierung = params.nummerierung ?? gAny.find((g) => g.nummerierung)?.nummerierung;
+  const startNr = params.startNr ?? gAny.find((g) => g.startNr != null)?.startNr;
+  if (nummerierung) filled.nummerierung = nummerierung;
+  if (startNr != null && startNr >= 1) filled.startNr = Math.round(startNr);
+  const interiorTotal = bereiche + stellplaetze + flaechen.reduce((a, f) => a + f.count, 0);
+  if (errors.length === 0 && interiorTotal > 0) {
     const cap = interiorCapacity(lengthM, widthM);
-    if (bereiche + stellplaetze > cap) {
-      warnings.push(`Nur ~${cap} Innenraum-Felder passen — ${bereiche + stellplaetze - cap} Bereiche/Stellplätze werden nicht platziert.`);
+    if (interiorTotal > cap) {
+      warnings.push(`Nur ~${cap} Innenraum-Felder passen — ${interiorTotal - cap} Objekte werden nicht platziert.`);
     }
   }
 
@@ -174,6 +197,22 @@ export function interiorCapacity(width: number, height: number): number {
   return interiorCells(width, height).length;
 }
 
+// Sonderflächen, die im Innenraum-Grid platzierbar sind (Typ existiert in OBJECT_DEFAULTS
+// + OBJECT_COLORS). Rampen NICHT hier — die gehören an die Außenwand (spätere Ausbaustufe).
+export const FLAECHEN: { art: string; type: ObjectType; label: string; countRe: RegExp }[] = [
+  { art: 'kommissionierflaeche', type: 'kommissionierflaeche', label: 'Kommissionierfläche', countRe: /(\d+)\s*kommissionier/ },
+  { art: 'av_platz', type: 'av_platz', label: 'AV-Platz', countRe: /(\d+)\s*(?:av[- ]?pl|annahmeverweiger)/ },
+  { art: 'uz_platz', type: 'uz_platz', label: 'ÜZ-Platz', countRe: /(\d+)\s*(?:üz[- ]?pl|ueberz|überz)/ },
+  { art: 'wertverschlag', type: 'wertverschlag', label: 'Wertverschlag', countRe: /(\d+)\s*(?:wertverschl[aä]g|k[äae]fig)/ },
+  { art: 'palettenlager', type: 'palettenlager', label: 'Palettenlager', countRe: /(\d+)\s*palettenl[aä]ger/ },
+  { art: 'sperrplatz', type: 'sperrplatz', label: 'Sperrplatz', countRe: /(\d+)\s*sperr/ },
+  { art: 'klaerplatz', type: 'klaerplatz', label: 'Klärplatz', countRe: /(\d+)\s*kl[äae]r/ },
+  { art: 'gefahrgut', type: 'gefahrgut', label: 'Gefahrgut-Platz', countRe: /(\d+)\s*gefahrgut/ },
+  { art: 'ladestation', type: 'ladestation', label: 'Ladestation', countRe: /(\d+)\s*ladest/ },
+  { art: 'hallenterminal', type: 'hallenterminal', label: 'Hallenterminal', countRe: /(\d+)\s*(?:hallenterminal|terminal)/ },
+];
+const FLAECHEN_BY_ART = new Map(FLAECHEN.map((f) => [f.art, f]));
+
 export interface GeneratedLayout {
   hall: { width: number; height: number; name: string };
   objects: Omit<TopisObject, 'id'>[];
@@ -189,6 +228,9 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
   const height = filled.hall.widthM;
   const name = filled.hall.name ?? 'Neue Halle';
   const objects: Omit<TopisObject, 'id'>[] = [];
+  const scheme = filled.nummerierung ?? 'fortlaufend';
+  const startNr = filled.startNr ?? 1;
+  const sideCount: Record<string, number> = {};
   let nr = 0;
 
   for (const grp of filled.gates ?? []) {
@@ -208,10 +250,19 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
         x = grp.side === 'west' ? 0 : width - w;
       }
       nr++;
+      let torName: string;
+      if (scheme === 'seite') {
+        sideCount[grp.side] = (sideCount[grp.side] || 0) + 1;
+        torName = `${SIDE_LETTER[grp.side]}${sideCount[grp.side]}`;
+      } else if (scheme === 'alpha') {
+        torName = numToAlpha(startNr - 1 + nr);
+      } else {
+        torName = `Tor ${startNr - 1 + nr}`;
+      }
       objects.push({
         type: 'tor' as ObjectType,
         x, y, width: w, height: h,
-        name: `Tor ${nr}`,
+        name: torName,
         side: grp.side,
         torNummer: nr,
         tags: ['messpunkt'],
@@ -220,22 +271,27 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
     }
   }
 
-  // Innenraum: Bereiche zuerst, dann Stellplätze in ein gemeinsames Grid (Mittelgang frei).
-  const bCount = filled.bereiche ?? 0;
-  const sCount = filled.stellplaetze ?? 0;
-  if (bCount + sCount > 0) {
+  // Innenraum: Bereiche → Stellplätze → Sonderflächen in ein gemeinsames, kreuzungsfreies
+  // Grid (Buchten zwischen den Gängen). Reihenfolge bestimmt die Belegung der Buchten.
+  const specs: { type: ObjectType; label: string }[] = [];
+  for (let i = 0; i < (filled.bereiche ?? 0); i++) specs.push({ type: 'bereich', label: 'Bereich' });
+  for (let i = 0; i < (filled.stellplaetze ?? 0); i++) specs.push({ type: 'stellplatz', label: 'Stellplatz' });
+  for (const grp of filled.flaechen ?? []) {
+    const def = FLAECHEN_BY_ART.get(grp.art);
+    if (!def) continue;
+    for (let i = 0; i < grp.count; i++) specs.push({ type: def.type, label: def.label });
+  }
+  if (specs.length > 0) {
     const cells = interiorCells(width, height);
-    let bi = 0, si = 0;
-    for (let i = 0; i < cells.length && i < bCount + sCount; i++) {
+    const counters: Record<string, number> = {};
+    for (let i = 0; i < cells.length && i < specs.length; i++) {
+      const s = specs[i];
       const cell = cells[i];
-      if (i < bCount) {
-        bi++;
-        objects.push({ type: 'bereich' as ObjectType, x: cell.x, y: cell.y, width: cell.w, height: cell.h, name: `Bereich ${bi}` });
-      } else {
-        si++;
-        const w = Math.min(cell.w, OBJECT_DEFAULTS.stellplatz.width);
-        objects.push({ type: 'stellplatz' as ObjectType, x: cell.x, y: cell.y, width: w, height: Math.min(cell.h, OBJECT_DEFAULTS.stellplatz.height), name: `Stellplatz ${si}` });
-      }
+      counters[s.type] = (counters[s.type] || 0) + 1;
+      const def = OBJECT_DEFAULTS[s.type];
+      const w = s.type === 'bereich' ? cell.w : Math.min(cell.w, def?.width ?? cell.w);
+      const h = s.type === 'bereich' ? cell.h : Math.min(cell.h, def?.height ?? cell.h);
+      objects.push({ type: s.type, x: cell.x, y: cell.y, width: w, height: h, name: `${s.label} ${counters[s.type]}` });
     }
   }
 
@@ -328,6 +384,20 @@ export function parseCanonical(input: string): LayoutParams | null {
   const sm = low.match(/(\d+)\s*(?:stell|lager)pl(?:a|ä)tz/);
   if (sm) params.stellplaetze = parseInt(sm[1], 10);
   else if (/stellpl(?:a|ä)tz/.test(low)) ignored.push('Stellplätze (Anzahl unklar — bitte angeben)');
+
+  // Sonderflächen (AV/ÜZ/Wertverschlag/Kommissionier/…)
+  const flaechen: { art: string; count: number }[] = [];
+  for (const f of FLAECHEN) {
+    const m = low.match(f.countRe);
+    if (m) flaechen.push({ art: f.art, count: parseInt(m[1], 10) });
+  }
+  if (flaechen.length > 0) params.flaechen = flaechen;
+
+  // Tor-Nummerierungsschema
+  if (/nach\s*seite|seitenweise|pro\s*seite|seiten(?:weise)?nummer/.test(low)) params.nummerierung = 'seite';
+  else if (/alphabet|buchstaben|a\s*,\s*b\s*,\s*c/.test(low)) params.nummerierung = 'alpha';
+  const startM = low.match(/(?:ab|start(?:wert|nummer)?)\s*(?:nr\.?|nummer)?\s*(\d+)/);
+  if (startM) params.startNr = parseInt(startM[1], 10);
 
   // Nicht unterstützte Elemente offen melden.
   for (const [re, label] of UNSUPPORTED) {

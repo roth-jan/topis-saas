@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTopisStore } from '@/lib/store';
-import { validateParams, paramsToLayout, type ValidationResult } from '@/lib/nl-layout';
+import { validateParams, paramsToLayout, FLAECHEN, type ValidationResult } from '@/lib/nl-layout';
 import { resolveLayoutParams, llmVerfuegbar } from '@/lib/nl-llm';
 import { generateBasicGangNet } from '@/lib/pathfinding';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,8 @@ import { Sparkles, X, ArrowRight, AlertTriangle, CircleAlert } from 'lucide-reac
 import { toast } from 'sonner';
 
 const SIDE_LABEL: Record<string, string> = { north: 'Nord', south: 'Süd', east: 'Ost', west: 'West' };
+const FLAECHE_LABEL: Record<string, string> = Object.fromEntries(FLAECHEN.map((f) => [f.art, f.label]));
+const NUM_LABEL: Record<string, string> = { seite: 'nach Seite (N1, S1 …)', alpha: 'A, B, C …', fortlaufend: 'fortlaufend' };
 
 export function KiTextbuilder() {
   const open = useTopisStore((s) => s.nlBuilderOpen);
@@ -120,6 +122,12 @@ export function KiTextbuilder() {
               : <span className="text-muted-foreground">keine Tore erkannt</span>}
             {(g.bereiche || g.stellplaetze) && (
               <span>📦 {[g.bereiche ? `${g.bereiche} Bereiche` : null, g.stellplaetze ? `${g.stellplaetze} Stellplätze` : null].filter(Boolean).join(' · ')}</span>
+            )}
+            {g.flaechen && g.flaechen.length > 0 && (
+              <span>🔧 {g.flaechen.map((f) => `${f.count} ${FLAECHE_LABEL[f.art] ?? f.art}`).join(' · ')}</span>
+            )}
+            {g.nummerierung && g.nummerierung !== 'fortlaufend' && (
+              <span className="text-muted-foreground text-xs">Tor-Nummerierung: {NUM_LABEL[g.nummerierung]}</span>
             )}
           </div>
 
