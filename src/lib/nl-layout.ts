@@ -23,6 +23,8 @@ export interface LayoutParams {
   action: 'createHall';
   hall: { lengthM: number; widthM: number; name?: string };
   gates?: GateGroup[];      // mehrere Torreihen möglich
+  bereiche?: number;        // Anzahl Lagerbereiche im Innenraum
+  stellplaetze?: number;    // Anzahl Stellplätze im Innenraum
   unit?: 'm' | 'ft';
   unresolved?: string[];    // Felder, die nicht sicher ableitbar waren
   ignored?: string[];       // erkannte, aber (noch) nicht unterstützte Angaben
@@ -70,7 +72,6 @@ export function validateParams(params: LayoutParams): ValidationResult {
     const count = Math.round(g.count);
     const side = g.side;
     const spacingM = g.spacingM != null ? toM(g.spacingM) : DEFAULT_SPACING_M;
-    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : DEFAULT_FIRST_OFFSET_M;
 
     if (!Number.isFinite(count) || count < 1) { errors.push('Toranzahl fehlt oder ist ungültig.'); continue; }
     if (!['north', 'south', 'east', 'west'].includes(side)) { errors.push('Tor-Seite (Nord/Süd/Ost/West) fehlt oder ist ungültig.'); continue; }
@@ -78,7 +79,11 @@ export function validateParams(params: LayoutParams): ValidationResult {
 
     const horiz = side === 'north' || side === 'south';
     const wallLen = horiz ? lengthM : widthM;
-    const requiredSpan = firstOffsetM + (count - 1) * spacingM + TOR_W / 2;
+    // Torreihe standardmäßig ZENTRIEREN (gleicher Randabstand links/rechts) —
+    // außer der Nutzer gibt explizit einen Anfangsabstand vor.
+    const rowLen = (count - 1) * spacingM;
+    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(TOR_W / 2, (wallLen - rowLen) / 2);
+    const requiredSpan = firstOffsetM + rowLen + TOR_W / 2;
     if (requiredSpan > wallLen + 0.01) {
       errors.push(
         `${count} Tore (${SIDE_LABEL[side]}) mit ${spacingM.toFixed(2)} m Abstand brauchen ~${requiredSpan.toFixed(0)} m, ` +
@@ -94,7 +99,51 @@ export function validateParams(params: LayoutParams): ValidationResult {
   }
   if (filledGates.length > 0) filled.gates = filledGates;
 
+  // Innenraum-Objekte (Bereiche/Stellplätze)
+  const bereiche = params.bereiche != null ? Math.max(0, Math.round(params.bereiche)) : 0;
+  const stellplaetze = params.stellplaetze != null ? Math.max(0, Math.round(params.stellplaetze)) : 0;
+  if (bereiche > 0) filled.bereiche = bereiche;
+  if (stellplaetze > 0) filled.stellplaetze = stellplaetze;
+  if (errors.length === 0 && (bereiche + stellplaetze) > 0) {
+    const cap = interiorCapacity(lengthM, widthM);
+    if (bereiche + stellplaetze > cap) {
+      warnings.push(`Nur ~${cap} Innenraum-Felder passen — ${bereiche + stellplaetze - cap} Bereiche/Stellplätze werden nicht platziert.`);
+    }
+  }
+
   return { ok: errors.length === 0, errors, warnings, filled };
+}
+
+// Interior-Grid: gleichmäßige Felder im Innenraum, ober- und unterhalb eines zentralen
+// Längsgangs (bleibt frei). Wird für Bereiche + Stellplätze genutzt.
+const INT_MARGIN = 5;      // Abstand zu den Wänden
+const INT_AISLE_H = 6;     // Höhe des freien Mittelgangs
+const INT_GAP = 2;
+const INT_CELL_H = 8;
+
+function interiorCells(width: number, height: number): { x: number; y: number; w: number; h: number }[] {
+  const x0 = INT_MARGIN, x1 = width - INT_MARGIN;
+  if (x1 - x0 < 6 || height < 2 * INT_MARGIN + INT_CELL_H) return [];
+  const cols = Math.min(6, Math.max(1, Math.round((x1 - x0) / 18)));
+  const cellW = (x1 - x0 - (cols - 1) * INT_GAP) / cols;
+  const aisleY = height / 2;
+  const bands = [
+    { y0: INT_MARGIN, y1: aisleY - INT_AISLE_H / 2 },
+    { y0: aisleY + INT_AISLE_H / 2, y1: height - INT_MARGIN },
+  ];
+  const cells: { x: number; y: number; w: number; h: number }[] = [];
+  for (const b of bands) {
+    const rows = Math.floor((b.y1 - b.y0 + INT_GAP) / (INT_CELL_H + INT_GAP));
+    for (let r = 0; r < rows; r++) {
+      const y = b.y0 + r * (INT_CELL_H + INT_GAP);
+      for (let c = 0; c < cols; c++) cells.push({ x: x0 + c * (cellW + INT_GAP), y, w: cellW, h: INT_CELL_H });
+    }
+  }
+  return cells;
+}
+
+export function interiorCapacity(width: number, height: number): number {
+  return interiorCells(width, height).length;
 }
 
 export interface GeneratedLayout {
@@ -143,6 +192,25 @@ export function paramsToLayout(filled: LayoutParams): GeneratedLayout {
     }
   }
 
+  // Innenraum: Bereiche zuerst, dann Stellplätze in ein gemeinsames Grid (Mittelgang frei).
+  const bCount = filled.bereiche ?? 0;
+  const sCount = filled.stellplaetze ?? 0;
+  if (bCount + sCount > 0) {
+    const cells = interiorCells(width, height);
+    let bi = 0, si = 0;
+    for (let i = 0; i < cells.length && i < bCount + sCount; i++) {
+      const cell = cells[i];
+      if (i < bCount) {
+        bi++;
+        objects.push({ type: 'bereich' as ObjectType, x: cell.x, y: cell.y, width: cell.w, height: cell.h, name: `Bereich ${bi}` });
+      } else {
+        si++;
+        const w = Math.min(cell.w, OBJECT_DEFAULTS.stellplatz.width);
+        objects.push({ type: 'stellplatz' as ObjectType, x: cell.x, y: cell.y, width: w, height: Math.min(cell.h, OBJECT_DEFAULTS.stellplatz.height), name: `Stellplatz ${si}` });
+      }
+    }
+  }
+
   return { hall: { width, height, name }, objects };
 }
 
@@ -155,10 +223,9 @@ const SIDE_KEYWORDS: [RegExp, GateSide][] = [
   [/\bwest(en)?\b/, 'west'],
 ];
 
-// Nicht unterstützte Elemente → werden offen gemeldet statt still geschluckt.
+// Nicht (mehr) unterstützte Elemente → werden offen gemeldet statt still geschluckt.
+// (Stellplätze + Bereiche werden inzwischen gebaut → nicht mehr hier.)
 const UNSUPPORTED: [RegExp, string][] = [
-  [/stellpl(a|ä)tz/, 'Stellplätze'],
-  [/bereich/, 'Bereiche'],
   [/regal/, 'Regale'],
   [/(fahr)?g(a|ä)ng/, 'Gänge/Fahrgänge'],
   [/\bweg(e|en)?\b/, 'Wege'],
@@ -225,6 +292,14 @@ export function parseCanonical(input: string): LayoutParams | null {
     }
   }
   if (gates.length > 0) params.gates = gates;
+
+  // Bereiche / Stellplätze (Anzahl) — „6 Bereiche", „20 Lagerplätze/Stellplätze".
+  const bm = low.match(/(\d+)\s*(?:lager)?bereich/);
+  if (bm) params.bereiche = parseInt(bm[1], 10);
+  else if (/bereich/.test(low)) ignored.push('Bereiche (Anzahl unklar — bitte angeben)');
+  const sm = low.match(/(\d+)\s*(?:stell|lager)pl(?:a|ä)tz/);
+  if (sm) params.stellplaetze = parseInt(sm[1], 10);
+  else if (/stellpl(?:a|ä)tz/.test(low)) ignored.push('Stellplätze (Anzahl unklar — bitte angeben)');
 
   // Nicht unterstützte Elemente offen melden.
   for (const [re, label] of UNSUPPORTED) {

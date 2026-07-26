@@ -118,6 +118,9 @@ export function KiTextbuilder() {
                   <span key={i}>🚪 <b>{grp.count}</b> Tore · <b>{SIDE_LABEL[grp.side]}</b> · Abstand <b>{grp.spacingM} m</b></span>
                 ))
               : <span className="text-muted-foreground">keine Tore erkannt</span>}
+            {(g.bereiche || g.stellplaetze) && (
+              <span>📦 {[g.bereiche ? `${g.bereiche} Bereiche` : null, g.stellplaetze ? `${g.stellplaetze} Stellplätze` : null].filter(Boolean).join(' · ')}</span>
+            )}
           </div>
 
           {g.ignored && g.ignored.length > 0 && (

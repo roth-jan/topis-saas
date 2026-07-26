@@ -1222,9 +1222,10 @@ export function Toolbar() {
             variant={nlBuilderOpen ? 'default' : 'outline'}
             className="gap-1 text-xs"
             onClick={() => setNlBuilderOpen(!nlBuilderOpen)}
-            title="Halle per Text bauen"
+            title="Halle per Text bauen (KI)"
+            aria-label="Halle per Text bauen"
           >
-            <Sparkles className="h-3.5 w-3.5" /> KI-Bauen
+            <Sparkles className="h-3.5 w-3.5" /> <span className="hidden xl:inline">KI-Bauen</span>
           </Button>
         </div>
         )}

@@ -12,7 +12,8 @@ describe('nl-layout — validateParams', () => {
     const r = validateParams(p);
     expect(r.ok).toBe(true);
     expect(r.filled.gates?.[0].spacingM).toBe(4.5);
-    expect(r.filled.gates?.[0].firstOffsetM).toBe(1.75);
+    // zentriert: (210 - 19*4.5)/2 = 62.25
+    expect(r.filled.gates?.[0].firstOffsetM).toBeCloseTo(62.25, 2);
   });
 
   it('rechnet Fuß in Meter um', () => {
@@ -90,19 +91,58 @@ describe('nl-layout — parseCanonical', () => {
 });
 
 describe('nl-layout — paramsToLayout (Geometrie exakt)', () => {
-  it('P1: exakter Achsabstand, erstes Tor bündig in der Ecke', () => {
+  it('P1: exakter Achsabstand + zentrierte Reihe (gleicher Randabstand)', () => {
     const { filled } = validateParams({
       action: 'createHall', hall: { lengthM: 210, widthM: 58 },
       gates: [{ count: 4, side: 'north', spacingM: 3.75 }],
     });
     const { objects } = paramsToLayout(filled);
     expect(objects).toHaveLength(4);
-    // linke Kanten: 0, 3.75, 7.5, 11.25 — exakt, kein Clamping-Versatz
     const xs = objects.map((o) => o.x);
-    expect(xs[0]).toBeCloseTo(0, 6);
+    // Abstände exakt 3,75 m
     expect(xs[1] - xs[0]).toBeCloseTo(3.75, 6);
     expect(xs[2] - xs[1]).toBeCloseTo(3.75, 6);
     expect(xs[3] - xs[2]).toBeCloseTo(3.75, 6);
+    // zentriert: linker Randabstand ≈ rechter Randabstand
+    const leftMargin = xs[0];
+    const rightMargin = 210 - (xs[3] + 3.5);
+    expect(leftMargin).toBeGreaterThan(1); // nicht mehr bei 0
+    expect(Math.abs(leftMargin - rightMargin)).toBeLessThan(0.01);
+  });
+
+  it('P1/#2: Torreihe zentriert (nicht bei x=0)', () => {
+    const { filled } = validateParams({
+      action: 'createHall', hall: { lengthM: 100, widthM: 50 },
+      gates: [{ count: 5, side: 'north', spacingM: 5 }],
+    });
+    const { objects } = paramsToLayout(filled);
+    // 5 Tore, rowLen 20, offset (100-20)/2=40 → erstes Tor-Zentrum bei 40, x=38.25
+    expect(objects[0].x).toBeCloseTo(38.25, 2);
+  });
+
+  it('KI baut Bereiche + Stellplätze im Innenraum', () => {
+    const { filled } = validateParams({
+      action: 'createHall', hall: { lengthM: 120, widthM: 50 },
+      gates: [{ count: 6, side: 'north', spacingM: 6 }],
+      bereiche: 4, stellplaetze: 6,
+    });
+    const { objects } = paramsToLayout(filled);
+    const b = objects.filter((o) => o.type === 'bereich');
+    const s = objects.filter((o) => o.type === 'stellplatz');
+    expect(b.length).toBe(4);
+    expect(s.length).toBe(6);
+    // Innenraum: nicht an der Wand (Margin)
+    expect(b.every((o) => o.x >= 5 && o.y >= 5)).toBe(true);
+    expect(b[0].name).toBe('Bereich 1');
+    expect(s[0].name).toBe('Stellplatz 1');
+  });
+
+  it('parseCanonical erkennt Bereiche + Stellplätze (nicht mehr „ignoriert")', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord, 6 Bereiche, 20 Stellplätze')!;
+    expect(p.bereiche).toBe(6);
+    expect(p.stellplaetze).toBe(20);
+    expect((p.ignored ?? []).join(' ')).not.toContain('Bereiche');
+    expect((p.ignored ?? []).join(' ')).not.toContain('Stellplätze');
   });
 
   it('mehrere Torreihen: fortlaufende Nummern, korrekte Seiten', () => {

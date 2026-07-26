@@ -45,6 +45,8 @@ const PARAMS_SCHEMA = {
         required: ['count', 'side'],
       },
     },
+    bereiche: { type: 'integer', description: 'Anzahl Lagerbereiche im Innenraum' },
+    stellplaetze: { type: 'integer', description: 'Anzahl Stellplätze im Innenraum' },
     unit: { type: 'string', enum: ['m', 'ft'] },
     unresolved: { type: 'array', items: { type: 'string' } },
     ignored: { type: 'array', items: { type: 'string' } },
@@ -56,9 +58,10 @@ const SYSTEM = [
   'Du extrahierst aus einer deutschen Beschreibung NUR strukturierte Parameter für ein',
   'Logistik-Hallenlayout und rufst dafür die Funktion set_layout_params auf.',
   'REGELN: Gib NIEMALS Koordinaten/Geometrie aus, nur Parameter (Maße, Toranzahl, Seite, Abstand).',
-  'Erfinde keine Werte; Unklares → "unresolved". Alles, was das Schema nicht abbildet',
-  '(Stellplätze, Bereiche, Regale, Gänge/Fahrgänge, Wege, Sicherheitsabstände, Büros …)',
-  'NICHT ignorieren, sondern in "ignored" auflisten. Mehrere Torreihen/Seiten erlaubt.',
+  'Erfinde keine Werte; Unklares → "unresolved". Lagerbereiche → "bereiche" (Anzahl),',
+  'Stellplätze → "stellplaetze" (Anzahl). Alles Übrige, was das Schema nicht abbildet',
+  '(Regale, Gänge/Fahrgänge, Wege, Sicherheitsabstände, Büros …) NICHT ignorieren,',
+  'sondern in "ignored" auflisten. Mehrere Torreihen/Seiten erlaubt.',
   'Das erste genannte Maß ist die Halle; weitere Maße gehören zu "ignored".',
 ].join(' ');
 

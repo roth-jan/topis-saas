@@ -205,7 +205,7 @@ export function MultiInsertDialog() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 h-8">
           <Copy className="h-3.5 w-3.5" />
-          <span className="hidden lg:inline">Multi-Insert</span>
+          <span className="hidden lg:inline">Serie</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

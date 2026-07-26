@@ -1714,13 +1714,13 @@ export function HallCanvas() {
       ctx.setLineDash([8, 5]);
       ctx.strokeRect(h0.x, h0.y, gw, gh);
       // Ghost-Tore
-      const torColor = OBJECT_COLORS.tor ?? '#3b82f6';
       ctx.globalAlpha = 0.45;
-      ctx.fillStyle = torColor;
-      ctx.strokeStyle = torColor;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 3]);
       for (const o of nlGhost.objects) {
+        const c = OBJECT_COLORS[o.type as keyof typeof OBJECT_COLORS] ?? '#3b82f6';
+        ctx.fillStyle = c;
+        ctx.strokeStyle = c;
         const p = worldToScreen(o.x, o.y);
         ctx.fillRect(p.x, p.y, o.width * SCALE * zoom, o.height * SCALE * zoom);
         ctx.strokeRect(p.x, p.y, o.width * SCALE * zoom, o.height * SCALE * zoom);
