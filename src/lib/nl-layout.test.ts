@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateParams, paramsToLayout, parseCanonical, LayoutParams } from './nl-layout';
+import { validateParams, paramsToLayout, parseCanonical, LayoutParams, AISLE_FRACTIONS, AISLE_HALF, AISLE_H_HALF } from './nl-layout';
 
 describe('nl-layout — validateParams', () => {
   it('akzeptiert gültige Halle + Tor-Reihe, füllt Defaults (Offset = halbe Torbreite)', () => {
@@ -135,6 +135,30 @@ describe('nl-layout — paramsToLayout (Geometrie exakt)', () => {
     expect(b.every((o) => o.x >= 5 && o.y >= 5)).toBe(true);
     expect(b[0].name).toBe('Bereich 1');
     expect(s[0].name).toBe('Stellplatz 1');
+  });
+
+  it('#1: Innenraum-Objekte kreuzen KEINE Fahrgänge (kreuzungsfrei + Sicherheitsabstand)', () => {
+    const W = 200, H = 60;
+    const { filled } = validateParams({
+      action: 'createHall', hall: { lengthM: W, widthM: H },
+      gates: [{ count: 20, side: 'north', spacingM: 6 }],
+      bereiche: 8, stellplaetze: 20,
+    });
+    const { objects } = paramsToLayout(filled);
+    const interior = objects.filter((o) => o.type === 'bereich' || o.type === 'stellplatz');
+    expect(interior.length).toBeGreaterThan(0);
+    const aisleXs = AISLE_FRACTIONS.map((f) => W * f);
+    const aisleY = H / 2;
+    for (const o of interior) {
+      // kein Überlapp mit vertikalen Quergängen
+      for (const ax of aisleXs) {
+        const overlapX = o.x < ax + AISLE_HALF && o.x + o.width > ax - AISLE_HALF;
+        expect(overlapX).toBe(false);
+      }
+      // kein Überlapp mit zentralem Längsgang
+      const overlapY = o.y < aisleY + AISLE_H_HALF && o.y + o.height > aisleY - AISLE_H_HALF;
+      expect(overlapY).toBe(false);
+    }
   });
 
   it('parseCanonical erkennt Bereiche + Stellplätze (nicht mehr „ignoriert")', () => {

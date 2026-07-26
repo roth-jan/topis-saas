@@ -821,11 +821,13 @@ export function generateBasicGangNet(
       connectors.push({ id: id++, name: `Quergang ${Math.round(f * 100)}%`, points: [{ x, y: 0 }, { x, y: hallHeight }], breite: 4 } as Gang);
     }
   }
-  // Horizontaler Längsgang verbindet Ost- und West-Anbindung (und N/S-Reihen).
-  if (hasEW || !hasNS) {
+  // Zentraler Längsgang (immer) — Hauptzirkulation; die Innenraum-Buchten lassen genau
+  // diese Zone frei (kreuzungsfrei, siehe interiorCells in nl-layout.ts).
+  {
     const y = Math.round(hallHeight * 0.5 * 100) / 100;
     connectors.push({ id: id++, name: 'Längsgang Mitte', points: [{ x: 0, y }, { x: hallWidth, y }], breite: 4 } as Gang);
   }
+  void hasEW;
   return connectGangsToBounds([...anbindungen, ...connectors], 0, hallHeight, 0, hallWidth);
 }
 

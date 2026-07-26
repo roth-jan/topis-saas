@@ -114,29 +114,57 @@ export function validateParams(params: LayoutParams): ValidationResult {
   return { ok: errors.length === 0, errors, warnings, filled };
 }
 
-// Interior-Grid: gleichmäßige Felder im Innenraum, ober- und unterhalb eines zentralen
-// Längsgangs (bleibt frei). Wird für Bereiche + Stellplätze genutzt.
-const INT_MARGIN = 5;      // Abstand zu den Wänden
-const INT_AISLE_H = 6;     // Höhe des freien Mittelgangs
+// Interior-Layout mit KREUZUNGSFREIEN Fahrwegen + Sicherheitsabstand:
+// Objekte (Bereiche/Stellplätze) liegen in Buchten ZWISCHEN den Gängen, nie darauf.
+// Die Gang-Geometrie (zentraler Längsgang + vertikale Quergänge) MUSS zu
+// generateBasicGangNet (pathfinding.ts) passen — dieselben Fraktionen/Breiten.
+const INT_MARGIN = 5;          // Abstand zu den Wänden
+export const AISLE_FRACTIONS = [0.2, 0.5, 0.8]; // vertikale Quergänge (× Hallenbreite)
+export const AISLE_HALF = 2;   // halbe Gangbreite (Gang-breite = 4)
+export const AISLE_H_HALF = 2; // halber zentraler Längsgang (Gang-breite 4)
+export const SAFETY_M = 1.5;   // Sicherheitsabstand Objekt ↔ Gang/Wand
 const INT_GAP = 2;
 const INT_CELL_H = 8;
+const MIN_CELL_W = 10;
+
+// Freie Intervalle in [lo,hi] nach Abzug der (bereits um Sicherheit erweiterten) Sperrzonen.
+function freeSegments(lo: number, hi: number, blocked: [number, number][]): [number, number][] {
+  const segs: [number, number][] = [];
+  let cur = lo;
+  const sorted = [...blocked].sort((a, b) => a[0] - b[0]);
+  for (const [b0, b1] of sorted) {
+    if (b0 > cur) segs.push([cur, Math.min(b0, hi)]);
+    cur = Math.max(cur, b1);
+    if (cur >= hi) break;
+  }
+  if (cur < hi) segs.push([cur, hi]);
+  return segs.filter(([a, b]) => b - a > 0.01);
+}
 
 function interiorCells(width: number, height: number): { x: number; y: number; w: number; h: number }[] {
   const x0 = INT_MARGIN, x1 = width - INT_MARGIN;
-  if (x1 - x0 < 6 || height < 2 * INT_MARGIN + INT_CELL_H) return [];
-  const cols = Math.min(6, Math.max(1, Math.round((x1 - x0) / 18)));
-  const cellW = (x1 - x0 - (cols - 1) * INT_GAP) / cols;
+  if (x1 - x0 < MIN_CELL_W || height < 2 * INT_MARGIN + INT_CELL_H) return [];
+  // Sperrzonen X: vertikale Quergänge + Sicherheitsabstand
+  const xBlocked: [number, number][] = AISLE_FRACTIONS
+    .map((f) => width * f)
+    .map((cx) => [cx - AISLE_HALF - SAFETY_M, cx + AISLE_HALF + SAFETY_M] as [number, number]);
+  const xSegs = freeSegments(x0, x1, xBlocked).filter(([a, b]) => b - a >= MIN_CELL_W);
+  // Sperrzone Y: zentraler Längsgang + Sicherheitsabstand
   const aisleY = height / 2;
-  const bands = [
-    { y0: INT_MARGIN, y1: aisleY - INT_AISLE_H / 2 },
-    { y0: aisleY + INT_AISLE_H / 2, y1: height - INT_MARGIN },
-  ];
+  const yBlocked: [number, number][] = [[aisleY - AISLE_H_HALF - SAFETY_M, aisleY + AISLE_H_HALF + SAFETY_M]];
+  const ySegs = freeSegments(INT_MARGIN, height - INT_MARGIN, yBlocked).filter(([a, b]) => b - a >= INT_CELL_H);
+
   const cells: { x: number; y: number; w: number; h: number }[] = [];
-  for (const b of bands) {
-    const rows = Math.floor((b.y1 - b.y0 + INT_GAP) / (INT_CELL_H + INT_GAP));
+  for (const [ya, yb] of ySegs) {
+    const rows = Math.floor((yb - ya + INT_GAP) / (INT_CELL_H + INT_GAP));
     for (let r = 0; r < rows; r++) {
-      const y = b.y0 + r * (INT_CELL_H + INT_GAP);
-      for (let c = 0; c < cols; c++) cells.push({ x: x0 + c * (cellW + INT_GAP), y, w: cellW, h: INT_CELL_H });
+      const y = ya + r * (INT_CELL_H + INT_GAP);
+      for (const [xa, xb] of xSegs) {
+        const segW = xb - xa;
+        const cols = Math.max(1, Math.floor((segW + INT_GAP) / (MIN_CELL_W + INT_GAP)));
+        const cellW = (segW - (cols - 1) * INT_GAP) / cols;
+        for (let c = 0; c < cols; c++) cells.push({ x: xa + c * (cellW + INT_GAP), y, w: cellW, h: INT_CELL_H });
+      }
     }
   }
   return cells;
