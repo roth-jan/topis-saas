@@ -130,8 +130,10 @@ export function validateParams(params: LayoutParams): ValidationResult {
         `Tore (${SIDE_LABEL[side]}) überlappen sich: Breite ${torBreiteM.toFixed(1)} m ist größer als der Achsabstand ${spacingM.toFixed(1)} m ` +
         `(Lücke ${lueckeEff.toFixed(1)} m). Bitte größere Lücke oder schmalere Tore.`,
       );
-    } else if (lueckeEff >= 0 && lueckeEff < 0.5) {
-      warnings.push(`Sehr enge Torlücke (${lueckeEff.toFixed(1)} m, ${SIDE_LABEL[side]}) — bewusst so knapp?`);
+    } else if (lueckeEff > 0.05 && lueckeEff < 0.5) {
+      // Nur bei ECHT knapper, positiver Lücke warnen. Lücke = 0 (Tore stoßen bündig
+      // aneinander) ist ein gültiger Dichtpack-Fall und keine Warnung wert.
+      warnings.push(`Enge Torlücke (${lueckeEff.toFixed(1)} m, ${SIDE_LABEL[side]}) — bewusst so knapp?`);
     }
     if (spacingM > SPACING_MAX_WARN) warnings.push(`Torabstand ${spacingM.toFixed(2)} m (${SIDE_LABEL[side]}) ist ungewöhnlich groß.`);
     if (seenSides.has(side)) warnings.push(`Mehrere Torreihen an der ${SIDE_LABEL[side]}-Wand — sie können sich überlappen.`);

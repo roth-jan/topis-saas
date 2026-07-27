@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Route, Calculator, Trash2, ArrowRight, Download, Database } from 'lucide-react';
+import { Route, Calculator, Trash2, ArrowRight, Download, Database, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { computeAllPaths, pathResultToPath, buildGangGraph, findPath } from '@/lib/pathfinding';
 import { berechneVerteilwegAusDistanzmatrix } from '@/lib/distanzmatrix-rechner';
@@ -56,6 +56,7 @@ export function WegeberechnungDialog() {
   const [runProzess, setRunProzess] = useState<string>('');
   const [isCalculating, setIsCalculating] = useState(false);
   const [verteilweg, setVerteilweg] = useState<number | null>(null);
+  const [wegeCoverage, setWegeCoverage] = useState<number>(1); // Anteil echter Wege (Belastbarkeit)
   const [selectedDM, setSelectedDM] = useState<string>('');
   const [dmErgebnis, setDmErgebnis] = useState<{ gewichteterWegM: number; gesamtColli: number; abgedeckteColli: number; nichtZugeordnet: number } | null>(null);
 
@@ -142,31 +143,49 @@ export function WegeberechnungDialog() {
       }
     }
 
-    const computed = computeAllPaths(startObjs, endObjs, gaenge, ffz, walls, pathAreas);
+    let computed = computeAllPaths(startObjs, endObjs, gaenge, ffz, walls, pathAreas);
+    let withPath = computed.filter(c => c.result !== null).length;
+    let pathAreaHinweis = '';
+    // Wegflächen-Mismatch: decken die (evtl. veralteten) Wegflächen das aktuelle Gangnetz
+    // nicht ab, zerschneidet der Filter den Graphen. Statt still fast alle Wege zu verlieren,
+    // ohne Wegflächen-Beschränkung neu rechnen und das LAUT melden.
+    if (pathAreas.length > 0 && withPath < computed.length * 0.5) {
+      const ohne = computeAllPaths(startObjs, endObjs, gaenge, ffz, walls, []);
+      const withPathOhne = ohne.filter(c => c.result !== null).length;
+      if (withPathOhne > withPath) {
+        computed = ohne;
+        withPath = withPathOhne;
+        pathAreaHinweis = ' Die hinterlegten Wegflächen decken das aktuelle Gangnetz nicht ab — daher ohne Wegflächen-Beschränkung berechnet.';
+      }
+    }
 
     const wegeResults: WegeResult[] = computed.map(({ start, end, result }) => {
       const dx = (end.x + end.width / 2) - (start.x + start.width / 2);
       const dy = (end.y + end.height / 2) - (start.y + start.height / 2);
-      return {
-        start,
-        end,
-        result,
-        distEuclidean: Math.sqrt(dx * dx + dy * dy),
-      };
+      return { start, end, result, distEuclidean: Math.sqrt(dx * dx + dy * dy) };
     });
 
     setResults(wegeResults);
     setIsCalculating(false);
 
-    const withPath = wegeResults.filter(r => r.result !== null).length;
-    toast.success(`${wegeResults.length} Verbindungen berechnet (${withPath} mit Pfad)`);
+    // Verteilweg AUSSCHLIESSLICH aus echten Wegen — NIE Luftlinie einmischen (sonst
+    // Fantasiewert). Belastbarkeit = Anteil echter Wege.
+    const realDists = wegeResults.filter(r => r.result !== null).map(r => r.result!.distance).filter(d => d > 0);
+    const coverage = wegeResults.length > 0 ? withPath / wegeResults.length : 0;
+    setWegeCoverage(coverage);
+    if (realDists.length > 0) {
+      setVerteilweg(realDists.reduce((a, b) => a + b, 0) / realDists.length);
+    } else {
+      setVerteilweg(0);
+    }
 
-    // Calculate unweighted average as basic verteilweg
-    const validDists = wegeResults
-      .map(r => r.result?.distance ?? r.distEuclidean)
-      .filter(d => d > 0);
-    if (validDists.length > 0) {
-      setVerteilweg(validDists.reduce((a, b) => a + b, 0) / validDists.length);
+    if (coverage < 0.8) {
+      toast.warning(
+        `Nur ${withPath} von ${wegeResults.length} Verbindungen ergeben einen echten Weg — der Verteilweg ist damit nicht belastbar.${pathAreaHinweis}`,
+        { duration: 8000 },
+      );
+    } else {
+      toast.success(`${wegeResults.length} Verbindungen berechnet (${withPath} mit Pfad).${pathAreaHinweis}`);
     }
   };
 
@@ -180,7 +199,8 @@ export function WegeberechnungDialog() {
     const graph = buildGangGraph(gaenge, ffz);
 
     let totalDistColli = 0;
-    let totalColli = 0;
+    let totalColli = 0;   // Colli mit ECHTEM Weg (fließen in den gewichteten Verteilweg)
+    let fallbackColli = 0; // Colli ohne echten Weg (kein Ziel/kein Pfad) — NICHT einrechnen, nur zählen
 
     // Group scan records by stellplatz → tor → relation → target
     const stellplatzGroups = new Map<string, typeof scandatenRecords>();
@@ -192,9 +212,7 @@ export function WegeberechnungDialog() {
 
     stellplatzGroups.forEach((recs, stellplatzKey) => {
       const torZuordnung = torZuordnungen.find(z => z.stellplatzKey === stellplatzKey);
-      if (!torZuordnung?.objectId) return;
-      const torObj = objects.find(o => o.id === torZuordnung.objectId);
-      if (!torObj) return;
+      const torObj = torZuordnung?.objectId ? objects.find(o => o.id === torZuordnung.objectId) : undefined;
 
       const relationGroups = new Map<string, number>();
       recs.forEach(r => {
@@ -204,33 +222,39 @@ export function WegeberechnungDialog() {
 
       relationGroups.forEach((colli, relation) => {
         const relZuordnung = relationZuordnungen.find(z => z.relationKey === relation);
-        let distanzM = 0;
+        const zielObj = relZuordnung?.objectId ? objects.find(o => o.id === relZuordnung.objectId) : undefined;
+        let distanzM: number | null = null;
 
-        if (relZuordnung?.objectId) {
-          const zielObj = objects.find(o => o.id === relZuordnung.objectId);
-          if (zielObj) {
-            const fromCenter = { x: torObj.x + torObj.width / 2, y: torObj.y + torObj.height / 2 };
-            const toCenter = { x: zielObj.x + zielObj.width / 2, y: zielObj.y + zielObj.height / 2 };
-            const pathResult = findPath(fromCenter.x, fromCenter.y, toCenter.x, toCenter.y, graph, ffz);
-            distanzM = pathResult
-              ? pathResult.distance
-              : Math.sqrt((toCenter.x - fromCenter.x) ** 2 + (toCenter.y - fromCenter.y) ** 2);
-          }
+        if (torObj && zielObj) {
+          const fromCenter = { x: torObj.x + torObj.width / 2, y: torObj.y + torObj.height / 2 };
+          const toCenter = { x: zielObj.x + zielObj.width / 2, y: zielObj.y + zielObj.height / 2 };
+          const pathResult = findPath(fromCenter.x, fromCenter.y, toCenter.x, toCenter.y, graph, ffz);
+          if (pathResult) distanzM = pathResult.distance; // NUR echter Weg, keine Luftlinie/Magic-50
         }
 
-        if (distanzM === 0) distanzM = 50; // Fallback
-
-        totalDistColli += distanzM * colli;
-        totalColli += colli;
+        if (distanzM != null && distanzM > 0) {
+          totalDistColli += distanzM * colli;
+          totalColli += colli;
+        } else {
+          fallbackColli += colli; // kein echter Weg → NICHT als 50 m/Luftlinie fabrizieren
+        }
       });
     });
 
     if (totalColli > 0) {
       const gewVerteilweg = totalDistColli / totalColli;
+      const abdeckung = totalColli / (totalColli + fallbackColli);
       setVerteilweg(gewVerteilweg);
-      toast.success(`Gewichteter Verteilweg: ${gewVerteilweg.toFixed(1)}m (${totalColli} Colli)`);
+      setWegeCoverage(abdeckung);
+      if (abdeckung < 0.8) {
+        toast.warning(`Gewichteter Verteilweg ${gewVerteilweg.toFixed(1)} m aus nur ${Math.round(abdeckung * 100)} % der Colli (${fallbackColli} Colli ohne echten Weg blieben unberücksichtigt) — nicht belastbar.`, { duration: 8000 });
+      } else {
+        toast.success(`Gewichteter Verteilweg: ${gewVerteilweg.toFixed(1)} m (${totalColli} Colli mit echtem Weg)`);
+      }
     } else {
-      toast.error('Keine Colli-Daten für Verteilweg-Berechnung');
+      setVerteilweg(0);
+      setWegeCoverage(0);
+      toast.error('Kein belastbarer Verteilweg: keine einzige Relation hat einen echten Weg (Tor-/Relations-Zuordnungen + Gangnetz prüfen).');
     }
   };
 
@@ -316,22 +340,30 @@ export function WegeberechnungDialog() {
   };
 
   const handleVerteilwegUebernehmen = () => {
-    if (verteilweg === null) return;
+    if (verteilweg === null || verteilweg <= 0) {
+      toast.error('Kein belastbarer Verteilweg vorhanden — es wurden keine echten Wege gefunden.');
+      return;
+    }
+    if (wegeCoverage < 0.8) {
+      toast.error(`Verteilweg nicht belastbar (nur ${Math.round(wegeCoverage * 100)} % der Verbindungen haben einen echten Weg) — bitte erst das Gangnetz vervollständigen.`);
+      return;
+    }
     setVerteilwegProzessmodell(verteilweg);
-    toast.success(`Verteilweg ${verteilweg.toFixed(1)}m ins Prozessmodell übernommen`);
+    // Ehrlich: das native Cockpit-Modell liest diesen Store NICHT automatisch.
+    toast.success(`Verteilweg ${verteilweg.toFixed(1)} m gespeichert. Im Cockpit erscheint eine Übernehmen-Brücke, sobald dort ein Prozessmodell mit Verteilweg-Schritt geladen ist.`, { duration: 7000 });
   };
 
-  // Statistics
+  // Statistics — Ø/Max/Min NUR aus echten Wegen (nie Luftlinie einmischen).
   const stats = useMemo(() => {
     if (results.length === 0) return null;
-    const distances = results.map(r => r.result?.distance ?? r.distEuclidean);
-    const withPath = results.filter(r => r.result !== null).length;
+    const realDistances = results.filter(r => r.result !== null).map(r => r.result!.distance);
+    const withPath = realDistances.length;
     return {
       count: results.length,
       withPath,
-      avgDist: distances.reduce((a, b) => a + b, 0) / distances.length,
-      maxDist: Math.max(...distances),
-      minDist: Math.min(...distances),
+      avgDist: withPath > 0 ? realDistances.reduce((a, b) => a + b, 0) / withPath : null,
+      maxDist: withPath > 0 ? Math.max(...realDistances) : null,
+      minDist: withPath > 0 ? Math.min(...realDistances) : null,
     };
   }, [results]);
 
@@ -449,19 +481,19 @@ export function WegeberechnungDialog() {
                   </div>
                   <div>
                     <div className="text-muted-foreground">Mit Pfad</div>
-                    <div className="font-medium">{stats.withPath}/{stats.count}</div>
+                    <div className={`font-medium ${stats.withPath < stats.count ? 'text-amber-600 dark:text-amber-500' : ''}`}>{stats.withPath}/{stats.count}</div>
                   </div>
                   <div>
-                    <div className="text-muted-foreground">Ø Distanz</div>
-                    <div className="font-medium">{stats.avgDist.toFixed(1)} m</div>
+                    <div className="text-muted-foreground">Ø Distanz{stats.withPath < stats.count ? ' (nur echte Wege)' : ''}</div>
+                    <div className="font-medium">{stats.avgDist != null ? `${stats.avgDist.toFixed(1)} m` : '—'}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Min</div>
-                    <div className="font-medium">{stats.minDist.toFixed(1)} m</div>
+                    <div className="font-medium">{stats.minDist != null ? `${stats.minDist.toFixed(1)} m` : '—'}</div>
                   </div>
                   <div>
                     <div className="text-muted-foreground">Max</div>
-                    <div className="font-medium">{stats.maxDist.toFixed(1)} m</div>
+                    <div className="font-medium">{stats.maxDist != null ? `${stats.maxDist.toFixed(1)} m` : '—'}</div>
                   </div>
                 </div>
               )}
@@ -561,18 +593,24 @@ export function WegeberechnungDialog() {
                     </p>
                   )}
                 </div>
-                {verteilweg !== null && (
+                {verteilweg !== null && verteilweg > 0 && (
                   <div className="flex items-center gap-4 bg-muted/50 p-3 rounded-lg">
                     <div>
                       <div className="text-muted-foreground text-xs">
-                        {hasScanData ? 'Gewichteter Verteilweg' : 'Ø Verteilweg (ungewichtet)'}
+                        {hasScanData ? 'Gewichteter Verteilweg' : 'Ø Verteilweg (ungewichtet, nur echte Wege)'}
                       </div>
                       <div className="text-xl font-bold">{verteilweg.toFixed(1)} m</div>
                     </div>
-                    <Button onClick={handleVerteilwegUebernehmen} size="sm">
+                    <Button onClick={handleVerteilwegUebernehmen} size="sm" disabled={wegeCoverage < 0.8}>
                       <ArrowRight className="h-4 w-4 mr-2" />
                       Ins Prozessmodell übernehmen
                     </Button>
+                  </div>
+                )}
+                {wegeCoverage < 0.8 && verteilweg !== null && verteilweg > 0 && (
+                  <div className="flex items-start gap-2 text-amber-600 dark:text-amber-500 text-sm mt-1">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>Nur {Math.round(wegeCoverage * 100)} % der Verbindungen haben einen echten Weg — der Verteilweg ist nicht belastbar. Gangnetz/Wegflächen prüfen, bevor du übernimmst.</span>
                   </div>
                 )}
               </div>

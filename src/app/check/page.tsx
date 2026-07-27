@@ -413,8 +413,12 @@ export default function CheckPage() {
             <div className="grid md:grid-cols-3 gap-6">
               {/* Card 1: Scandaten */}
               <Card
-                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group"
+                role="button"
+                tabIndex={0}
+                aria-label="Scandaten hochladen — CSV oder Excel"
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 onClick={() => setPhase('upload')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPhase('upload'); } }}
               >
                 <CardContent className="py-8 text-center space-y-4">
                   <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
@@ -437,8 +441,12 @@ export default function CheckPage() {
 
               {/* Card 2: Eckdaten */}
               <Card
-                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group"
+                role="button"
+                tabIndex={0}
+                aria-label="Eckdaten eingeben — 4 Felder ausfüllen"
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 onClick={() => setPhase('eckdaten')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPhase('eckdaten'); } }}
               >
                 <CardContent className="py-8 text-center space-y-4">
                   <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto group-hover:bg-orange-500/20 transition-colors">
@@ -461,8 +469,12 @@ export default function CheckPage() {
 
               {/* Card 3: Demo */}
               <Card
-                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group"
+                role="button"
+                tabIndex={0}
+                aria-label="Demo ansehen — Beispielanalyse einer Umschlaghalle"
+                className="cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 onClick={handleDemo}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDemo(); } }}
               >
                 <CardContent className="py-8 text-center space-y-4">
                   <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto group-hover:bg-blue-500/20 transition-colors">
@@ -506,7 +518,10 @@ export default function CheckPage() {
 
             {/* Upload Zone */}
             <Card
-              className={`border-2 border-dashed cursor-pointer transition-all ${
+              role="button"
+              tabIndex={0}
+              aria-label="Datei auswählen oder per Drag & Drop ablegen"
+              className={`border-2 border-dashed cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 dragOver
                   ? 'border-primary bg-primary/5 scale-[1.01]'
                   : 'border-muted-foreground/20 hover:border-primary/50'
@@ -515,6 +530,7 @@ export default function CheckPage() {
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
             >
               <CardContent className="py-16 text-center">
                 <div className="flex flex-col items-center gap-4">
@@ -541,6 +557,8 @@ export default function CheckPage() {
               type="file"
               accept=".csv,.txt,.tsv,.xlsx,.xls"
               className="hidden"
+              tabIndex={-1}
+              aria-hidden="true"
               onChange={handleFileInput}
             />
 

@@ -158,9 +158,12 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
       const stundenColli = Math.round(tagesColli * gewicht);
       if (stundenColli === 0) continue;
 
-      // Auf Tore verteilen
+      // Auf Tore verteilen. KEIN Math.max(1,…)-Flooring: sonst bekäme jedes der 115 Tore
+      // pro Stunde ≥1 Colli (auch bei ~0 Anteil) → Σ läge ~13 % über dem Nominalwert.
+      // Tore mit gerundet 0 Colli in dieser Stunde erzeugen keinen Scan → Σ ≈ COLLI_PRO_TAG.
       for (let t = 0; t < TORE; t++) {
-        const torColli = Math.max(1, Math.round(stundenColli * (torGewichte[t] / sumGewichte)));
+        const torColli = Math.round(stundenColli * (torGewichte[t] / sumGewichte));
+        if (torColli < 1) continue;
         const relation = getRelation(t);
         const minute = Math.floor(Math.random() * 60);
         const sekunde = Math.floor(Math.random() * 60);

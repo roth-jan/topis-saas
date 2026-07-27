@@ -36,7 +36,7 @@ describe('nl-layout — validateParams', () => {
     // Achsabstand 3.7 bei Tor-Breite 3.5 → Lücke 0.2 m → Warnung, kein Fehler.
     const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 5, side: 'north', spacingM: 3.7 }] });
     expect(r.ok).toBe(true);
-    expect(r.warnings.some((w) => /eng|Lücke/.test(w))).toBe(true);
+    expect(r.warnings.some((w) => /eng|lücke/i.test(w))).toBe(true);
   });
 
   it('FEHLER bei überlappenden Toren (Achsabstand < Tor-Breite)', () => {
