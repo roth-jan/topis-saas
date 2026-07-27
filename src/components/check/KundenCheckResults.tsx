@@ -137,6 +137,30 @@ export function KundenCheckResults({
         </div>
       </section>
 
+      {/* Personalbedarf — skaliert MIT dem Volumen (Min/Colli oben ist volumenunabhängig). */}
+      <section>
+        <h3 className="text-lg font-semibold mb-4 text-muted-foreground">Personalbedarf bei diesem Volumen</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-lg border bg-card p-4">
+            <div className="text-xs text-muted-foreground">Colli / Tag</div>
+            <div className="text-2xl font-bold tabular-nums">{Math.round(ergebnis.colliProTag).toLocaleString('de-DE')}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="text-xs text-muted-foreground">MA-Stunden / Tag</div>
+            <div className="text-2xl font-bold tabular-nums">{ergebnis.maStundenBedarf.toFixed(1)}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="text-xs text-muted-foreground">FTE-Bedarf</div>
+            <div className="text-2xl font-bold tabular-nums">{ergebnis.fte.toFixed(1)}</div>
+          </div>
+          <div className="rounded-lg border bg-card p-4">
+            <div className="text-xs text-muted-foreground">Min / Colli <span className="normal-case">(volumenunabhängig)</span></div>
+            <div className="text-2xl font-bold tabular-nums">{ergebnis.minProColli.toFixed(3)}</div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">Verdoppelt sich das Tagesvolumen, verdoppeln sich MA-Stunden und FTE — Min/Colli und die Produktivität bleiben gleich (Kennzahlen pro Colli).</p>
+      </section>
+
       {/* Section 2: Hallenvorschau mit Heatmap */}
       <section>
         <h3 className="text-lg font-semibold mb-4 text-muted-foreground">

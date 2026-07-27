@@ -20,9 +20,12 @@ interface ProzessmodellState {
   ergebnis: GesamtErgebnis | null;
   /** Fahrzeugmix für Verteilweg-Berechnung (Lastenheft-Formel) */
   ffzMix: FFZMixEintrag[];
+  /** Herkunft der aktuell angezeigten Zahlen (damit Kennzahlen nie „fremde" Werte ohne Kontext zeigen). */
+  datenHerkunft: { projektName?: string; datenquelle?: 'vorlage' | 'check' | 'scandaten' | 'excel' | 'manuell'; zeitraum?: string } | null;
 
   // Actions
   setModell: (modell: ProzessmodellConfig) => void;
+  setDatenHerkunft: (herkunft: ProzessmodellState['datenHerkunft']) => void;
   setParameter: (parameter: ProzessParameter[]) => void;
   updateParameter: (id: string, wert: number) => void;
   setVerteilweg: (wegM: number) => void;
@@ -53,8 +56,10 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
   parameter: SE_STANDARD_PARAMETER.map((p) => ({ ...p })),
   ergebnis: null,
   ffzMix: DEFAULT_FFZ_MIX.map((e) => ({ ...e })),
+  datenHerkunft: null,
 
   setModell: (modell) => set({ modell }),
+  setDatenHerkunft: (datenHerkunft) => set({ datenHerkunft }),
 
   setParameter: (parameter) => set({ parameter }),
 
@@ -157,6 +162,7 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
       parameter: SE_STANDARD_PARAMETER.map((p) => ({ ...p })),
       ergebnis: null,
       ffzMix: DEFAULT_FFZ_MIX.map((e) => ({ ...e })),
+      datenHerkunft: null,
     }),
 }),
   {
@@ -175,6 +181,7 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
       parameter: state.parameter,
       ergebnis: state.ergebnis,
       ffzMix: state.ffzMix,
+      datenHerkunft: state.datenHerkunft,
     }),
     onRehydrateStorage: () => (state) => {
       // Persistierte Ergebnisse können mit einer älteren Rechner-Version entstanden

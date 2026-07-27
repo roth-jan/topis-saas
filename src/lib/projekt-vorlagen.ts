@@ -69,6 +69,8 @@ export function ladeProjektVorlage(id: string): ProjektVorlage | undefined {
       pm.updateParameter(key, value);
     });
   }
+  // Herkunft markieren, damit die Kennzahlen-Seite die Zahlen nie ohne Kontext zeigt.
+  pm.setDatenHerkunft({ projektName: vorlage.name, datenquelle: 'vorlage' });
 
   // 3. Berechnen
   pm.berechne();

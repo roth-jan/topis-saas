@@ -94,6 +94,7 @@ export default function CheckPage() {
   const setTorZuordnungenStore = useBetriebsdatenStore((s) => s.setTorZuordnungen);
   const setRelationZuordnungenStore = useBetriebsdatenStore((s) => s.setRelationZuordnungen);
   const ladeModell = useProzessmodellStore((s) => s.ladeModell);
+  const setDatenHerkunft = useProzessmodellStore((s) => s.setDatenHerkunft);
 
   // ============ Analyse-Pipeline (records → Ergebnis) ============
   const runAnalyseFromRecords = useCallback(async (records: ScandatenRecord[], fileName: string, quelle: Datenquelle) => {
@@ -359,9 +360,16 @@ export default function CheckPage() {
       return { ...p };
     });
     ladeModell(PROZESSMODELL_SE, param);
+    // Herkunft für die Kennzahlen-Seite: aus dem Kunden-Check, mit Zeitraum falls vorhanden.
+    const z = ergebnis.analyse?.zeitraum;
+    setDatenHerkunft({
+      projektName: layout.hall.name || 'Kunden-Check',
+      datenquelle: datenquelle === 'demo' ? 'vorlage' : datenquelle === 'eckdaten' ? 'manuell' : 'scandaten',
+      zeitraum: z ? `${z.von} – ${z.bis}` : undefined,
+    });
 
     router.push('/projekt');
-  }, [ergebnis, resetState, updateHall, addObjectStore, setGaengeStore, importScandaten, setAnalyseStore, setTorZuordnungenStore, setRelationZuordnungenStore, ladeModell, router]);
+  }, [ergebnis, datenquelle, resetState, updateHall, addObjectStore, setGaengeStore, importScandaten, setAnalyseStore, setTorZuordnungenStore, setRelationZuordnungenStore, ladeModell, setDatenHerkunft, router]);
 
   // ============ Zurück-Funktion ============
   const handleBackToChoose = useCallback(() => {

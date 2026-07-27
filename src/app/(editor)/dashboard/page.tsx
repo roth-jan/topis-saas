@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const planMinFix = useSimSettingsStore((s) => s.minProColliFix);
   const modell = useProzessmodellStore((s) => s.modell);
   const ergebnis = useProzessmodellStore((s) => s.ergebnis);
+  const datenHerkunft = useProzessmodellStore((s) => s.datenHerkunft);
   const parameter = useProzessmodellStore((s) => s.parameter);
   const berechne = useProzessmodellStore((s) => s.berechne);
 
@@ -130,11 +131,19 @@ export default function DashboardPage() {
               <BarChart3 className="h-4 w-4" />
               Kennzahlen
             </h1>
-            {analyse && (
-              <span className="text-xs text-muted-foreground truncate">
-                {analyse.zeitraum.von} — {analyse.zeitraum.bis} | {analyse.arbeitstage} Arbeitstage
-              </span>
-            )}
+            {/* Provenance: welche Zahlen werden gezeigt? Nie „fremde" Werte ohne Kontext. */}
+            <span className="text-xs text-muted-foreground truncate">
+              {(() => {
+                const quelleLabel: Record<string, string> = { vorlage: 'Demo-Vorlage', check: 'Kunden-Check', scandaten: 'Scandaten', excel: 'Excel-Import', manuell: 'Eckdaten' };
+                const parts: string[] = [];
+                if (datenHerkunft?.projektName) parts.push(datenHerkunft.projektName);
+                if (datenHerkunft?.datenquelle) parts.push('Quelle: ' + (quelleLabel[datenHerkunft.datenquelle] ?? datenHerkunft.datenquelle));
+                if (analyse) parts.push(`${analyse.zeitraum.von} — ${analyse.zeitraum.bis} · ${analyse.arbeitstage} Arbeitstage`);
+                else if (datenHerkunft?.zeitraum) parts.push(datenHerkunft.zeitraum);
+                if (parts.length === 0) return '⚠ Keine eigenen Daten geladen — es werden Standard-/Vorlagenwerte gezeigt';
+                return parts.join(' · ');
+              })()}
+            </span>
           </div>
         }
       />
