@@ -146,6 +146,19 @@ export function validateParams(params: LayoutParams): ValidationResult {
   }
   if (filledGates.length > 0) filled.gates = filledGates;
 
+  // Robustheit: das LLM legt Innenraum-Felder manchmal IN gates[] statt oben ab. Hochheben,
+  // damit z. B. „ein Stellplatz je Tor" auch dann greift, wenn es je Torreihe genannt wurde.
+  {
+    const gx = (params.gates ?? []) as unknown as Array<Record<string, unknown>>;
+    const pm = params as unknown as Record<string, unknown>;
+    for (const k of ['stellplaetzeJeTor', 'stellplatzLaengeM', 'stellplatzBreiteM', 'mittelgangM', 'bereiche']) {
+      if (pm[k] == null) {
+        const found = gx.find((g) => g[k] != null)?.[k];
+        if (found != null) pm[k] = found;
+      }
+    }
+  }
+
   // Innenraum-Objekte (Bereiche/Stellplätze)
   const bereiche = params.bereiche != null ? Math.max(0, Math.round(params.bereiche)) : 0;
   const stellplaetze = params.stellplaetze != null ? Math.max(0, Math.round(params.stellplaetze)) : 0;
