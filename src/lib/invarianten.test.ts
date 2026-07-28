@@ -7,6 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { berechneMinProColli } from './prozessrechner';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from './data/prozessmodell-se';
 import { generateDemoRecords } from './eckdaten-analyse';
+import { generateAutoLayout } from './auto-layout-generator';
 import type { ProzessParameter } from '@/types/prozessmodell';
 
 const setP = (params: ProzessParameter[], id: string, val: number): ProzessParameter[] =>
@@ -53,6 +54,18 @@ describe('Invariante — Demo-Datenkonsistenz', () => {
     const colliProTag = summeColli / tage;
     const abweichung = Math.abs(colliProTag - eckdaten.colliProTag) / eckdaten.colliProTag;
     expect(abweichung).toBeLessThan(0.1);
+  });
+
+  it('Demo-Check-Kennzahl liegt im Kalibrierband (~1,9–2,3 Min/Colli)', () => {
+    // Repliziert den /check-Demo-Pfad: Records → Auto-Layout → geschätzter Verteilweg →
+    // Min/Colli. Lock gegen den 2,50-Ausreißer (überschätzter Verteilweg-Faktor 0.9).
+    const { records } = generateDemoRecords();
+    const layout = generateAutoLayout(records);
+    const verteilweg = Math.round(layout.hall.width * 0.5 + layout.hall.height * 0.4);
+    const param = SE_STANDARD_PARAMETER.map((p) => (p.id === 'verteilweg' ? { ...p, aktuellerWert: verteilweg } : p));
+    const min = berechneMinProColli(PROZESSMODELL_SE, param).minProColli;
+    expect(min).toBeGreaterThan(1.9);
+    expect(min).toBeLessThan(2.3);
   });
 
   it('Ein Demo-Record ist ein Scan mit ≥1 Colli (Datensätze ≠ Colli)', () => {

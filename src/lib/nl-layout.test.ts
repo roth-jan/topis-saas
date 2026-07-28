@@ -39,11 +39,19 @@ describe('nl-layout — validateParams', () => {
     expect(r.warnings.some((w) => /eng|lücke/i.test(w))).toBe(true);
   });
 
-  it('FEHLER bei überlappenden Toren (Achsabstand < Tor-Breite)', () => {
-    // 5 Tore, Achsabstand 1.0 m, Breite 3.5 m → Überlappung → Fehler, nicht ok.
-    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 5, side: 'north', spacingM: 1.0 }] });
+  it('FEHLER bei überlappenden Toren nur bei EXPLIZITER zu breiter Tor-Breite', () => {
+    // Explizite Breite 3.5 m bei Achsabstand 1.0 m → Überlappung → Fehler.
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 5, side: 'north', torBreiteM: 3.5, spacingM: 1.0 }] });
     expect(r.ok).toBe(false);
     expect(r.errors.some((e) => /überlapp/i.test(e))).toBe(true);
+  });
+
+  it('OHNE explizite Breite passt sich die Tor-Breite dem Achsabstand an (keine Überlappung)', () => {
+    // „Abstand 3" ohne Breite: Tore werden 3.0 m breit (min(3.5, 3)), Lücke 0 → ok, kein Fehler.
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 40, side: 'north', lueckeM: 3 }] });
+    expect(r.ok).toBe(true);
+    const { objects } = paramsToLayout(r.filled);
+    expect(objects.every((o) => o.type === 'tor' && o.width === 3)).toBe(true);
   });
 
   it('Tor-Breite + Lücke: Pitch = Breite + Lücke, Kapazität geprüft', () => {

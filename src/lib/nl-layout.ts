@@ -90,19 +90,22 @@ export function validateParams(params: LayoutParams): ValidationResult {
   for (const g of params.gates ?? []) {
     const count = Math.round(g.count);
     const side = g.side;
-    // Tor-Länge/Breite entlang der Wand (Lastenheft-Eigenschaft), Default 3.5 m.
+    // Tor-Breite entlang der Wand (Lastenheft-Eigenschaft). Nur „explizit", wenn eine Breite
+    // WIRKLICH angegeben wurde — nie geraten (das LLM neigte dazu, 4 m zu erfinden).
     const hasExplicitBreite = g.torBreiteM != null && g.torBreiteM > 0;
-    const torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : TOR_W;
-    // Achsabstand (Pitch). Disambiguierung von „Abstand":
-    //  - explizit spacingM → immer Achsabstand.
-    //  - lueckeM + explizite Tor-Breite → „Abstand" = Lücke → Pitch = Breite + Lücke (Lastenheft).
-    //  - lueckeM OHNE Breite → „Abstand 3,75" meint konventionell den Achsabstand (wie AS Halle 6).
-    //  - nichts → Default (Lücke 1 m).
+    // Achsabstand (Pitch) ZUERST bestimmen. Disambiguierung von „Abstand":
+    //  - explizit spacingM → Achsabstand.
+    //  - lueckeM + explizite Breite → „Abstand"/„Lücke" = Zwischenraum → Pitch = Breite + Lücke.
+    //  - lueckeM OHNE Breite → „Abstand 6" meint konventionell den Achsabstand (wie AS Halle 6).
+    //  - nichts → Default.
     const spacingM = g.spacingM != null ? toM(g.spacingM)
       : g.lueckeM != null && g.lueckeM >= 0
-        ? (hasExplicitBreite ? torBreiteM + toM(g.lueckeM) : toM(g.lueckeM))
-        : torBreiteM + 1;
-    const lueckeEff = spacingM - torBreiteM; // effektive Lücke (kann negativ = Überlappung sein)
+        ? (hasExplicitBreite ? toM(g.torBreiteM!) + toM(g.lueckeM) : toM(g.lueckeM))
+        : hasExplicitBreite ? toM(g.torBreiteM!) + 1 : DEFAULT_SPACING_M;
+    // Breite: explizit übernehmen; sonst an den Achsabstand anpassen (nie breiter als der
+    // Pitch → Tore überlappen ohne explizite Breite NIE, auch bei engem Raster wie „Abstand 3").
+    const torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : Math.min(TOR_W, spacingM);
+    const lueckeEff = spacingM - torBreiteM; // effektive Lücke (nur bei EXPLIZITER Breite negativ)
 
     if (!Number.isFinite(count) || count < 1) { errors.push('Toranzahl fehlt oder ist ungültig.'); continue; }
     if (!['north', 'south', 'east', 'west'].includes(side)) { errors.push('Tor-Seite (Nord/Süd/Ost/West) fehlt oder ist ungültig.'); continue; }

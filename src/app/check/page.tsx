@@ -139,7 +139,10 @@ export default function CheckPage() {
       const parameter: ProzessParameter[] = SE_STANDARD_PARAMETER.map((p) => {
         if (p.id === 'colliProTag') return { ...p, aktuellerWert: colliProTag, quelle: 'scandaten' as const };
         if (p.id === 'verteilweg') {
-          const geschaetzterWeg = Math.round(layout.hall.width * 0.9 + layout.hall.height * 0.3);
+          // Grobschätzung des Doppel-Verteilwegs aus der Hallengeometrie (bis echte Wege
+          // berechnet sind). Kalibriert an AS: ~0.5×Breite + 0.4×Tiefe landet im realen Band
+          // (~139 m bei 150 m Halle). Vorher 0.9×Breite → deutliche Überschätzung.
+          const geschaetzterWeg = Math.round(layout.hall.width * 0.5 + layout.hall.height * 0.4);
           return { ...p, aktuellerWert: geschaetzterWeg, quelle: 'layout' as const };
         }
         return { ...p };
@@ -353,7 +356,7 @@ export default function CheckPage() {
     setTorZuordnungenStore(layout.torZuordnungen);
     setRelationZuordnungenStore(layout.relationZuordnungen);
 
-    const verteilweg = Math.round(layout.hall.width * 0.9 + layout.hall.height * 0.3);
+    const verteilweg = Math.round(layout.hall.width * 0.5 + layout.hall.height * 0.4);
     const param = SE_STANDARD_PARAMETER.map((p) => {
       if (p.id === 'colliProTag') return { ...p, aktuellerWert: ergebnis.colliProTag };
       if (p.id === 'verteilweg') return { ...p, aktuellerWert: verteilweg };
