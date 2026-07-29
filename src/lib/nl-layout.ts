@@ -321,9 +321,16 @@ export interface GeneratedLayout {
   objects: Omit<TopisObject, 'id'>[];
 }
 
-/** Überlappende Objektpaare im generierten Layout (für die Kollisionswarnung). */
+/**
+ * Überlappende Objektpaare im generierten Layout (für die Kollisionswarnung).
+ * `bereich` ist eine HINTERGRUND-Zone (Gruppierung) — sie DARF ihre Stellplätze/Tore
+ * enthalten; solche Überdeckungen sind gewollt und keine Kollision. Deshalb nur echte
+ * Überlappungen zwischen soliden Objekten (Stellplatz/Tor/Sonderplatz) prüfen.
+ */
 export function findLayoutCollisions(objects: Omit<TopisObject, 'id'>[]): [string, string][] {
-  const rects = objects.map((o, i) => ({ x: o.x, y: o.y, width: o.width, height: o.height, name: o.name ?? `#${i}` }));
+  const rects = objects
+    .filter((o) => o.type !== 'bereich')
+    .map((o, i) => ({ x: o.x, y: o.y, width: o.width, height: o.height, name: o.name ?? `#${i}` }));
   // margin -0.05 → Kanten dürfen sich berühren; erst echte Überlappung > 5 cm zählt.
   return findOverlaps(rects, -0.05).map(([a, b]) => [a.name!, b.name!]);
 }

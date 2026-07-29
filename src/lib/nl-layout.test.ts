@@ -393,6 +393,16 @@ describe('nl-layout — Cross-Dock (Stellplätze je Tor)', () => {
     expect(objects[0].name).toBe('Wareneingang');
   });
 
+  it('A1: Bereich-Bänder umfassen ihre Stellplätze OHNE Kollisionswarnung (Zone darf enthalten)', () => {
+    const p = parseCanonical('Halle 150x42, 20 Tore Nord Abstand 6, 20 Tore Süd Abstand 6, ein Stellplatz je Tor 12x3, 2 Bereiche, 6 m Mittelgang')!;
+    const { objects } = paramsToLayout(validateParams(p).filled);
+    expect(objects.filter((o) => o.type === 'tor')).toHaveLength(40);
+    expect(objects.filter((o) => o.type === 'stellplatz')).toHaveLength(40);
+    expect(objects.filter((o) => o.type === 'bereich')).toHaveLength(2);
+    // Bereiche umfassen die Stellplätze absichtlich → KEINE gemeldete Kollision.
+    expect(findLayoutCollisions(objects)).toHaveLength(0);
+  });
+
   it('Grid-Modus bleibt erhalten, wenn NICHT je Tor', () => {
     const { filled } = validateParams({
       action: 'createHall', hall: { lengthM: 120, widthM: 50 },
