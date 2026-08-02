@@ -1064,20 +1064,40 @@ export function HallCanvas() {
         pathForFormVariante(ctx, obj, worldToScreen, renderScale);
         ctx.stroke();
       } else {
+        // Abgerundete Ecken für einen weicheren, „spielerischen" Look. Radius wächst mit der
+        // Objektgröße, bleibt aber bei kleinen Objekten (Tore) dezent.
+        const rad = Math.max(0, Math.min(6 * zoom, w * 0.22, h * 0.22));
+        const roundPath = () => { ctx.beginPath(); ctx.roundRect(pos.x, pos.y, w, h, rad); };
         if (obj.type === 'bereich') {
+          // Zone = weicher, transparenter Hintergrund + gestrichelte Kante. Verdeckt die
+          // Stellplätze darauf nicht mehr (vorher 0.4 → sehr dominant).
+          roundPath();
           ctx.fillStyle = baseColor;
-          ctx.globalAlpha = 0.4;
-          ctx.fillRect(pos.x, pos.y, w, h);
+          ctx.globalAlpha = 0.16;
+          ctx.fill();
+          ctx.globalAlpha = isSelected ? 0.9 : 0.55;
+          ctx.strokeStyle = baseColor;
+          ctx.setLineDash([6, 4]);
+          ctx.lineWidth = isSelected ? 2.5 : 1.5;
+          ctx.stroke();
+          ctx.setLineDash([]);
           ctx.globalAlpha = 1.0;
         } else {
+          // Solides Objekt mit Tiefe: sanfter Schlagschatten + Füllung + feine Kante.
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.30)';
+          ctx.shadowBlur = 5 * zoom;
+          ctx.shadowOffsetY = 1.5 * zoom;
+          roundPath();
           ctx.fillStyle = baseColor;
-          ctx.fillRect(pos.x, pos.y, w, h);
+          ctx.fill();
+          ctx.restore();
+          // feine Kante (theme-abhängig), bei Auswahl kräftig
+          roundPath();
+          ctx.strokeStyle = isSelected ? (isDark ? '#ffffff' : '#1d1d1f') : (isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.16)');
+          ctx.lineWidth = isSelected ? 2.5 : 1;
+          ctx.stroke();
         }
-
-        // Object border
-        ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = isSelected ? 2 : 1;
-        ctx.strokeRect(pos.x, pos.y, w, h);
       }
 
       // Object label — Tore und Bereiche unterschiedlich behandeln
@@ -1172,23 +1192,15 @@ export function HallCanvas() {
             ctx.fillText(tourShort, lx, ly);
           }
         } else if (obj.type === 'bereich') {
-          // Bereich-Label: Text-to-Fit (Schriftgröße aus min(w,h)) + Auto-Rotation
-          // bei deutlich vertikalen Boxen (h > 2×w).
-          const isVertical = h > 2 * w;
-          const labelDim = isVertical ? w : Math.min(w, h);
-          const fontSize = Math.max(8, Math.min(16, labelDim / 6));
-          ctx.font = `${fontSize}px Inter, sans-serif`;
-          const cx = pos.x + w / 2;
-          const cy = pos.y + h / 2;
-          if (isVertical) {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(obj.name, 0, 0);
-            ctx.restore();
-          } else {
-            ctx.fillText(obj.name, cx, cy);
-          }
+          // Zonen-Label OBEN LINKS in der Zone — überdeckt die Stellplätze nicht und wird
+          // nicht mittig abgeschnitten. Klein, halbfett, in der Zonenfarbe (uppercase).
+          const fs = Math.max(9, Math.min(13, 11 * zoom));
+          ctx.font = `600 ${fs}px Inter, sans-serif`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = baseColor;
+          const pad = Math.max(4, 6 * zoom);
+          ctx.fillText(obj.name.toUpperCase(), pos.x + pad, pos.y + pad);
         } else if (zoom > 0.5) {
           // Andere Objekt-Typen: wie bisher
           ctx.font = `${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
