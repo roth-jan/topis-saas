@@ -10,6 +10,7 @@ import { findNearestAnchor } from '@/lib/path-anchor';
 import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResult } from '@/lib/gang-snap';
 import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
 import { pathForFormVariante, pointInFormVariante } from '@/lib/shape-render';
+import { computeAlignment } from '@/lib/alignment';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
@@ -98,6 +99,8 @@ export function HallCanvas() {
   const dragThresholdPassedRef = useRef(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragObject, setDragObject] = useState<TopisObject | null>(null);
+  // Ausrichtungslinien + Live-Maß beim Ziehen (in WELT-Koordinaten; draw() rendert sie oben).
+  const alignRef = useRef<{ vx: number[]; hy: number[]; measures: { x: number; y: number; text: string }[] } | null>(null);
   // Tor-Pinsel ("Tor-Reihe"): an einer Wand ziehen → Vorschau mehrerer Tore
   // im festen Achsabstand, beim Loslassen als Batch anlegen (ein Undo-Schritt).
   const [pinselStart, setPinselStart] = useState<{ x: number; y: number } | null>(null);
@@ -1861,7 +1864,34 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost]);
+
+    // Ausrichtungslinien + Live-Maß beim Ziehen (Figma-/Prison-Architect-Gefühl). alignRef ist
+    // ein Ref → keine Dependency nötig; während des Ziehens löst updateObject den Redraw aus.
+    if (isDragging && dragObject && alignRef.current) {
+      const a = alignRef.current;
+      ctx.save();
+      const accent = isDark ? '#67e8f9' : '#0891b2';
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 4]);
+      for (const wx of a.vx) { const p = worldToScreen(wx, 0); ctx.beginPath(); ctx.moveTo(p.x, 0); ctx.lineTo(p.x, canvas.height); ctx.stroke(); }
+      for (const wy of a.hy) { const p = worldToScreen(0, wy); ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(canvas.width, p.y); ctx.stroke(); }
+      ctx.setLineDash([]);
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const m of a.measures) {
+        const p = worldToScreen(m.x, m.y);
+        const tw = ctx.measureText(m.text).width;
+        const padX = 5, bh = 16;
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.roundRect(p.x - tw / 2 - padX, p.y - bh / 2, tw + padX * 2, bh, 4); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(m.text, p.x, p.y);
+      }
+      ctx.restore();
+    }
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2786,6 +2816,17 @@ export function HallCanvas() {
         }
       }
 
+      // Ausrichtung/Snapping an Nachbarn + Wände (nur freie Objekte, nicht Tore — die rasten
+      // an der Wand). Snap-Toleranz ~8 px in Weltmeter umgerechnet, damit sie zoom-unabhängig
+      // „gleich stark" wirkt. Setzt Führungslinien + Live-Maß für draw().
+      if (dragObject.type !== 'tor') {
+        const threshM = 8 / (SCALE * zoom);
+        const rects = objects.map((o) => ({ id: o.id, x: o.x, y: o.y, width: o.width, height: o.height }));
+        const al = computeAlignment({ id: dragObject.id, x: newX, y: newY, width: dragObject.width, height: dragObject.height }, rects, hall, threshM);
+        newX = al.x; newY = al.y;
+        alignRef.current = (al.vx.length || al.hy.length || al.measures.length) ? { vx: al.vx, hy: al.hy, measures: al.measures } : null;
+      }
+
       // Clamp position within hall bounds
       if (hall) {
         newX = Math.max(0, Math.min(hall.width - dragObject.width, newX));
@@ -2915,6 +2956,7 @@ export function HallCanvas() {
       toast.success('Wegpunkt verschoben');
     }
 
+    alignRef.current = null; // Führungslinien/Maße ausblenden
     setIsDragging(false);
     setDragObject(null);
     setResizeHandle(null);
