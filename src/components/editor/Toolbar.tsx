@@ -652,6 +652,9 @@ export function Toolbar() {
               <Button
                 variant="ghost"
                 size="sm"
+                // a11y: Segmented-Control-Zustand für Screenreader (D13). Externe
+                // Seiten (planung/cockpit) sind Navigation → aria-current statt -pressed.
+                {...(externalHref ? {} : { 'aria-pressed': phase === p.id })}
                 className={`h-7 px-2.5 xl:px-3.5 text-xs xl:text-[13px] font-display shrink-0 rounded-[7px] transition-all ${
                   phase === p.id
                     ? 'bg-card text-foreground shadow-sm hover:bg-card'

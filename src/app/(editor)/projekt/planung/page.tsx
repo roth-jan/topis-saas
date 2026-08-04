@@ -229,8 +229,13 @@ export default function PlanungPage() {
   }
 
   function resetAll() {
+    // SOLL zurück auf IST: manuelle Overrides löschen UND SIM-Varianten (Forks)
+    // rückgängig machen — beides verändert die SOLL-Spalte gegenüber IST (D13).
     setSollOverrides(new Map());
+    for (const parentId of simVarianteByParent.keys()) removeSimVarianteFor(parentId);
   }
+  // SOLL weicht von IST ab, wenn es manuelle Overrides ODER SIM-Varianten gibt.
+  const sollGeaendert = sollOverrides.size > 0 || simVarianteByParent.size > 0;
 
   // Optionen für die Dropdowns
   const torOptions = useMemo(
@@ -386,7 +391,7 @@ export default function PlanungPage() {
               className="h-8 gap-1 text-blue-500 border-blue-500/40"
               onClick={clearSimAuftraege}
             >
-              {simAuftraege.length} Sim löschen
+              {istSimZeilen.length} Sim löschen
             </Button>
           )}
           <Button
@@ -394,7 +399,7 @@ export default function PlanungPage() {
             size="sm"
             className="h-8 gap-1"
             onClick={resetAll}
-            disabled={sollOverrides.size === 0}
+            disabled={!sollGeaendert}
           >
             <RefreshCw className="h-3.5 w-3.5" />
             SOLL zurücksetzen
@@ -450,7 +455,7 @@ export default function PlanungPage() {
               <CardContent className="py-3 text-xs">
                 <div className="flex items-center gap-2">
                   <Calculator className="h-3.5 w-3.5 text-blue-500" />
-                  <span><strong>{simAuftraege.length}</strong> Auftrag(e) aus reiner Simulation — keine IST-Daten geladen. Σ-Werte zeigen also nur, was Sie selbst angelegt haben.</span>
+                  <span><strong>{istSimZeilen.length}</strong> Auftrag(e) aus reiner Simulation — keine IST-Daten geladen. Σ-Werte zeigen also nur, was Sie selbst angelegt haben.</span>
                 </div>
               </CardContent>
             </Card>
