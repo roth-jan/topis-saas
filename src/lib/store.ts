@@ -23,7 +23,7 @@ import {
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
 import { findPathBetweenObjects, buildGangGraph, findPath, generateBasicGangNet } from './pathfinding';
-import { findNearestWall, torBoxFromAnchor, reanchorTore, deriveWalls } from './wall-anchor';
+import { findNearestWall, torBoxFromAnchor, rampeBoxFromAnchor, reanchorTore, deriveWalls } from './wall-anchor';
 import type { GeneratedLayout } from './nl-layout';
 import * as mengenActions from './mengen-store-actions';
 
@@ -412,32 +412,29 @@ export const useTopisStore = create<TopisStore>()(
     // Wenn der Aufrufer kein aussenwandRef gesetzt hat, suchen wir es per
     // findNearestWall. Wenn keine Wand in Reichweite ist, bleibt das Tor
     // unverankert (Migration alter Layouts / freie Halle ohne Wand-Geometrie).
-    if (newObj.type === 'tor' && !newObj.aussenwandRef) {
+    // Tore ragen nach innen (torBoxFromAnchor), Rampen liegen außen an der Wand
+    // (rampeBoxFromAnchor, Lastenheft 3.1.2.2). Beide verankern an die nächste
+    // Außenwand, wenn der Aufrufer kein aussenwandRef gesetzt hat.
+    if ((newObj.type === 'tor' || newObj.type === 'rampe') && !newObj.aussenwandRef) {
       const activeHall = get().halls.find((h) => h.id === get().activeHallId);
       const walls = activeHall ? deriveWalls(activeHall) : [];
       if (walls.length > 0) {
-        // Klickpunkt ist Mitte des Tor-Rechtecks
+        // Klickpunkt ist Mitte des Rechtecks
         const px = newObj.x + newObj.width / 2;
         const py = newObj.y + newObj.height / 2;
         const nearest = findNearestWall(px, py, walls, 30);
         if (nearest) {
-          const box = torBoxFromAnchor(
-            { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
-            walls,
-            newObj.width,
-            newObj.height,
-          );
+          const anchor = { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE };
+          const box = newObj.type === 'rampe'
+            ? rampeBoxFromAnchor(anchor, walls, newObj.width, newObj.height)
+            : torBoxFromAnchor(anchor, walls, newObj.width, newObj.height);
           if (box) {
             newObj = {
               ...newObj,
               x: box.x,
               y: box.y,
               side: box.side ?? newObj.side,
-              aussenwandRef: {
-                wallIndex: nearest.wallIndex,
-                abstandS: nearest.abstandS,
-                abstandE: nearest.abstandE,
-              },
+              aussenwandRef: anchor,
             };
           }
         }
@@ -461,28 +458,22 @@ export const useTopisStore = create<TopisStore>()(
     const created: TopisObject[] = [];
     for (const obj of objs) {
       let newObj = { ...obj, id: counter } as TopisObject;
-      if (newObj.type === 'tor' && !newObj.aussenwandRef && walls.length > 0) {
+      if ((newObj.type === 'tor' || newObj.type === 'rampe') && !newObj.aussenwandRef && walls.length > 0) {
         const px = newObj.x + newObj.width / 2;
         const py = newObj.y + newObj.height / 2;
         const nearest = findNearestWall(px, py, walls, 30);
         if (nearest) {
-          const box = torBoxFromAnchor(
-            { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
-            walls,
-            newObj.width,
-            newObj.height,
-          );
+          const anchor = { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE };
+          const box = newObj.type === 'rampe'
+            ? rampeBoxFromAnchor(anchor, walls, newObj.width, newObj.height)
+            : torBoxFromAnchor(anchor, walls, newObj.width, newObj.height);
           if (box) {
             newObj = {
               ...newObj,
               x: box.x,
               y: box.y,
               side: box.side ?? newObj.side,
-              aussenwandRef: {
-                wallIndex: nearest.wallIndex,
-                abstandS: nearest.abstandS,
-                abstandE: nearest.abstandE,
-              },
+              aussenwandRef: anchor,
             };
           }
         }

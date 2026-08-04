@@ -164,6 +164,29 @@ export function torBoxFromAnchor(
   return { x, y, side };
 }
 
+/** Berechnet aus Rampen-Anker + Wand-Seite die Rampen-Box-Position (x,y).
+ * Lastenheft 3.1.2.2: Nahverkehrsrampen liegen AUSSEN am Hallengrundriss, direkt
+ * an die Außenwand angedockt — also spiegelverkehrt zum Tor (Tor ragt nach innen,
+ * Rampe nach außen). Die Wand-Kante ist die INNENkante der Rampe. */
+export function rampeBoxFromAnchor(
+  anchor: WallAnchor,
+  walls: Wall[],
+  width: number,
+  height: number,
+): { x: number; y: number; side: 'north' | 'south' | 'east' | 'west' | null } | null {
+  const wp = anchorToWorldPoint(anchor, walls);
+  if (!wp) return null;
+  const { x: ax, y: ay, side } = wp;
+  let x = ax - width / 2;
+  let y = ay - height / 2;
+  // Nach AUSSEN versetzt (Gegenteil der Tor-Verankerung):
+  if (side === 'north') y = ay - height;      // Nordwand y=0 → Rampe oberhalb
+  else if (side === 'south') y = ay;          // Südwand y=H → Rampe unterhalb
+  else if (side === 'west') x = ax - width;   // Westwand x=0 → Rampe links
+  else if (side === 'east') x = ax;           // Ostwand x=W → Rampe rechts
+  return { x, y, side };
+}
+
 /** Validiert: Ist das Tor wirklich an einer Außenwand?
  * Wird beim Insert + Move geprüft. */
 export function isValidTorPosition(tor: TopisObject, walls: Wall[]): boolean {
@@ -181,16 +204,29 @@ export function reanchorTore(
   walls: Wall[],
 ): TopisObject[] {
   return tore.map((obj) => {
-    if (obj.type !== 'tor' || !obj.aussenwandRef) return obj;
+    // Tore ragen nach innen, Rampen nach außen (Lastenheft 3.1.2 / 3.1.2.2) —
+    // beide folgen ihrer verankerten Wand bei Geometrie-Änderungen.
+    const isTor = obj.type === 'tor';
+    const isRampe = obj.type === 'rampe';
+    if ((!isTor && !isRampe) || !obj.aussenwandRef) return obj;
     const wp = anchorToWorldPoint(obj.aussenwandRef, walls);
     if (!wp) return obj;
     const side = obj.side ?? wp.side; // ursprüngliche side beibehalten
     let x = wp.x - obj.width / 2;
     let y = wp.y - obj.height / 2;
-    if (side === 'north') y = wp.y;
-    else if (side === 'south') y = wp.y - obj.height;
-    else if (side === 'west') x = wp.x;
-    else if (side === 'east') x = wp.x - obj.width;
+    if (isRampe) {
+      // nach außen
+      if (side === 'north') y = wp.y - obj.height;
+      else if (side === 'south') y = wp.y;
+      else if (side === 'west') x = wp.x - obj.width;
+      else if (side === 'east') x = wp.x;
+    } else {
+      // Tor: nach innen (unverändert)
+      if (side === 'north') y = wp.y;
+      else if (side === 'south') y = wp.y - obj.height;
+      else if (side === 'west') x = wp.x;
+      else if (side === 'east') x = wp.x - obj.width;
+    }
     return { ...obj, x, y, side: side ?? obj.side };
   });
 }
