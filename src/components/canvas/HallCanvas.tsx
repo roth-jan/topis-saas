@@ -104,6 +104,8 @@ export function HallCanvas() {
   // Serie ziehen (Drag-to-Fill, Factorio-Stil): Alt+Ziehen eines Objekts → Reihe von Kopien.
   const [serieSrc, setSerieSrc] = useState<TopisObject | null>(null);
   const [serieGhosts, setSerieGhosts] = useState<{ x: number; y: number; width: number; height: number }[]>([]);
+  // Hover-Feedback (A2): Objekt unter dem Cursor hervorheben.
+  const [hoverObjectId, setHoverObjectId] = useState<number | null>(null);
   // Tor-Pinsel ("Tor-Reihe"): an einer Wand ziehen → Vorschau mehrerer Tore
   // im festen Achsabstand, beim Loslassen als Batch anlegen (ein Undo-Schritt).
   const [pinselStart, setPinselStart] = useState<{ x: number; y: number } | null>(null);
@@ -1104,10 +1106,13 @@ export function HallCanvas() {
           ctx.fillStyle = baseColor;
           ctx.fill();
           ctx.restore();
-          // feine Kante (theme-abhängig), bei Auswahl kräftig
+          // feine Kante (theme-abhängig); Auswahl kräftig, Hover cyan hervorgehoben.
+          const isHovered = obj.id === hoverObjectId && !isSelected;
           roundPath();
-          ctx.strokeStyle = isSelected ? (isDark ? '#ffffff' : '#1d1d1f') : (isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.16)');
-          ctx.lineWidth = isSelected ? 2.5 : 1;
+          ctx.strokeStyle = isSelected
+            ? (isDark ? '#ffffff' : '#1d1d1f')
+            : isHovered ? '#22d3ee' : (isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.16)');
+          ctx.lineWidth = isSelected ? 2.5 : isHovered ? 2 : 1;
           ctx.stroke();
         }
       }
@@ -1930,7 +1935,7 @@ export function HallCanvas() {
       ctx.fillStyle = '#ffffff'; ctx.fillText(label, lp.x, lp.y);
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2705,6 +2710,15 @@ export function HallCanvas() {
     const y = e.clientY - rect.top;
     const world = screenToWorld(x, y);
 
+    // Hover-Feedback (A2): Objekt unter dem Cursor merken (nur im Select-Tool, nicht während
+    // laufender Aktionen). findAllObjectsAt ist seiteneffektfrei; Zonen sind niedrigere Priorität.
+    if (tool === 'select' && !isDragging && !serieSrc && !pinselStart && !gangEndpointDrag) {
+      const hits = findAllObjectsAt(world.x, world.y);
+      const solid = hits.filter((o) => o.type !== 'bereich');
+      const hoveredId = (solid[0] || hits[0])?.id ?? null;
+      if (hoveredId !== hoverObjectId) setHoverObjectId(hoveredId);
+    }
+
     // Tor-Pinsel: während des Ziehens die Geister-Tor-Reihe live nachführen.
     if (pinselStart && pinselSide && hall) {
       setPinselGhosts(computePinselGhosts(pinselSide, pinselStart, world, hall));
@@ -3441,7 +3455,7 @@ export function HallCanvas() {
     if (tool === 'pan') return 'grab';
     if (resizeHandle === 'nw' || resizeHandle === 'se') return 'nwse-resize';
     if (resizeHandle === 'ne' || resizeHandle === 'sw') return 'nesw-resize';
-    if (tool === 'select') return dragObject ? 'move' : 'default';
+    if (tool === 'select') return (dragObject || serieSrc) ? 'move' : (hoverObjectId != null ? 'move' : 'default');
     if (tool === 'gang') return gangDrawStart ? 'crosshair' : 'crosshair';
     return 'crosshair';
   };
