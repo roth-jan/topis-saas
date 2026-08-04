@@ -11,6 +11,7 @@ import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResu
 import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
 import { pathForFormVariante, pointInFormVariante } from '@/lib/shape-render';
 import { computeAlignment } from '@/lib/alignment';
+import { hallOutline } from '@/lib/hall-shape';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
@@ -542,15 +543,27 @@ export function HallCanvas() {
     ctx.fillStyle = isDark ? '#1b1b1d' : '#e9e7e2';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid)
+    // Grundriss-Pfad (rect/L/T/U/C) einmal aufbauen — für Füllung UND Rand.
+    const traceHallPath = () => {
+      const outline = hallOutline(hall!);
+      if (outline.length === 0) return false;
+      ctx.beginPath();
+      outline.forEach((pt, i) => {
+        const s = worldToScreen(pt.x, pt.y);
+        if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+      });
+      ctx.closePath();
+      return true;
+    };
+
+    // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid).
+    // Lastenheft 3.1.1.1: Grundform (rect/L/T/U/C) als Polygon; Aussparungen
+    // (Notch) zeigen den Viewport-Hintergrund, kein extra Clipping nötig.
     if (hall) {
-      const pos = worldToScreen(0, 0);
-      const w = hall.width * SCALE * zoom;
-      const h = hall.height * SCALE * zoom;
       // Light-Mode: warme „Werkstatt"-Bodenfläche (heller als Viewport, damit
       // die Halle sich abhebt); Dark-Mode: gespeicherte Hallenfarbe / warmes Anthrazit.
       ctx.fillStyle = isDark ? (hall.color || '#26252a') : '#faf7f2';
-      ctx.fillRect(pos.x, pos.y, w, h);
+      if (traceHallPath()) ctx.fill();
     }
 
     // 2) Grid ÜBER der Halle zeichnen — 3 Stufen: Neben (1m) + Mittel (5m) + Haupt (10m).
@@ -585,11 +598,10 @@ export function HallCanvas() {
     if (hall) {
       const pos = worldToScreen(0, 0);
       const w = hall.width * SCALE * zoom;
-      const h = hall.height * SCALE * zoom;
 
       ctx.strokeStyle = isDark ? '#4a5568' : '#c4c8d0';
       ctx.lineWidth = 2;
-      ctx.strokeRect(pos.x, pos.y, w, h);
+      if (traceHallPath()) ctx.stroke();
 
       ctx.fillStyle = isDark ? '#718096' : '#8a8f99';
       ctx.font = `${12 * zoom}px Inter, sans-serif`;
