@@ -101,6 +101,9 @@ export function HallCanvas() {
   const [dragObject, setDragObject] = useState<TopisObject | null>(null);
   // Ausrichtungslinien + Live-Maß beim Ziehen (in WELT-Koordinaten; draw() rendert sie oben).
   const alignRef = useRef<{ vx: number[]; hy: number[]; measures: { x: number; y: number; text: string }[] } | null>(null);
+  // Serie ziehen (Drag-to-Fill, Factorio-Stil): Alt+Ziehen eines Objekts → Reihe von Kopien.
+  const [serieSrc, setSerieSrc] = useState<TopisObject | null>(null);
+  const [serieGhosts, setSerieGhosts] = useState<{ x: number; y: number; width: number; height: number }[]>([]);
   // Tor-Pinsel ("Tor-Reihe"): an einer Wand ziehen → Vorschau mehrerer Tore
   // im festen Achsabstand, beim Loslassen als Batch anlegen (ein Undo-Schritt).
   const [pinselStart, setPinselStart] = useState<{ x: number; y: number } | null>(null);
@@ -1897,7 +1900,37 @@ export function HallCanvas() {
       }
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject]);
+
+    // Serie-ziehen-Vorschau (Drag-to-Fill): Geister-Kopien + Zähler am letzten Geist.
+    if (serieSrc && serieGhosts.length > 0) {
+      ctx.save();
+      const col = serieSrc.color || OBJECT_COLORS[serieSrc.type] || '#22c55e';
+      for (let i = 0; i < serieGhosts.length; i++) {
+        const g = serieGhosts[i];
+        const p = worldToScreen(g.x, g.y);
+        const gw = g.width * SCALE * zoom, gh = g.height * SCALE * zoom;
+        const rad = Math.max(0, Math.min(6 * zoom, gw * 0.22, gh * 0.22));
+        ctx.beginPath(); ctx.roundRect(p.x, p.y, gw, gh, rad);
+        ctx.globalAlpha = i === 0 ? 0.9 : 0.45; // Original kräftiger, Kopien blasser
+        ctx.fillStyle = col; ctx.fill();
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.globalAlpha = 1.0;
+      // Zähler-Pille am letzten Geist
+      const last = serieGhosts[serieGhosts.length - 1];
+      const lp = worldToScreen(last.x + last.width / 2, last.y + last.height / 2);
+      const label = `${serieGhosts.length}×`;
+      ctx.font = '700 12px Inter, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(label).width, padX = 6, bh = 18;
+      ctx.fillStyle = '#0891b2';
+      ctx.beginPath(); ctx.roundRect(lp.x - tw / 2 - padX, lp.y - bh / 2, tw + padX * 2, bh, 5); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(label, lp.x, lp.y);
+      ctx.restore();
+    }
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2478,6 +2511,15 @@ export function HallCanvas() {
       // Dann normales Object-Drag
       const obj = findObjectAt(world.x, world.y);
       if (obj) {
+        // Alt gedrückt → „Serie ziehen": Objekt in einer Reihe vervielfältigen (Factorio-Stil).
+        // Nur für freie Objekte (nicht Tore — die haben den Tor-Pinsel).
+        if (e.altKey && obj.type !== 'tor') {
+          selectObject(obj);
+          setSerieSrc(obj);
+          setSerieGhosts([{ x: obj.x, y: obj.y, width: obj.width, height: obj.height }]);
+          setIsDragging(true);
+          return;
+        }
         selectObject(obj); // also clears selectedPath
         setSelectedWaypointIndex(null);
         // Wenn das angeklickte Tor in einem Sim-Auftrag steckt → fokussieren
@@ -2798,6 +2840,28 @@ export function HallCanvas() {
       newH = Math.round(newH * 10) / 10;
 
       updateObject(selectedObject.id, { x: newX, y: newY, width: newW, height: newH });
+    } else if (tool === 'select' && serieSrc) {
+      // Serie ziehen: Reihe von Kopien entlang der dominanten Zieh-Achse, Abstand = Größe + 1 m
+      // Lücke (im Rastermaß). Vorschau als Geister; Anlegen beim Loslassen.
+      const src = serieSrc;
+      const dx = world.x - (src.x + src.width / 2);
+      const dy = world.y - (src.y + src.height / 2);
+      const horiz = Math.abs(dx) >= Math.abs(dy);
+      const ghosts: { x: number; y: number; width: number; height: number }[] = [];
+      if (horiz) {
+        const step = src.width + 1;
+        const dir = dx >= 0 ? 1 : -1;
+        const n = Math.max(1, Math.min(50, Math.floor(Math.abs(dx) / step) + 1));
+        for (let i = 0; i < n; i++) ghosts.push({ x: src.x + dir * i * step, y: src.y, width: src.width, height: src.height });
+      } else {
+        const step = src.height + 1;
+        const dir = dy >= 0 ? 1 : -1;
+        const n = Math.max(1, Math.min(50, Math.floor(Math.abs(dy) / step) + 1));
+        for (let i = 0; i < n; i++) ghosts.push({ x: src.x, y: src.y + dir * i * step, width: src.width, height: src.height });
+      }
+      // Auf Hallengrenzen begrenzen
+      const inBounds = hall ? ghosts.filter((g) => g.x >= 0 && g.y >= 0 && g.x + g.width <= hall.width && g.y + g.height <= hall.height) : ghosts;
+      setSerieGhosts(inBounds.length ? inBounds : [{ x: src.x, y: src.y, width: src.width, height: src.height }]);
     } else if (tool === 'select' && dragObject) {
       // Drag-Threshold: erst nach 3 px Maus-Bewegung als Verschieben werten
       // (verhindert versehentliches Verschieben beim Klicken — Nico 22.05.).
@@ -2844,6 +2908,23 @@ export function HallCanvas() {
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Serie ziehen abschließen: Kopien (außer dem Original bei i=0) als Batch anlegen.
+    if (serieSrc) {
+      const copies = serieGhosts.slice(1);
+      if (copies.length > 0) {
+        const { id: _id, x: _x, y: _y, name: _n, ...rest } = serieSrc;
+        void _id; void _x; void _y;
+        const baseName = (_n || 'Objekt').replace(/\s*\d+$/, '');
+        const newObjs = copies.map((g, i) => ({ ...rest, x: g.x, y: g.y, width: g.width, height: g.height, name: `${baseName} ${i + 2}` }));
+        addObjects(newObjs as Omit<TopisObject, 'id'>[]);
+        toast.success(`${copies.length} ${copies.length === 1 ? 'Kopie' : 'Kopien'} angelegt`);
+      }
+      setSerieSrc(null);
+      setSerieGhosts([]);
+      setIsDragging(false);
+      return;
+    }
+
     // Gang-Endpunkt-Drag beenden
     if (gangEndpointDrag) {
       setGangEndpointDrag(null);
