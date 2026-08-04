@@ -136,6 +136,9 @@ export function HallCanvas() {
   // PathArea drawing state
   const [pathAreaStart, setPathAreaStart] = useState<{ x: number; y: number } | null>(null);
   const [pathAreaMousePos, setPathAreaMousePos] = useState<{ x: number; y: number } | null>(null);
+  // Bereich per Rechteck aufziehen (A3, Prison-Architect-„Foundation-Tool").
+  const [bereichStart, setBereichStart] = useState<{ x: number; y: number } | null>(null);
+  const [bereichMousePos, setBereichMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Measure tool state
   const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
@@ -641,6 +644,28 @@ export function HallCanvas() {
       ctx.lineWidth = 2;
       ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
       ctx.setLineDash([]);
+    }
+
+    // Bereich-Aufzieh-Vorschau (A3): Rechteck + Live-Maß (B × T in m).
+    if (bereichStart && bereichMousePos) {
+      const wx1 = Math.min(bereichStart.x, bereichMousePos.x), wy1 = Math.min(bereichStart.y, bereichMousePos.y);
+      const wx2 = Math.max(bereichStart.x, bereichMousePos.x), wy2 = Math.max(bereichStart.y, bereichMousePos.y);
+      const p1 = worldToScreen(wx1, wy1), p2 = worldToScreen(wx2, wy2);
+      const col = OBJECT_COLORS['bereich'] || '#a855f7';
+      ctx.save();
+      ctx.fillStyle = col; ctx.globalAlpha = 0.16;
+      ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      ctx.globalAlpha = 0.7; ctx.setLineDash([6, 4]); ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+      ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      const label = `${(wx2 - wx1).toFixed(1).replace('.', ',')} × ${(wy2 - wy1).toFixed(1).replace('.', ',')} m`;
+      ctx.font = '700 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2;
+      const tw = ctx.measureText(label).width, padX = 6, bh = 18;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.roundRect(cx - tw / 2 - padX, cy - bh / 2, tw + padX * 2, bh, 5); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(label, cx, cy);
+      ctx.restore();
     }
 
     // Draw Gänge
@@ -1935,7 +1960,7 @@ export function HallCanvas() {
       ctx.fillStyle = '#ffffff'; ctx.fillText(label, lp.x, lp.y);
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId, bereichStart, bereichMousePos]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2608,6 +2633,12 @@ export function HallCanvas() {
       setPinselStart(start);
       setPinselGhosts(computePinselGhosts(side, start, start, hall));
       return;
+    } else if (tool === 'bereich') {
+      // A3: Bereich per Rechteck aufziehen. Start merken; beim Ziehen Vorschau, beim
+      // Loslassen als Bereich in Ziehgröße anlegen (kleiner Klick → Standardgröße als Fallback).
+      setBereichStart({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
+      setBereichMousePos(null);
+      return;
     } else if (tool in OBJECT_DEFAULTS) {
       // Add new object using defaults - centered on click position
       const objectType = tool as ObjectType;
@@ -2787,6 +2818,12 @@ export function HallCanvas() {
 
     // andere Werkzeuge: Snap-Preview ausblenden
     if (toolSnap) setToolSnap(null);
+
+    // Bereich aufziehen (A3): Vorschau-Rechteck live nachführen.
+    if (tool === 'bereich' && bereichStart) {
+      setBereichMousePos({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
+      return;
+    }
 
     // Update measure end position
     if (tool === 'measure' && measureStart) {
@@ -3022,6 +3059,24 @@ export function HallCanvas() {
         }
         setPathAreaStart(null);
         setPathAreaMousePos(null);
+        return;
+      }
+
+      // Bereich (A3) — beim Loslassen als Rechteck anlegen (Mini-Ziehen → Standardgröße).
+      if (tool === 'bereich' && bereichStart) {
+        const def = OBJECT_DEFAULTS['bereich'];
+        const mp = bereichMousePos;
+        let x1 = bereichStart.x, y1 = bereichStart.y;
+        let width = mp ? Math.abs(mp.x - bereichStart.x) : 0;
+        let height = mp ? Math.abs(mp.y - bereichStart.y) : 0;
+        if (mp) { x1 = Math.min(bereichStart.x, mp.x); y1 = Math.min(bereichStart.y, mp.y); }
+        if (width < 1 || height < 1) { width = def.width; height = def.height; x1 = bereichStart.x - width / 2; y1 = bereichStart.y - height / 2; }
+        if (hall) { x1 = Math.max(0, Math.min(hall.width - width, x1)); y1 = Math.max(0, Math.min(hall.height - height, y1)); }
+        const count = objects.filter(o => o.type === 'bereich').length + 1;
+        addObjects([{ type: 'bereich', x: Math.round(x1 * 10) / 10, y: Math.round(y1 * 10) / 10, width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10, name: `Bereich ${count}` }]);
+        toast.success(`Bereich erstellt (${width.toFixed(0)} m × ${height.toFixed(0)} m)`);
+        setBereichStart(null);
+        setBereichMousePos(null);
         return;
       }
     }
