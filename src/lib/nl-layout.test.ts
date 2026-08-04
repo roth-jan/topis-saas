@@ -47,11 +47,26 @@ describe('nl-layout — validateParams', () => {
   });
 
   it('OHNE explizite Breite passt sich die Tor-Breite dem Achsabstand an (keine Überlappung)', () => {
-    // „Abstand 3" ohne Breite: Tore werden 3.0 m breit (min(3.5, 3)), Lücke 0 → ok, kein Fehler.
-    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 40, side: 'north', lueckeM: 3 }] });
+    // „Abstand 3" (Achsabstand, spacingM) ohne Breite: Tore werden 3.0 m breit (min(3.5, 3)), Lücke 0.
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 40, side: 'north', spacingM: 3 }] });
     expect(r.ok).toBe(true);
     const { objects } = paramsToLayout(r.filled);
     expect(objects.every((o) => o.type === 'tor' && o.width === 3)).toBe(true);
+  });
+
+  it('C11: lueckeM = echter Zwischenraum, auch OHNE Breite (Pitch = Default-Breite + Lücke)', () => {
+    // „6 m Lücke" ohne Breite: Tore 3.5 m breit, Achsabstand 3.5+6 = 9.5 m (NICHT 6 als Achsabstand!).
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 10, side: 'north', lueckeM: 6 }] });
+    expect(r.ok).toBe(true);
+    expect(r.filled.gates![0].spacingM).toBeCloseTo(9.5, 6);
+    expect(r.filled.gates![0].torBreiteM).toBeCloseTo(3.5, 6);
+  });
+
+  it('C11: spacingM = Achsabstand ≠ lueckeM = Zwischenraum (gleiche Zahl, anderer Pitch)', () => {
+    const achse = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 10, side: 'north', spacingM: 6 }] });
+    const luecke = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 10, side: 'north', lueckeM: 6 }] });
+    expect(achse.filled.gates![0].spacingM).toBeCloseTo(6, 6);        // Achsabstand = 6
+    expect(luecke.filled.gates![0].spacingM).toBeCloseTo(9.5, 6);     // Lücke 6 → Pitch 9.5
   });
 
   it('Tor-Breite + Lücke: Pitch = Breite + Lücke, Kapazität geprüft', () => {
@@ -89,8 +104,9 @@ describe('nl-layout — parseCanonical', () => {
     expect(p.hall.lengthM).toBe(210);
     expect(p.hall.widthM).toBe(58);
     expect(p.gates).toHaveLength(1);
-    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', lueckeM: 3.75 });
-    // Ohne Tor-Breite meint „Abstand" den Achsabstand → Pitch bleibt 3.75 (AS-konform, passt in 210 m).
+    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', spacingM: 3.75 });
+    expect(p.gates![0].lueckeM).toBeUndefined();
+    // „Abstand" = Achsabstand → Pitch 3.75 (AS-konform, passt in 210 m).
     const v = validateParams(p);
     expect(v.ok).toBe(true);
     expect(v.filled.gates![0].spacingM).toBeCloseTo(3.75, 6);
@@ -136,9 +152,28 @@ describe('nl-layout — parseCanonical', () => {
 
   it('bare Abstand „115 Tore Nord 3,75" (ohne Schlüsselwort) → Achsabstand', () => {
     const p = parseCanonical('Halle 210x58, 115 Tore Nord 3,75')!;
-    expect(p.gates![0].lueckeM).toBe(3.75);
+    expect(p.gates![0].spacingM).toBe(3.75);
+    expect(p.gates![0].lueckeM).toBeUndefined();
     // Ohne Tor-Breite = Achsabstand → validiert zu spacingM 3.75.
     expect(validateParams(p).filled.gates![0].spacingM).toBeCloseTo(3.75, 6);
+  });
+
+  it('C11: „Lücke" wird als Zwischenraum geparst, „Abstand" als Achsabstand', () => {
+    const gap = parseCanonical('Halle 210x58, 20 Tore Nord 6 m Lücke')!;
+    expect(gap.gates![0]).toMatchObject({ count: 20, side: 'north', lueckeM: 6 });
+    expect(gap.gates![0].spacingM).toBeUndefined();
+    const achse = parseCanonical('Halle 210x58, 20 Tore Nord Abstand 6')!;
+    expect(achse.gates![0]).toMatchObject({ count: 20, side: 'north', spacingM: 6 });
+    expect(achse.gates![0].lueckeM).toBeUndefined();
+    // Gleiche Zahl, anderer Pitch:
+    expect(validateParams(gap).filled.gates![0].spacingM).toBeCloseTo(9.5, 6);
+    expect(validateParams(achse).filled.gates![0].spacingM).toBeCloseTo(6, 6);
+  });
+
+  it('C11: „zwischen den Toren 5 m" → Zwischenraum (lueckeM)', () => {
+    const p = parseCanonical('Halle 210x58, 15 Tore Nord, 5 m zwischen den Toren')!;
+    expect(p.gates![0].lueckeM).toBe(5);
+    expect(p.gates![0].spacingM).toBeUndefined();
   });
 
   it('gibt null ohne erkennbare Maße', () => {

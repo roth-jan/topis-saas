@@ -93,18 +93,30 @@ export function validateParams(params: LayoutParams): ValidationResult {
     // Tor-Breite entlang der Wand (Lastenheft-Eigenschaft). Nur „explizit", wenn eine Breite
     // WIRKLICH angegeben wurde — nie geraten (das LLM neigte dazu, 4 m zu erfinden).
     const hasExplicitBreite = g.torBreiteM != null && g.torBreiteM > 0;
-    // Achsabstand (Pitch) ZUERST bestimmen. Disambiguierung von „Abstand":
-    //  - explizit spacingM → Achsabstand.
-    //  - lueckeM + explizite Breite → „Abstand"/„Lücke" = Zwischenraum → Pitch = Breite + Lücke.
-    //  - lueckeM OHNE Breite → „Abstand 6" meint konventionell den Achsabstand (wie AS Halle 6).
-    //  - nichts → Default.
-    const spacingM = g.spacingM != null ? toM(g.spacingM)
-      : g.lueckeM != null && g.lueckeM >= 0
-        ? (hasExplicitBreite ? toM(g.torBreiteM!) + toM(g.lueckeM) : toM(g.lueckeM))
-        : hasExplicitBreite ? toM(g.torBreiteM!) + 1 : DEFAULT_SPACING_M;
-    // Breite: explizit übernehmen; sonst an den Achsabstand anpassen (nie breiter als der
-    // Pitch → Tore überlappen ohne explizite Breite NIE, auch bei engem Raster wie „Abstand 3").
-    const torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : Math.min(TOR_W, spacingM);
+    // Disambiguierung „Abstand" (Achsabstand) vs. „Lücke" (Zwischenraum) — Lastenheft
+    // §1.1.2.1 („distance between the gates" = Lücke) getrennt vom Mitte-zu-Mitte-Achsabstand.
+    // Zwei GETRENNTE Parameter (der Parser + die Edge-Function setzen genau einen):
+    //   - spacingM  → ACHSABSTAND (Mitte-zu-Mitte). Breite passt sich an (nie > Pitch).
+    //   - lueckeM   → echter ZWISCHENRAUM. Pitch = Breite + Lücke (Breite bleibt Default/explizit).
+    //   - nur Breite → Default-Lücke 1 m.
+    //   - nichts    → Default-Achsabstand.
+    let spacingM: number;
+    let torBreiteM: number;
+    if (g.spacingM != null) {
+      // Achsabstand: Breite entweder explizit oder auf den Pitch begrenzt (keine Überlappung).
+      spacingM = toM(g.spacingM);
+      torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : Math.min(TOR_W, spacingM);
+    } else if (g.lueckeM != null && g.lueckeM >= 0) {
+      // Echte Lücke: Breite bleibt Default (3.5) oder explizit → Pitch = Breite + Lücke.
+      torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : TOR_W;
+      spacingM = torBreiteM + toM(g.lueckeM);
+    } else if (hasExplicitBreite) {
+      torBreiteM = toM(g.torBreiteM!);
+      spacingM = torBreiteM + 1;
+    } else {
+      spacingM = DEFAULT_SPACING_M;
+      torBreiteM = Math.min(TOR_W, spacingM);
+    }
     const lueckeEff = spacingM - torBreiteM; // effektive Lücke (nur bei EXPLIZITER Breite negativ)
 
     if (!Number.isFinite(count) || count < 1) { errors.push('Toranzahl fehlt oder ist ungültig.'); continue; }
@@ -639,10 +651,19 @@ export function parseCanonical(input: string): LayoutParams | null {
   // Tor-Breite NUR im Tor-Kontext (sonst würde „100 m breite" der HALLE als Tor-Breite gelesen).
   const matchBreite = (s: string) => s.match(/tor\w*[^.,;]{0,20}?(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*breit/)?.[1]
     ?? s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*breit(?:e)?[^.,;]{0,20}?\btore?\b/)?.[1];
-  const matchLuecke = (s: string) => s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:abstand|l[üu]cke)/)?.[1]
-    ?? s.match(/(?:abstand|l[üu]cke)[^\d]{0,10}(\d+(?:\.\d+)?)/)?.[1];
+  // ECHTE Lücke (Zwischenraum): „Lücke", „Zwischenraum", „zwischen …", „dazwischen",
+  // „Abstand zum nächsten Tor", „Abstand zwischen" → lueckeM. (C11-Semantik)
+  const matchGap = (s: string) =>
+    s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:l[üu]cke|zwischenraum|abstand\s+zum\s+n[äa]chsten|abstand\s+zwischen|zwischen\b)/)?.[1]
+    ?? s.match(/(?:l[üu]cke|zwischenraum|dazwischen|abstand\s+zum\s+n[äa]chsten|abstand\s+zwischen)[^\d]{0,12}(\d+(?:\.\d+)?)/)?.[1];
+  // Reiner ACHSABSTAND: „Abstand N" / „Raster N" (NICHT „…zum nächsten/zwischen") + bloße Zahl.
+  const matchAchse = (s: string, allowBare: boolean) =>
+    s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:raster|abstand)(?!\s*(?:zum|zwischen))/)?.[1]
+    ?? s.match(/(?:raster|abstand)(?!\s*(?:zum|zwischen))[^\d]{0,4}(\d+(?:\.\d+)?)/)?.[1]
+    ?? (matchSpacing(s, allowBare) != null ? String(matchSpacing(s, allowBare)) : undefined);
   const globalBreite = matchBreite(low);
-  const globalLuecke = matchLuecke(low) ?? (matchSpacing(low, false) != null ? String(matchSpacing(low, false)) : undefined);
+  const globalGap = matchGap(low);
+  const globalAchse = matchAchse(low, false);
 
   // Torreihen aus Segmenten (getrennt durch , ; oder „und").
   const segments = low.split(/[,;]|\bund\b/);
@@ -653,11 +674,14 @@ export function parseCanonical(input: string): LayoutParams | null {
     if (cm && side) {
       const noDims = !/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/.test(seg);
       const breite = matchBreite(seg) ?? globalBreite;
-      const luecke = matchLuecke(seg) ?? (matchSpacing(seg, noDims) != null ? String(matchSpacing(seg, noDims)) : undefined) ?? globalLuecke;
+      // Lücke hat Vorrang; nur wenn keine Lücke-Angabe da ist, zählt „Abstand" als Achsabstand.
+      const gap = matchGap(seg) ?? globalGap;
+      const achse = gap == null ? (matchAchse(seg, noDims) ?? globalAchse) : undefined;
       gates.push({
         count: parseInt(cm[1], 10), side,
         ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
-        ...(luecke != null ? { lueckeM: parseFloat(luecke) } : {}),
+        ...(gap != null ? { lueckeM: parseFloat(gap) } : {}),
+        ...(achse != null ? { spacingM: parseFloat(achse) } : {}),
       });
     }
   }
