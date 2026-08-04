@@ -287,8 +287,14 @@ export function HallCanvas() {
 
   // Find object at position with click-cycling support
   const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
-    const hits = findAllObjectsAt(wx, wy);
+    let hits = findAllObjectsAt(wx, wy);
     if (hits.length === 0) return null;
+    // Bereiche sind Hintergrund-Zonen (enthalten ihre Stellplätze bewusst). Solange am
+    // Klickpunkt ein SOLIDES Objekt liegt, die Zonen beim Auswählen/Durchblättern ignorieren
+    // → ein Klick (auch mehrfach) auf einen Stellplatz wählt IMMER den Stellplatz, nicht die
+    // Zone darunter. Eine Zone wählt man an einer freien Stelle (ohne solides Objekt) an.
+    const solid = hits.filter((o) => o.type !== 'bereich');
+    if (solid.length > 0) hits = solid;
 
     // Check if this is a repeated click at the same position (within 3m tolerance)
     const now = Date.now();
