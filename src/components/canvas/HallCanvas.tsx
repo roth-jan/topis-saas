@@ -1284,6 +1284,27 @@ export function HallCanvas() {
         ctx.restore();
       }
 
+      // Straße (Außengelände §1.1.6): gestrichelte Mittelmarkierung entlang der
+      // Längsachse — damit outdoor_road wie eine Fahrbahn liest statt wie ein
+      // graues Rechteck. Reine Darstellung.
+      if (obj.type === 'outdoor_road' && zoom > 0.25) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)'; // Amber wie Straßenmarkierung
+        ctx.lineWidth = Math.max(1, 1.5 * zoom);
+        ctx.setLineDash([10 * zoom, 8 * zoom]);
+        ctx.beginPath();
+        if (w >= h) {
+          const my = pos.y + h / 2;
+          ctx.moveTo(pos.x + 4, my); ctx.lineTo(pos.x + w - 4, my);
+        } else {
+          const mx = pos.x + w / 2;
+          ctx.moveTo(mx, pos.y + 4); ctx.lineTo(mx, pos.y + h - 4);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
       // Object label — Tore und Bereiche unterschiedlich behandeln
       if (zoom > 0.3 && obj.name) {
         ctx.fillStyle = '#fff';
