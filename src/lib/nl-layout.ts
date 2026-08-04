@@ -668,6 +668,10 @@ export function parseCanonical(input: string): LayoutParams | null {
   // Torreihen aus Segmenten (getrennt durch , ; oder „und").
   const segments = low.split(/[,;]|\bund\b/);
   const gates: GateGroup[] = [];
+  // C12: „N Tore Nord und Süd" wird an „und" zu [„… nord", „ süd"] gespalten — das
+  // zweite Segment hat eine Seite, aber KEINE Zahl. Solche reinen Seiten-Segmente
+  // (keine Ziffern → nicht „und 6 Bereiche") erben die Torreihe des Vorgängers.
+  let lastTor: Omit<GateGroup, 'side'> | null = null;
   for (const seg of segments) {
     const cm = seg.match(/(\d+)\s*tore?\b/);
     const side = sideOf(seg);
@@ -677,12 +681,20 @@ export function parseCanonical(input: string): LayoutParams | null {
       // Lücke hat Vorrang; nur wenn keine Lücke-Angabe da ist, zählt „Abstand" als Achsabstand.
       const gap = matchGap(seg) ?? globalGap;
       const achse = gap == null ? (matchAchse(seg, noDims) ?? globalAchse) : undefined;
-      gates.push({
-        count: parseInt(cm[1], 10), side,
+      const common = {
+        count: parseInt(cm[1], 10),
         ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
         ...(gap != null ? { lueckeM: parseFloat(gap) } : {}),
         ...(achse != null ? { spacingM: parseFloat(achse) } : {}),
-      });
+      };
+      gates.push({ ...common, side });
+      lastTor = common;
+    } else if (side && !cm && lastTor &&
+               /^\s*(?:im|in|auf|nach)?\s*(?:nord(?:en)?|s(?:ü|u)d(?:en)?|sueden|ost(?:en)?|west(?:en)?)\s*$/.test(seg)) {
+      // NUR ein reines Seiten-Segment (z.B. „ süd" aus „… Nord und Süd", auch „im süden")
+      // erbt die Torreihe des Vorgängers. Zonen-Klauseln wie „wareneingang im westen"
+      // enthalten weitere Wörter → greifen hier bewusst NICHT.
+      gates.push({ ...lastTor, side });
     }
   }
   if (gates.length > 0) params.gates = gates;
@@ -692,11 +704,17 @@ export function parseCanonical(input: string): LayoutParams | null {
   for (const [re, label] of [[/wareneingang/, 'Wareneingang'], [/warenausgang/, 'Warenausgang']] as [RegExp, string][]) {
     const m = low.match(re);
     if (m) {
-      const after = low.slice(m.index ?? 0, (m.index ?? 0) + 40);
+      const idx = m.index ?? 0;
+      const after = low.slice(idx, idx + 40);
+      // C12: Seite kann NACH („Wareneingang West") ODER VOR dem Schlüsselwort stehen
+      // („im Norden Wareneingang"). Zuerst danach suchen, dann im Text davor — aber nur
+      // innerhalb derselben Klausel (nach dem letzten , oder ;), damit die Seite eines
+      // vorherigen Tor-Segments nicht fälschlich auf die Zone abfärbt.
+      const before = (low.slice(Math.max(0, idx - 25), idx).split(/[,;]/).pop() ?? '');
       const dim = after.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
       zonen.push({
         name: label,
-        side: sideOf(after) ?? undefined,
+        side: sideOf(after) ?? sideOf(before) ?? undefined,
         ...(dim ? { laengeM: parseFloat(dim[1]), breiteM: parseFloat(dim[2]) } : {}),
       });
     }

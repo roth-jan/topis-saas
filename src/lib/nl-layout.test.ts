@@ -142,6 +142,38 @@ describe('nl-layout — parseCanonical', () => {
     expect(p.ignored?.some((x) => x.includes('12x3'))).toBeFalsy();
   });
 
+  it('C12: „50 Tore Nord und Süd" → zwei Torreihen (Serie über „und")', () => {
+    const p = parseCanonical('Halle 210x58, 50 Tore Nord und Süd')!;
+    expect(p.gates).toHaveLength(2);
+    expect(p.gates!.map((g) => g.side).sort()).toEqual(['north', 'south']);
+    expect(p.gates!.every((g) => g.count === 50)).toBe(true);
+  });
+
+  it('C12: „N Tore Nord und Süd Abstand 4" — Spec wird auf beide Seiten vererbt', () => {
+    const p = parseCanonical('Halle 210x58, 40 Tore Nord Abstand 4 und Süd')!;
+    expect(p.gates).toHaveLength(2);
+    expect(p.gates!.every((g) => g.count === 40 && g.spacingM === 4)).toBe(true);
+  });
+
+  it('C12: „und 6 Bereiche" wird NICHT als Torreihe fehlinterpretiert', () => {
+    const p = parseCanonical('Halle 210x58, 20 Tore Nord und 6 Bereiche')!;
+    expect(p.gates).toHaveLength(1);
+    expect(p.gates![0].side).toBe('north');
+    expect(p.bereiche).toBe(6);
+  });
+
+  it('C12: Zonen-Seite VOR dem Schlüsselwort — „im Norden Wareneingang"', () => {
+    const p = parseCanonical('Halle 100x50, 10 Tore Süd, im Norden Wareneingang')!;
+    const we = p.zonen?.find((z) => z.name === 'Wareneingang');
+    expect(we?.side).toBe('north');
+  });
+
+  it('C12: Zonen-Seite NACH dem Schlüsselwort bleibt erhalten — „Wareneingang West"', () => {
+    const p = parseCanonical('Halle 100x50, 10 Tore Süd, Wareneingang West')!;
+    const we = p.zonen?.find((z) => z.name === 'Wareneingang');
+    expect(we?.side).toBe('west');
+  });
+
   it('P0: nicht unterstützte Elemente werden gemeldet (nicht still geschluckt)', () => {
     const p = parseCanonical('Halle 100x50, 10 Tore Nord, 3 Fahrgänge, Bereiche, Sicherheitsabstand 2m')!;
     const ign = (p.ignored ?? []).join(' | ');
