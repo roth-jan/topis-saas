@@ -12,6 +12,7 @@ import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
 import { pathForFormVariante, pointInFormVariante } from '@/lib/shape-render';
 import { computeAlignment } from '@/lib/alignment';
 import { hallOutline } from '@/lib/hall-shape';
+import { kettenPolygon, kettenPfeilPositionen, sampleMidline } from '@/lib/kette-geometry';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
@@ -89,6 +90,12 @@ export function HallCanvas() {
   const selectedPathArea = useTopisStore((s) => s.selectedPathArea);
   const selectConveyor = useTopisStore((s) => s.selectConveyor);
   const selectedConveyor = useTopisStore((s) => s.selectedConveyor);
+  // Unterflurförderkette (Lastenheft 3.1.5)
+  const kettenWegbereiche = useTopisStore((s) => s.kettenWegbereiche);
+  const selectedKette = useTopisStore((s) => s.selectedKette);
+  const addKette = useTopisStore((s) => s.addKette);
+  const updateKette = useTopisStore((s) => s.updateKette);
+  const selectKette = useTopisStore((s) => s.selectKette);
   const setTool = useTopisStore((s) => s.setTool);
   const heatmapConfig = useHeatmapConfig();
   const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
@@ -191,6 +198,8 @@ export function HallCanvas() {
   // Conveyor drawing state
   const [currentConveyor, setCurrentConveyor] = useState<{ points: { x: number; y: number }[] } | null>(null);
   const [conveyorMousePos, setConveyorMousePos] = useState<{ x: number; y: number } | null>(null);
+  // Kette-Zeichnen: Live-Vorschau des nächsten Punkts (Lastenheft 3.1.5)
+  const [ketteMousePos, setKetteMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Context menu state (for paths)
   const [contextMenu, setContextMenu] = useState<{
@@ -960,6 +969,91 @@ export function HallCanvas() {
       });
       ctx.restore();
     });
+
+    // Draw Unterflurförderketten (Lastenheft 3.1.5): eigener Wegbereich mit
+    // fester Breite, Kurven+Geraden, EINER Fließrichtung (Pfeile). Als Boden-
+    // Wegbereich VOR den Objekten gezeichnet (Stellplätze liegen darüber).
+    kettenWegbereiche.forEach((k) => {
+      if (!k.punkte || k.punkte.length < 2) return;
+      const isSelK = selectedKette?.id === k.id;
+      const farbe = k.farbe || '#0891b2'; // Teal
+      ctx.save();
+      // 1) Bereichsfläche (Kontur-Polygon)
+      const poly = kettenPolygon(k);
+      if (poly.length >= 3) {
+        ctx.beginPath();
+        poly.forEach((pt, i) => {
+          const s = worldToScreen(pt.x, pt.y);
+          if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = farbe;
+        ctx.globalAlpha = isSelK ? 0.28 : 0.18;
+        ctx.fill();
+        ctx.globalAlpha = isSelK ? 0.95 : 0.6;
+        ctx.strokeStyle = farbe;
+        ctx.lineWidth = isSelK ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      // 2) Mittellinie (gesampelt → folgt den Kurven)
+      const mid = sampleMidline(k.punkte);
+      if (mid.length >= 2) {
+        ctx.beginPath();
+        mid.forEach((m, i) => {
+          const s = worldToScreen(m.p.x, m.p.y);
+          if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+        });
+        ctx.strokeStyle = farbe;
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // 3) Fließrichtungs-Pfeile (alle ~8 m)
+      const pfeile = kettenPfeilPositionen(k, 8);
+      pfeile.forEach(({ pos, richtung }) => {
+        const s = worldToScreen(pos.x, pos.y);
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(richtung);
+        ctx.fillStyle = farbe;
+        ctx.beginPath();
+        ctx.moveTo(7, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
+      // 4) Stützpunkte
+      k.punkte.forEach((p) => {
+        const s = worldToScreen(p.x, p.y);
+        ctx.fillStyle = farbe;
+        ctx.beginPath(); ctx.arc(s.x, s.y, isSelK ? 4 : 3, 0, Math.PI * 2); ctx.fill();
+      });
+      // 5) Name am ersten Punkt
+      if (zoom > 0.4 && k.name) {
+        const s = worldToScreen(k.punkte[0].x, k.punkte[0].y);
+        ctx.fillStyle = farbe;
+        ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(k.name, s.x + 6, s.y - 4);
+      }
+      ctx.restore();
+    });
+
+    // Kette-Zeichnen: Vorschau-Linie vom letzten Stützpunkt zur Maus
+    if (tool === 'kette' && selectedKette && selectedKette.punkte.length > 0 && ketteMousePos) {
+      const last = selectedKette.punkte[selectedKette.punkte.length - 1];
+      const a = worldToScreen(last.x, last.y);
+      const b = worldToScreen(ketteMousePos.x, ketteMousePos.y);
+      ctx.save();
+      ctx.strokeStyle = selectedKette.farbe || '#0891b2';
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
 
     // Draw current conveyor being drawn
     if (currentConveyor && currentConveyor.points.length > 0) {
@@ -2008,7 +2102,7 @@ export function HallCanvas() {
       ctx.fillStyle = '#ffffff'; ctx.fillText(label, lp.x, lp.y);
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId, bereichStart, bereichMousePos]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId, bereichStart, bereichMousePos, kettenWegbereiche, selectedKette, ketteMousePos]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2541,6 +2635,22 @@ export function HallCanvas() {
       return;
     }
 
+    // Kette zeichnen (Lastenheft 3.1.5): Klick fügt der aktiven Kette einen
+    // Stützpunkt hinzu. Ist keine Kette gewählt, wird eine neue angelegt (der
+    // KettenDialog wählt normalerweise vorher eine aus + schaltet auf dieses Tool).
+    if (tool === 'kette') {
+      const pt = { x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 };
+      let ziel = selectedKette;
+      if (!ziel) {
+        ziel = addKette({ name: `Kette ${kettenWegbereiche.length + 1}`, punkte: [], breite: 1.4, fliessrichtung: 'vorwaerts' });
+        selectKette(ziel);
+      }
+      updateKette(ziel.id, { punkte: [...ziel.punkte, pt] });
+      selectKette({ ...ziel, punkte: [...ziel.punkte, pt] });
+      setKetteMousePos(pt);
+      return;
+    }
+
     if (tool === 'select') {
       // Gang-Endpunkt-Drag (vor allem anderen): wenn ein Gang selektiert ist
       // und der Klick auf einem Endpunkt-Handle landet → Drag starten.
@@ -2882,6 +2992,12 @@ export function HallCanvas() {
     // Update conveyor preview position
     if (tool === 'conveyor' && currentConveyor) {
       setConveyorMousePos({ x: Math.round(world.x), y: Math.round(world.y) });
+      return;
+    }
+
+    // Update Kette preview position (Live-Linie zum nächsten Stützpunkt)
+    if (tool === 'kette' && selectedKette) {
+      setKetteMousePos({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
       return;
     }
 
