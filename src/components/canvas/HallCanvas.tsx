@@ -537,9 +537,9 @@ export function HallCanvas() {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    // Clear canvas — neutrales Apple-Anthrazit als Zeichen-Viewport
-    // Theme-abhängig: helle Zeichenfläche im Light-Mode, Anthrazit im Dark-Mode.
-    ctx.fillStyle = isDark ? '#1b1b1d' : '#f4f4f6';
+    // Clear canvas — neutraler Zeichen-Viewport (leicht warmes Neutral).
+    // Theme-abhängig: warmes Hellgrau im Light-Mode, Anthrazit im Dark-Mode.
+    ctx.fillStyle = isDark ? '#1b1b1d' : '#e9e7e2';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid)
@@ -547,44 +547,38 @@ export function HallCanvas() {
       const pos = worldToScreen(0, 0);
       const w = hall.width * SCALE * zoom;
       const h = hall.height * SCALE * zoom;
-      // Light-Mode: helle Hallenfläche; Dark-Mode: gespeicherte Hallenfarbe.
-      ctx.fillStyle = isDark ? (hall.color || '#26262a') : '#ffffff';
+      // Light-Mode: warme „Werkstatt"-Bodenfläche (heller als Viewport, damit
+      // die Halle sich abhebt); Dark-Mode: gespeicherte Hallenfarbe / warmes Anthrazit.
+      ctx.fillStyle = isDark ? (hall.color || '#26252a') : '#faf7f2';
       ctx.fillRect(pos.x, pos.y, w, h);
     }
 
-    // 2) Grid ÜBER der Halle zeichnen — Major (5m) + Minor (1m, ab Zoom).
+    // 2) Grid ÜBER der Halle zeichnen — 3 Stufen: Neben (1m) + Mittel (5m) + Haupt (10m).
     // Grid wird überall (auch außerhalb) gezeichnet → Orientierung beim Pannen.
     // Höhere Opacity innerhalb der Halle weil das Grid auf dem hellen Halle-
-    // Hintergrund sichtbar bleiben muss; Außerhalb (schwarz) bleibt es subtil.
+    // Hintergrund sichtbar bleiben muss; Außerhalb bleibt es subtil.
     if (showGrid) {
-      const minorStepM = 1;
-      const majorStepM = 5;
-      const minorPx = minorStepM * SCALE * zoom;
-      const majorPx = majorStepM * SCALE * zoom;
-
-      if (minorPx >= 6) {
-        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)';
+      const drawGridLines = (stepM: number, style: string) => {
+        const stepPx = stepM * SCALE * zoom;
+        if (stepPx < 6) return;
+        ctx.strokeStyle = style;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let x = pan.x % minorPx; x < canvas.width; x += minorPx) {
+        for (let x = pan.x % stepPx; x < canvas.width; x += stepPx) {
           ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
         }
-        for (let y = pan.y % minorPx; y < canvas.height; y += minorPx) {
+        for (let y = pan.y % stepPx; y < canvas.height; y += stepPx) {
           ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
         }
         ctx.stroke();
-      }
+      };
 
-      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.13)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let x = pan.x % majorPx; x < canvas.width; x += majorPx) {
-        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
-      }
-      for (let y = pan.y % majorPx; y < canvas.height; y += majorPx) {
-        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
-      }
-      ctx.stroke();
+      // Nebenlinien (1m) — nur bei genügend Zoom, sehr fein
+      drawGridLines(1, isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.045)');
+      // Mittellinien (5m)
+      drawGridLines(5, isDark ? 'rgba(255, 255, 255, 0.13)' : 'rgba(0, 0, 0, 0.085)');
+      // Hauptlinien (10m) — kräftig, geben die grobe Orientierung
+      drawGridLines(10, isDark ? 'rgba(255, 255, 255, 0.24)' : 'rgba(0, 0, 0, 0.15)');
     }
 
     // 3) Halle-Border + Name nach dem Grid (sonst werden sie überzeichnet)
