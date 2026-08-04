@@ -1148,6 +1148,48 @@ export function HallCanvas() {
         }
       }
 
+      // Regal (Lastenheft 3.1.3.2): Fächer/Bays entlang der Längsachse andeuten
+      // + Ebenen-Zahl als Badge. Das Regal ist ein Stellplatz mit 2..n Ebenen;
+      // in der 2D-Draufsicht zeigen wir die Palettenplätze (Bays) und wie viele
+      // Ebenen es hat. Reine Darstellung — Kapazität/Rechnung unberührt.
+      if (obj.type === 'regal' && zoom > 0.25) {
+        const ebenen = obj.regalEbenen?.length || obj.ebenen || 3;
+        const bays = Math.max(1, obj.palettenPlaetzeProEbene || Math.floor(obj.width / 1.2) || 1);
+        const along = w >= h; // Längsachse
+        ctx.save();
+        ctx.strokeStyle = isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.28)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (along) {
+          for (let i = 1; i < bays; i++) {
+            const x = pos.x + (w * i) / bays;
+            ctx.moveTo(x, pos.y + 1); ctx.lineTo(x, pos.y + h - 1);
+          }
+        } else {
+          for (let i = 1; i < bays; i++) {
+            const y = pos.y + (h * i) / bays;
+            ctx.moveTo(pos.x + 1, y); ctx.lineTo(pos.x + w - 1, y);
+          }
+        }
+        ctx.stroke();
+        // Ebenen-Badge oben rechts („×N")
+        if (zoom > 0.4) {
+          const txt = `×${ebenen}`;
+          ctx.font = `bold ${Math.max(9, 10 * zoom)}px Inter, sans-serif`;
+          const tw = ctx.measureText(txt).width + 6;
+          const th = Math.max(12, 13 * zoom);
+          const bx = pos.x + w - tw - 2;
+          const by = pos.y + 2;
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.beginPath(); ctx.roundRect(bx, by, tw, th, 3); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(txt, bx + tw / 2, by + th / 2);
+        }
+        ctx.restore();
+      }
+
       // Object label — Tore und Bereiche unterschiedlich behandeln
       if (zoom > 0.3 && obj.name) {
         ctx.fillStyle = '#fff';
