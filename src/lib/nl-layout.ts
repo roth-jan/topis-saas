@@ -128,7 +128,13 @@ export function validateParams(params: LayoutParams): ValidationResult {
     // Torreihe standardmäßig ZENTRIEREN (gleicher Randabstand links/rechts) —
     // außer der Nutzer gibt explizit einen Anfangsabstand vor.
     const rowLen = (count - 1) * spacingM;
-    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(torBreiteM / 2, (wallLen - rowLen) / 2);
+    let firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(torBreiteM / 2, (wallLen - rowLen) / 2);
+    if (firstOffsetM < torBreiteM / 2) {
+      // Erste Torkante läge vor der Wandecke → das spätere Clamping in paramsToLayout würde
+      // die Tore ungleich schieben und überlappen lassen (Cross-Review Astra 20.09.2026).
+      warnings.push(`Startabstand ${firstOffsetM.toFixed(2)} m (${SIDE_LABEL[side]}) kleiner als halbe Torbreite — auf ${(torBreiteM / 2).toFixed(2)} m angehoben.`);
+      firstOffsetM = torBreiteM / 2;
+    }
     const requiredSpan = firstOffsetM + rowLen + torBreiteM / 2;
     // Kapazität VOR dem Bau (Lastenheft: Anzahl × Breite + (Anzahl−1) × Lücke ≤ Wandlänge).
     if (requiredSpan > wallLen + 0.01) {
@@ -528,6 +534,9 @@ function stellplatzForTor(
   const cy = t.y + t.height / 2;
   const h = Math.min(breite, height);
   const y = Math.max(0, Math.min(height - h, cy - h / 2));
+  // Ost/West-Stellplatz würde im horizontalen Mittelgang liegen → nicht bauen
+  // (Karte zeigt „gebaut < angefordert"). Vorher blockierte er den Gang (Astra 20.09.2026).
+  if (y < mgBottom && y + h > mgTop) return null;
   const mgL = width / 2 - aisleHHalf, mgR = width / 2 + aisleHHalf;
   if (t.side === 'west') {
     const x0 = t.width, w = Math.min(laenge, mgL - x0);
@@ -679,8 +688,12 @@ export function parseCanonical(input: string): LayoutParams | null {
       const noDims = !/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/.test(seg);
       const breite = matchBreite(seg) ?? globalBreite;
       // Lücke hat Vorrang; nur wenn keine Lücke-Angabe da ist, zählt „Abstand" als Achsabstand.
-      const gap = matchGap(seg) ?? globalGap;
-      const achse = gap == null ? (matchAchse(seg, noDims) ?? globalAchse) : undefined;
+      // Lokale Angaben des Segments schlagen globale: hat DIESES Segment einen Achsabstand,
+      // darf die Lücke einer ANDEREN Torreihe ihn nicht überschreiben (Astra 20.09.2026).
+      const localGap = matchGap(seg);
+      const localAchse = matchAchse(seg, noDims);
+      const gap = localGap ?? (localAchse == null ? globalGap : undefined);
+      const achse = gap == null ? (localAchse ?? globalAchse) : undefined;
       const common = {
         count: parseInt(cm[1], 10),
         ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
@@ -705,7 +718,8 @@ export function parseCanonical(input: string): LayoutParams | null {
     const m = low.match(re);
     if (m) {
       const idx = m.index ?? 0;
-      const after = low.slice(idx, idx + 40);
+      // Nur bis zum Klausel-Ende lesen — sonst färbt „Warenausgang Ost" auf „Wareneingang West" ab.
+      const after = (low.slice(idx).split(/[,;]/)[0] ?? '').slice(0, 40);
       // C12: Seite kann NACH („Wareneingang West") ODER VOR dem Schlüsselwort stehen
       // („im Norden Wareneingang"). Zuerst danach suchen, dann im Text davor — aber nur
       // innerhalb derselben Klausel (nach dem letzten , oder ;), damit die Seite eines

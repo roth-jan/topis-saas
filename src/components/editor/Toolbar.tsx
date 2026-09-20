@@ -1001,7 +1001,7 @@ export function Toolbar() {
                 Spezialzonen
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
-                {objectTypes.filter(o => ['ladestation', 'gefahrgut', 'sperrplatz', 'klaerplatz'].includes(o.id)).map((obj) => (
+                {objectTypes.filter(o => ['ladestation', 'gefahrgut', 'sperrplatz', 'klaerplatz', 'av_platz', 'uz_platz', 'wertverschlag', 'palettenlager', 'hallenterminal', 'kommissionierflaeche'].includes(o.id)).map((obj) => (
                   <DropdownMenuItem key={obj.id} onClick={() => setTool(obj.id as Tool)}>
                     {obj.icon}
                     <span className="ml-2">{obj.label}</span>
@@ -1016,6 +1016,22 @@ export function Toolbar() {
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {objectTypes.filter(o => ['buero', 'sozialraum', 'wc'].includes(o.id)).map((obj) => (
+                  <DropdownMenuItem key={obj.id} onClick={() => setTool(obj.id as Tool)}>
+                    {obj.icon}
+                    <span className="ml-2">{obj.label}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            {/* Lastenheft 3.1.6 Außengelände — die Typen existierten seit 04.08. (B10), waren aber
+                in keinem Menü erreichbar (Gegencheck v4, 20.09.2026). */}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Truck className="mr-2 h-4 w-4" />
+                Außengelände
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {objectTypes.filter(o => o.category === 'outdoor').map((obj) => (
                   <DropdownMenuItem key={obj.id} onClick={() => setTool(obj.id as Tool)}>
                     {obj.icon}
                     <span className="ml-2">{obj.label}</span>

@@ -203,7 +203,7 @@ export function MultiInsertDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 h-8">
+        <Button variant="outline" size="sm" className="gap-1.5 h-8" aria-label="Multi-Insert: Serie anordnen" title="Multi-Insert: mehrere Tore/Stellplätze in Serie anordnen">
           <Copy className="h-3.5 w-3.5" />
           <span className="hidden lg:inline">Serie</span>
         </Button>

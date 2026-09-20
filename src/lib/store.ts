@@ -385,22 +385,72 @@ export const useTopisStore = create<TopisStore>()(
       const oldWidth = hall.width;
       const oldHeight = hall.height;
 
-      const rotatedObjects = state.objects.map(obj => ({
-        ...obj,
-        x: Math.round(obj.y),
-        y: Math.round(oldWidth - obj.x - obj.width),
-        width: obj.height,
-        height: obj.width
-      }));
+      // Drehung 90° gegen den Uhrzeigersinn: Punkt (x,y) → (y, W−x). Auf 1 cm
+      // gerundet (vorher ganze Meter → 3,75-m-Torraster ging kaputt).
+      const r2 = (v: number) => Math.round(v * 100) / 100;
+      const rotPt = <P extends { x: number; y: number }>(p: P): P => ({ ...p, x: r2(p.y), y: r2(oldWidth - p.x) });
+      const rotBox = <B extends { x: number; y: number; width: number; height: number }>(b: B): B => ({
+        ...b,
+        x: r2(b.y),
+        y: r2(oldWidth - b.x - b.width),
+        width: b.height,
+        height: b.width,
+      });
 
       const rotatedHalls = state.halls.map(h =>
         h.id === state.activeHallId
           ? { ...h, width: oldHeight, height: oldWidth }
           : h
       );
+      const newWalls = deriveWalls({ width: oldHeight, height: oldWidth });
 
-      return { halls: rotatedHalls, objects: rotatedObjects };
+      // Objekte drehen; Tore/Rampen danach an ihrer (jetzt anderen) Außenwand
+      // neu verankern — sonst zeigt aussenwandRef/side noch auf die alte Wand
+      // und der nächste updateHall würde sie dorthin zurückziehen
+      // (Cross-Review Gemini 20.09.2026).
+      const rotatedObjects = state.objects.map(obj => {
+        const rotated = rotBox(obj);
+        if ((obj.type !== 'tor' && obj.type !== 'rampe') || newWalls.length === 0) return rotated;
+        const nearest = findNearestWall(rotated.x + rotated.width / 2, rotated.y + rotated.height / 2, newWalls, Infinity);
+        if (!nearest) return rotated;
+        const anchor = { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE };
+        const box = obj.type === 'tor'
+          ? torBoxFromAnchor(anchor, newWalls, rotated.width, rotated.height)
+          : rampeBoxFromAnchor(anchor, newWalls, rotated.width, rotated.height);
+        if (!box) return rotated;
+        return { ...rotated, x: box.x, y: box.y, side: box.side ?? rotated.side, aussenwandRef: anchor };
+      });
+
+      // Alle übrigen Geometrien mitdrehen — sonst liegen Gänge/Wege/Wegflächen/
+      // Kette nach der Drehung im leeren Raum neben den Objekten.
+      const rotatedGaenge = state.gaenge.map(g => ({ ...g, points: g.points.map(rotPt) }));
+      const rotatedPaths = state.paths.map(p => ({
+        ...p,
+        waypoints: p.waypoints.map(rotPt),
+        stuetzpunkte: p.stuetzpunkte?.map(rotPt),
+      }));
+      const rotatedPathAreas = state.pathAreas.map(a =>
+        a.points
+          ? { ...a, points: a.points.map(rotPt) }
+          : (a.x != null && a.y != null && a.width != null && a.height != null)
+            ? { ...a, ...rotBox({ x: a.x, y: a.y, width: a.width, height: a.height }) }
+            : a,
+      );
+      const rotatedConveyors = state.conveyors.map(c => ({ ...c, points: c.points.map(rotPt) }));
+      const rotatedKetten = state.kettenWegbereiche.map(k => ({ ...k, punkte: k.punkte.map(rotPt) }));
+
+      return {
+        halls: rotatedHalls,
+        objects: rotatedObjects,
+        gaenge: rotatedGaenge,
+        paths: rotatedPaths,
+        pathAreas: rotatedPathAreas,
+        conveyors: rotatedConveyors,
+        kettenWegbereiche: rotatedKetten,
+        selectedObject: null,
+      };
     });
+    get().scheduleRecomputeForObject(-1);
   },
 
   // Object Actions
@@ -491,12 +541,6 @@ export const useTopisStore = create<TopisStore>()(
     get().pushSnapshot();
     set((state) => {
       const parent = state.objects.find(o => o.id === id);
-      const updatedParent = parent ? { ...parent, ...updates } : null;
-      // Parent-Bindung (Lastenheft 3.1.2 Überladebrücke): Kinder folgen
-      // ihrem Parent bei x/y-Move. Width/Height-Updates lassen Kinder in Ruhe.
-      const dx = (parent && updatedParent && updates.x !== undefined) ? (updatedParent.x - parent.x) : 0;
-      const dy = (parent && updatedParent && updates.y !== undefined) ? (updatedParent.y - parent.y) : 0;
-      const moved = dx !== 0 || dy !== 0;
       // Lastenheft 3.1.2 — Tor-Move soll Wand-Anker neu berechnen.
       // Wenn der User ein Tor verschiebt, snappen wir es zur nächsten Wand
       // und aktualisieren aussenwandRef. Außer der Aufrufer hat aussenwandRef
@@ -519,7 +563,11 @@ export const useTopisStore = create<TopisStore>()(
           ) {
             const px = merged.x + merged.width / 2;
             const py = merged.y + merged.height / 2;
-            const nearest = findNearestWall(px, py, walls, 30);
+            // Ohne Distanzlimit: Tore sind laut Lastenheft 3.1.2 AUSSCHLIESSLICH auf
+            // Außenwänden zulässig. Mit dem alten 30-m-Limit blieb ein in großen Hallen
+            // (>60 m tief) in die Mitte gezogenes Tor frei liegen — mit veralteter
+            // aussenwandRef (Cross-Review Gemini 20.09.2026).
+            const nearest = findNearestWall(px, py, walls, Infinity);
             if (nearest) {
               const box = torBoxFromAnchor(
                 { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
@@ -560,13 +608,21 @@ export const useTopisStore = create<TopisStore>()(
           mergedSelected = merged;
           return merged;
         }
-        if (moved && o.parentObjectId === id) {
-          return { ...o, x: o.x + dx, y: o.y + dy };
-        }
         return o;
       });
+      // Parent-Bindung (Lastenheft 3.1.2 Überladebrücke): Kinder folgen der
+      // TATSÄCHLICHEN Parent-Bewegung — also erst NACH Wand-Snap bzw. Anker-Änderung
+      // gemessen, nicht aus den rohen updates.x/y (Cross-Review Astra 20.09.2026:
+      // S/E-Änderung im Panel ließ die Überladebrücke stehen). Width/Height allein
+      // bewegt keine Kinder.
+      const finalParent = mergedSelected as TopisObject | null; // TS verengt die let-Zuweisung im Closure sonst auf never
+      const dx = parent && finalParent ? finalParent.x - parent.x : 0;
+      const dy = parent && finalParent ? finalParent.y - parent.y : 0;
+      const movedObjects = (dx !== 0 || dy !== 0)
+        ? newObjects.map(o => (o.parentObjectId === id ? { ...o, x: o.x + dx, y: o.y + dy } : o))
+        : newObjects;
       return {
-        objects: newObjects,
+        objects: movedObjects,
         selectedObject: state.selectedObject?.id === id
           ? (mergedSelected ?? { ...state.selectedObject, ...updates })
           : state.selectedObject,
@@ -929,15 +985,30 @@ export const useTopisStore = create<TopisStore>()(
     const snapshot = get().projektVergleich[type];
     if (!snapshot) return;
 
-    set({
+    const objects = structuredClone(snapshot.objects);
+    const paths = structuredClone(snapshot.paths);
+    const pathAreas = structuredClone(snapshot.pathAreas);
+    const conveyors = structuredClone(snapshot.conveyors);
+    // ID-Zähler mitziehen — sonst bekommt das nächste addObject eine schon vergebene ID
+    // und update/delete treffen zwei Objekte (Cross-Review Astra 20.09.2026, P1).
+    const nextId = (arr: { id: number }[], current: number) => Math.max(current, ...arr.map((e) => e.id + 1));
+    set((st) => ({
       halls: structuredClone(snapshot.halls),
-      objects: structuredClone(snapshot.objects),
-      paths: structuredClone(snapshot.paths),
-      pathAreas: structuredClone(snapshot.pathAreas),
+      objects,
+      paths,
+      pathAreas,
       gaenge: structuredClone(snapshot.gaenge),
       ffz: structuredClone(snapshot.ffz),
-      conveyors: structuredClone(snapshot.conveyors),
-    });
+      conveyors,
+      objectIdCounter: nextId(objects, st.objectIdCounter),
+      pathIdCounter: nextId(paths, st.pathIdCounter),
+      pathAreaIdCounter: nextId(pathAreas, st.pathAreaIdCounter),
+      conveyorIdCounter: nextId(conveyors, st.conveyorIdCounter),
+      selectedObject: null,
+      selectedPath: null,
+      selectedPathArea: null,
+      selectedConveyor: null,
+    }));
   },
 
   // Bulk Actions
@@ -980,8 +1051,11 @@ export const useTopisStore = create<TopisStore>()(
             totalDist += r.distance;
             totalTime += r.time;
           } else {
-            if (stitched.length === 0) stitched.push({ ...a });
-            stitched.push({ ...b });
+            // Kein echter Weg für dieses Teilstück → Pfad NICHT teilweise übernehmen.
+            // Vorher wurde a→b als Luftlinie eingefügt, ohne Distanz/Zeit zu zählen →
+            // zu kurze Weglänge (stiller Fallback, Cross-Review Astra 20.09.2026).
+            anyChanged = false;
+            break;
           }
         }
         if (anyChanged) {
@@ -1005,7 +1079,13 @@ export const useTopisStore = create<TopisStore>()(
         time: r.time,
       };
     });
-    if (changed) set({ paths: newPaths });
+    if (changed) {
+      set((st) => ({
+        paths: newPaths,
+        // Auswahl nachziehen, sonst zeigt das Panel alte Waypoints/Distanz (Astra 20.09.2026)
+        selectedPath: st.selectedPath ? (newPaths.find((p) => p.id === st.selectedPath!.id) ?? st.selectedPath) : st.selectedPath,
+      }));
+    }
   },
 
   scheduleRecomputeForObject: (_objectId: number) => {

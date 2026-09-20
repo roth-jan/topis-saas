@@ -2717,6 +2717,19 @@ export function HallCanvas() {
         }
       }
 
+      // Stützpunkte des GEWÄHLTEN Wegs haben Vorrang vor Objekten darunter (wie
+      // die Gang-Endpunkt-Handles oben): ein Wegpunkt über einer Zone/einem
+      // Stellplatz wäre sonst nie greifbar, weil findObjectAt immer zuerst trifft.
+      if (selectedPath) {
+        const ownHit = findWaypointAt(world.x, world.y);
+        if (ownHit && ownHit.path.id === selectedPath.id) {
+          setSelectedWaypointIndex(ownHit.waypointIndex);
+          setDraggingWaypoint({ pathId: ownHit.path.id, waypointIndex: ownHit.waypointIndex });
+          setIsDragging(true);
+          return;
+        }
+      }
+
       // Dann normales Object-Drag
       const obj = findObjectAt(world.x, world.y);
       if (obj) {
@@ -2927,6 +2940,8 @@ export function HallCanvas() {
       const solid = hits.filter((o) => o.type !== 'bereich');
       const hoveredId = (solid[0] || hits[0])?.id ?? null;
       if (hoveredId !== hoverObjectId) setHoverObjectId(hoveredId);
+    } else if (hoverObjectId !== null) {
+      setHoverObjectId(null); // sonst bleibt der cyan Umriss nach Tool-Wechsel stehen (Gemini 20.09.2026)
     }
 
     // Tor-Pinsel: während des Ziehens die Geister-Tor-Reihe live nachführen.
@@ -3146,7 +3161,9 @@ export function HallCanvas() {
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // Serie ziehen abschließen: Kopien (außer dem Original bei i=0) als Batch anlegen.
     if (serieSrc) {
-      const copies = serieGhosts.slice(1);
+      // Original per Position ausschließen — slice(1) verwarf eine echte Kopie, wenn das
+      // Original selbst außerhalb der Halle lag und weggefiltert wurde (Astra 20.09.2026).
+      const copies = serieGhosts.filter((g) => Math.abs(g.x - serieSrc.x) > 1e-6 || Math.abs(g.y - serieSrc.y) > 1e-6);
       if (copies.length > 0) {
         const { id: _id, x: _x, y: _y, name: _n, ...rest } = serieSrc;
         void _id; void _x; void _y;
@@ -3256,7 +3273,14 @@ export function HallCanvas() {
         let height = mp ? Math.abs(mp.y - bereichStart.y) : 0;
         if (mp) { x1 = Math.min(bereichStart.x, mp.x); y1 = Math.min(bereichStart.y, mp.y); }
         if (width < 1 || height < 1) { width = def.width; height = def.height; x1 = bereichStart.x - width / 2; y1 = bereichStart.y - height / 2; }
-        if (hall) { x1 = Math.max(0, Math.min(hall.width - width, x1)); y1 = Math.max(0, Math.min(hall.height - height, y1)); }
+        if (hall) {
+          // Erst Maß auf Hallengröße kappen, dann Position — sonst ragt ein über den Rand
+          // gezogener Bereich weiter hinaus (Cross-Review Astra+Gemini 20.09.2026).
+          width = Math.min(width, hall.width);
+          height = Math.min(height, hall.height);
+          x1 = Math.max(0, Math.min(hall.width - width, x1));
+          y1 = Math.max(0, Math.min(hall.height - height, y1));
+        }
         const count = objects.filter(o => o.type === 'bereich').length + 1;
         addObjects([{ type: 'bereich', x: Math.round(x1 * 10) / 10, y: Math.round(y1 * 10) / 10, width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10, name: `Bereich ${count}` }]);
         toast.success(`Bereich erstellt (${width.toFixed(0)} m × ${height.toFixed(0)} m)`);

@@ -227,6 +227,10 @@ export function reanchorTore(
       else if (side === 'west') x = wp.x;
       else if (side === 'east') x = wp.x - obj.width;
     }
-    return { ...obj, x, y, side: side ?? obj.side };
+    // abstandE gegen die NEUE Wandlänge nachziehen — S bleibt der Fixpunkt,
+    // E veraltete vorher bei jeder Wandänderung (Cross-Review Astra 20.09.2026).
+    const abstandS = Math.max(0, Math.min(wp.length, obj.aussenwandRef.abstandS));
+    const aussenwandRef = { ...obj.aussenwandRef, abstandS, abstandE: wp.length - abstandS };
+    return { ...obj, x, y, side: side ?? obj.side, aussenwandRef };
   });
 }

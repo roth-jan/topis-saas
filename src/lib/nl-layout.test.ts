@@ -480,3 +480,33 @@ describe('nl-layout — Cross-Dock (Stellplätze je Tor)', () => {
     expect(objects.filter((o) => o.type === 'stellplatz').length).toBeGreaterThan(0);
   });
 });
+
+// ---- Cross-Review GPT-6 Astra 20.09.2026 — vier bestätigte Parser/Generator-Fälle ----
+describe('Cross-Review Astra 20.09.2026', () => {
+  it('A2: expliziter Startabstand 0 erzeugt keine überlappenden Tore', () => {
+    const v = validateParams({ action: 'createHall', hall: { lengthM: 100, widthM: 60 }, gates: [{ count: 2, side: 'north', torBreiteM: 3.5, spacingM: 3.5, firstOffsetM: 0 }] });
+    expect(v.ok).toBe(true);
+    expect(v.warnings.some((w) => /Startabstand/.test(w))).toBe(true);
+    const l = paramsToLayout(v.filled);
+    expect(findLayoutCollisions(l.objects)).toEqual([]);
+  });
+  it('A3: Ost/West-Stellplatz wird nicht in den horizontalen Mittelgang gebaut', () => {
+    const v = validateParams({ action: 'createHall', hall: { lengthM: 100, widthM: 60 }, gates: [{ count: 1, side: 'west' }], stellplaetzeJeTor: true });
+    expect(v.ok).toBe(true);
+    const l = paramsToLayout(v.filled);
+    const sp = l.objects.filter((o) => o.type === 'stellplatz');
+    // einziges West-Tor sitzt mittig (y≈28) → sein Stellplatz läge im Mittelgang 28–32 → nicht gebaut
+    expect(sp.filter((o) => o.y! < 32 && o.y! + o.height > 28)).toEqual([]);
+  });
+  it('A4: lokaler Achsabstand einer Reihe wird nicht von der Lücke einer anderen Reihe überschrieben', () => {
+    const p = parseCanonical('Halle 100x60, 2 Tore Nord Lücke 1 m, 2 Tore Süd Abstand 10 m')!;
+    expect(p.gates).toEqual([
+      { count: 2, side: 'north', lueckeM: 1 },
+      { count: 2, side: 'south', spacingM: 10 },
+    ]);
+  });
+  it('A5: Zonen-Seite liest nicht in die nächste Klausel hinein', () => {
+    const p = parseCanonical('Halle 100x60, Wareneingang West, Warenausgang Ost')!;
+    expect(p.zonen).toEqual([{ name: 'Wareneingang', side: 'west' }, { name: 'Warenausgang', side: 'east' }]);
+  });
+});
