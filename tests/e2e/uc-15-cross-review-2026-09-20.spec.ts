@@ -85,7 +85,7 @@ test.describe('UC-15 Cross-Review 20.09.2026', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    await page.goto('/topis-saas/check/');
+    await page.goto('../check/'); // relativ zur baseURL (…/projekt/) → funktioniert mit und ohne basePath
     await page.getByRole('button', { name: /Demo ansehen/ }).click();
     await expect(page.getByText(/Min\/Colli/).first()).toBeVisible({ timeout: 20_000 });
     expect(page.locator('text=Application error')).toHaveCount(0);

@@ -4,7 +4,11 @@ import { defineConfig, devices } from '@playwright/test';
 // einem fremden Dev-Server belegt ist — dann z.B. TOPIS_PORT=3100 setzen und
 // vorab `next dev --port 3100` starten (reuseExistingServer greift).
 const PORT = process.env.TOPIS_PORT || '3000';
-const APP_URL = `http://localhost:${PORT}/topis-saas/projekt/`;
+// BASE_URL=https://topis.ntc.software/projekt/ (Prod, basePath '') oder
+// BASE_URL=https://roth-jan.github.io/topis-saas/projekt/ (Test) → Live-Lauf ohne Dev-Server.
+// Vorher stand das nur in der Doku, die Config ignorierte es (bemerkt 20.09.2026).
+const LIVE_URL = process.env.BASE_URL;
+const APP_URL = LIVE_URL || `http://localhost:${PORT}/topis-saas/projekt/`;
 
 export default defineConfig({
   testDir: './tests',
@@ -25,7 +29,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
+  webServer: LIVE_URL ? undefined : {
     command: `npm run dev -- --port ${PORT}`,
     // Readiness gegen den echten App-Pfad prüfen (Root 404t wegen basePath).
     url: APP_URL,

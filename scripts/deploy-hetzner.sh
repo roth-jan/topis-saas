@@ -14,7 +14,7 @@ echo "→ Build (basePath='')"
 TOPIS_BASE_PATH="" npm run build
 
 echo "→ Upload nach /opt/topis/www"
-rsync -az --delete -e "ssh -i $HOME/.ssh/jobbi_hetzner" out/ root@46.224.185.100:/opt/topis/www/
+rsync -az --delete -e "ssh -i ${TOPIS_SSH_KEY:-$HOME/.ssh/jobbi_hetzner}" out/ root@46.224.185.100:/opt/topis/www/
 
 echo "→ Live-Check"
 code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://topis.ntc.software/cockpit/)
