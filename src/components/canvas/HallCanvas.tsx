@@ -3,7 +3,7 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } from '@/lib/store';
 import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
-import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor } from '@/types/topis';
+import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor, isOutdoorType } from '@/types/topis';
 import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
 import { findPathBetweenObjects, lineCrossesAnyWall, buildGangGraph, findPath } from '@/lib/pathfinding';
 import { findNearestAnchor } from '@/lib/path-anchor';
@@ -2882,8 +2882,9 @@ export function HallCanvas() {
         } else {
           objY = Math.max(0, Math.min(hall.height - objHeight, Math.round(world.y - objHeight / 2)));
         }
-      } else if (hall) {
-        // For non-Tor objects: clamp to hall boundaries
+      } else if (hall && !isOutdoorType(objectType)) {
+        // For non-Tor objects: clamp to hall boundaries. Außengelände (Lastenheft 3.1.6)
+        // liegt per Definition AUSSERHALB → nicht klemmen (Astra-Test 20.09.2026, C5).
         objX = Math.max(0, Math.min(hall.width - objWidth, objX));
         objY = Math.max(0, Math.min(hall.height - objHeight, objY));
       }
@@ -3148,8 +3149,8 @@ export function HallCanvas() {
         alignRef.current = (al.vx.length || al.hy.length || al.measures.length) ? { vx: al.vx, hy: al.hy, measures: al.measures } : null;
       }
 
-      // Clamp position within hall bounds
-      if (hall) {
+      // Clamp position within hall bounds (Außengelände + Rampen bleiben frei/außen)
+      if (hall && !isOutdoorType(dragObject.type)) {
         newX = Math.max(0, Math.min(hall.width - dragObject.width, newX));
         newY = Math.max(0, Math.min(hall.height - dragObject.height, newY));
       }

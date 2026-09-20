@@ -38,13 +38,39 @@ export async function requestLayoutParamsLLM(text: string, unit: 'm' | 'ft' = 'm
 }
 
 /**
+ * Sicherheitsnetz über der LLM-Antwort (Astra-Test 20.09.2026, A5 + A6): Der deterministische
+ * Parser kennt die Lastenheft-Grenzen (rund/Regal/Rampe → „Nicht übernommen") und erkennt
+ * „N Tore Nord und Süd" als zwei Reihen. Das LLM schluckte beides still. Regeln:
+ *  - `ignored` des Offline-Parsers wird immer ergänzt (nie überschrieben).
+ *  - Findet der Offline-Parser Torreihen auf MEHR Seiten als das LLM (echte Obermenge, gleiche
+ *    Stückzahl je gemeinsamer Seite), gewinnen die Offline-Torreihen.
+ */
+export function mergeOfflineSafetyNet(llm: LayoutParams, offline: LayoutParams | null): LayoutParams {
+  if (!offline) return llm;
+  const out: LayoutParams = { ...llm };
+  if (offline.ignored?.length) {
+    const have = new Set(out.ignored ?? []);
+    out.ignored = [...(out.ignored ?? []), ...offline.ignored.filter((i) => !have.has(i))];
+  }
+  const og = offline.gates ?? [];
+  const lg = out.gates ?? [];
+  if (og.length > lg.length) {
+    const lSides = new Map(lg.map((g) => [g.side, g.count] as const));
+    const superset = [...lSides.keys()].every((s) => og.some((g) => g.side === s && g.count === lSides.get(s)));
+    if (superset) out.gates = og;
+  }
+  return out;
+}
+
+/**
  * Einheitlicher Resolver für den KI-Textbuilder: nutzt das LLM, wenn verfügbar,
  * fällt sonst (oder bei Fehler) auf den deterministischen Offline-Parser zurück.
  */
 export async function resolveLayoutParams(text: string, unit: 'm' | 'ft' = 'm'): Promise<LayoutParams | null> {
+  const offline = parseCanonical(text);
   if (llmVerfuegbar()) {
     const viaLlm = await requestLayoutParamsLLM(text, unit);
-    if (viaLlm) return viaLlm;
+    if (viaLlm) return mergeOfflineSafetyNet(viaLlm, offline);
   }
-  return parseCanonical(text);
+  return offline;
 }

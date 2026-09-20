@@ -510,3 +510,30 @@ describe('Cross-Review Astra 20.09.2026', () => {
     expect(p.zonen).toEqual([{ name: 'Wareneingang', side: 'west' }, { name: 'Warenausgang', side: 'east' }]);
   });
 });
+
+// ---- Astra-UI-Test 20.09.2026 (Prüfbericht) — A5 + A6 ----
+describe('Astra-UI-Test 20.09.2026', () => {
+  it('A5: „10 Tore Nord und Süd Abstand 6" ergibt ZWEI Reihen mit Achsabstand 6', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord und Süd Abstand 6')!;
+    expect(p.gates).toEqual([
+      { count: 10, side: 'north', spacingM: 6 },
+      { count: 10, side: 'south', spacingM: 6 },
+    ]);
+  });
+  it('A5b: eigene Angabe des Seiten-Segments schlägt die geerbte („Nord Abstand 6 und Süd Lücke 2")', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord Abstand 6 und Süd Lücke 2')!;
+    expect(p.gates).toEqual([
+      { count: 10, side: 'north', spacingM: 6 },
+      { count: 10, side: 'south', lueckeM: 2 },
+    ]);
+  });
+  it('A5c: Zonen-Klausel mit Seite erbt weiterhin KEINE Torreihe', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord, Wareneingang im Westen')!;
+    expect(p.gates).toHaveLength(1);
+  });
+  it('A6: „runde Halle" wird offen unter ignored gemeldet, nicht still als Rechteck gebaut', () => {
+    const p = parseCanonical('runde Halle 100x50')!;
+    expect(p.hall).toEqual({ lengthM: 100, widthM: 50 });
+    expect(p.ignored?.some((i) => /Runde/.test(i))).toBe(true);
+  });
+});

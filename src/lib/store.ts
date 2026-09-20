@@ -349,7 +349,10 @@ export const useTopisStore = create<TopisStore>()(
       const activeWalls = activeHall ? deriveWalls(activeHall) : [];
       // Lastenheft 3.1.2 — Tore folgen Wand-Geometrie automatisch
       const reanchored = activeWalls.length > 0 ? reanchorTore(state.objects, activeWalls) : state.objects;
-      return { halls, objects: reanchored };
+      const selectedObject = state.selectedObject
+        ? (reanchored.find((o) => o.id === state.selectedObject!.id) ?? state.selectedObject)
+        : null;
+      return { halls, objects: reanchored, selectedObject };
     });
   },
   setActiveHall: (id) => set({ activeHallId: id }),
@@ -372,7 +375,12 @@ export const useTopisStore = create<TopisStore>()(
       const reanchored = activeWalls && activeWalls.length > 0
         ? reanchorTore(state.objects, activeWalls)
         : state.objects;
-      return { halls, hall: legacyHall, objects: reanchored };
+      // Astra-Test 20.09.2026 (C7): Das Panel liest selectedObject (eine Kopie) → nach der
+      // Wandänderung zeigte es S/E-Abstände der alten Wandlänge. Kopie nachziehen.
+      const selectedObject = state.selectedObject
+        ? (reanchored.find((o) => o.id === state.selectedObject!.id) ?? state.selectedObject)
+        : null;
+      return { halls, hall: legacyHall, objects: reanchored, selectedObject };
     });
   },
 
@@ -590,7 +598,7 @@ export const useTopisStore = create<TopisStore>()(
               }
             }
           } else if (
-            merged.type === 'tor' &&
+            (merged.type === 'tor' || merged.type === 'rampe') &&
             walls.length > 0 &&
             updates.aussenwandRef !== undefined &&
             merged.aussenwandRef &&
@@ -600,7 +608,10 @@ export const useTopisStore = create<TopisStore>()(
             // Lastenheft 3.1.2 — Abstand S/E im Panel direkt geändert: Tor muss
             // auf der Wand entlangwandern (Niko Schritt 5). x/y aus dem neuen
             // Anker neu berechnen, sonst ändert sich nur die Zahl, nicht das Tor.
-            const box = torBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height);
+            // Rampen (3.1.2.2) genauso, nur nach außen (Astra-Test 20.09.2026, C2).
+            const box = merged.type === 'tor'
+              ? torBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height)
+              : rampeBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height);
             if (box) {
               merged = { ...merged, x: box.x, y: box.y, side: box.side ?? merged.side };
             }

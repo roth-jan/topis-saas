@@ -80,4 +80,36 @@ test.describe('UC-15 Cross-Review 20.09.2026', () => {
     expect(b!.x + b!.w).toBeLessThanOrEqual(20.01);
     expect(b!.y + b!.h).toBeLessThanOrEqual(20.01);
   });
+
+  test('Kunden-Check lädt ohne Client-Exception, Demo zeigt 4 Ampel-KPIs (Astra E1)', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    await page.goto('/topis-saas/check/');
+    await page.getByRole('button', { name: /Demo ansehen/ }).click();
+    await expect(page.getByText(/Min\/Colli/).first()).toBeVisible({ timeout: 20_000 });
+    expect(page.locator('text=Application error')).toHaveCount(0);
+    expect(errors.filter((e) => /ChunkLoadError|Application error/i.test(e))).toEqual([]);
+  });
+
+  test('Hallenverbreiterung aktualisiert die S/E-Anzeige des gewählten Tors (Astra C7)', async ({ page }) => {
+    await gotoTopis(page);
+    await patchLayoutState(page, (state) => {
+      const s = state as AnyState;
+      s.halls = [{ id: 1, shape: 'rect', width: 100, height: 50, name: 'H', walls: [], offsetX: 0, offsetY: 0, color: '#fff' }];
+      s.activeHallId = 1;
+      s.objects = [{ id: 1, type: 'tor', name: 'T1', x: 20, y: 0, width: 3.5, height: 1.5, side: 'north', aussenwandRef: { wallIndex: 0, abstandS: 21.75, abstandE: 78.25 } }];
+      s.objectIdCounter = 2;
+    });
+    await page.evaluate(() => {
+      const st = (window as unknown as { __topisStore: { getState: () => AnyState } }).__topisStore.getState();
+      (st.selectObject as (o: unknown) => void)((st.objects as unknown[])[0]);
+      (st.updateHall as (id: number, u: unknown) => void)(1, { width: 150 });
+    });
+    const sel = await page.evaluate(() => {
+      const st = (window as unknown as { __topisStore: { getState: () => AnyState } }).__topisStore.getState();
+      return (st.selectedObject as { aussenwandRef?: { abstandS: number; abstandE: number } }).aussenwandRef;
+    });
+    expect(sel).toEqual({ wallIndex: 0, abstandS: 21.75, abstandE: 128.25 });
+  });
 });

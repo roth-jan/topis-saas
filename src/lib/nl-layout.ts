@@ -590,6 +590,8 @@ const SIDE_KEYWORDS: [RegExp, GateSide][] = [
 // Nicht (mehr) unterstützte Elemente → werden offen gemeldet statt still geschluckt.
 // (Stellplätze + Bereiche werden inzwischen gebaut → nicht mehr hier.)
 const UNSUPPORTED: [RegExp, string][] = [
+  // Astra-Test 20.09.2026 (A6): „runde Halle" wurde kommentarlos als Rechteck gebaut.
+  [/\brund(?:e|en|er|es)?\b|kreisf(?:ö|oe)rmig|gebogen|geschwungen|freiform|freihand|oval/, 'Runde/gebogene/Freiform-Wände (nur Rechteck, L, T, U, C)'],
   [/regal/, 'Regale'],
   // Mittelgang wird gebaut → nur sonstige Gänge/Fahrgänge sind noch unsupported.
   [/\b(?:fahr)?g(?:a|ä)ng/, 'Gänge/Fahrgänge'],
@@ -609,6 +611,19 @@ function matchSpacing(seg: string, allowBareDecimal: boolean): number | undefine
     if (d) return parseFloat(d[1]);
   }
   return undefined;
+}
+
+/** „ süd", „im süden", „süd abstand 6", „süden lücke 2 m, 4 m breit" → true.
+ *  Alles, was nach Entfernen von Seite, Füllwörtern und Maßangaben übrig bleibt, macht es unrein. */
+function istReinesSeitenSegment(seg: string): boolean {
+  const rest = seg
+    .replace(/\b(?:im|in|auf|nach|an|der|die|das|mit|je|jeweils|und)\b/g, ' ')
+    .replace(/\b(?:nord(?:en)?|s(?:ü|u)d(?:en)?|sueden|ost(?:en)?|west(?:en)?)\b/g, ' ')
+    .replace(/\d+(?:\.\d+)?\s*m?(?:eter)?\s*(?:raster|abstand|l(?:ü|ue)cke|zwischenraum|breit(?:e)?)/g, ' ')
+    .replace(/(?:raster|abstand|l(?:ü|ue)cke|zwischenraum|breite?)\s*(?:zum\s*n(?:ä|ae)chsten(?:\s*tor)?|zwischen)?\s*\d+(?:\.\d+)?\s*m?(?:eter)?/g, ' ')
+    .replace(/\b(?:zum|n(?:ä|ae)chsten|tor(?:e)?|zwischen)\b/g, ' ')
+    .replace(/[\s,.;]+/g, '');
+  return rest.length === 0;
 }
 
 function sideOf(seg: string): GateSide | null {
@@ -702,12 +717,23 @@ export function parseCanonical(input: string): LayoutParams | null {
       };
       gates.push({ ...common, side });
       lastTor = common;
-    } else if (side && !cm && lastTor &&
-               /^\s*(?:im|in|auf|nach)?\s*(?:nord(?:en)?|s(?:ü|u)d(?:en)?|sueden|ost(?:en)?|west(?:en)?)\s*$/.test(seg)) {
-      // NUR ein reines Seiten-Segment (z.B. „ süd" aus „… Nord und Süd", auch „im süden")
-      // erbt die Torreihe des Vorgängers. Zonen-Klauseln wie „wareneingang im westen"
-      // enthalten weitere Wörter → greifen hier bewusst NICHT.
-      gates.push({ ...lastTor, side });
+    } else if (side && !cm && lastTor && istReinesSeitenSegment(seg)) {
+      // NUR ein reines Seiten-Segment (z.B. „ süd" aus „… Nord und Süd", auch „im süden",
+      // auch „süd abstand 6" — Astra-Test 20.09.2026 A5) erbt die Torreihe des Vorgängers.
+      // Zonen-Klauseln wie „wareneingang im westen" enthalten weitere Wörter → greifen NICHT.
+      // Eigene Abstand/Lücke/Breite-Angaben des Segments schlagen die geerbten.
+      const gap = matchGap(seg);
+      const achse = gap == null ? matchAchse(seg, false) : undefined;
+      const breite = matchBreite(seg);
+      const inherited = { ...lastTor };
+      if (gap != null || achse != null) { delete inherited.lueckeM; delete inherited.spacingM; }
+      gates.push({
+        ...inherited,
+        ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
+        ...(gap != null ? { lueckeM: parseFloat(gap) } : {}),
+        ...(achse != null ? { spacingM: parseFloat(achse) } : {}),
+        side,
+      });
     }
   }
   if (gates.length > 0) params.gates = gates;

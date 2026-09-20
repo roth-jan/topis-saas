@@ -524,10 +524,10 @@ export function PropertiesPanel() {
         )}
 
         {/* Tor-Wand-Verankerung */}
-        {selectedObject.type === 'tor' && (
+        {(selectedObject.type === 'tor' || selectedObject.type === 'rampe') && (
           <Card>
             <CardHeader className="py-3">
-              <CardTitle className="text-sm">Wand-Verankerung</CardTitle>
+              <CardTitle className="text-sm">Wand-Verankerung{selectedObject.type === 'rampe' ? ' (außen)' : ''}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {selectedObject.aussenwandRef ? (
