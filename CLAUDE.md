@@ -309,7 +309,7 @@ Config: `vitest.config.ts` mit `resolve.tsconfigPaths: true`. Stand 20.09.2026: 
 - `cross-review-2026-09-20.test.ts` — Regressions-Locks aus dem Cross-Model-Review (loadSnapshot-IDs, rotateHall90, abstandE, Kinder-Folge)
 
 ### E2E — Playwright (`npx playwright test tests/e2e`)
-- Config `playwright.config.ts`: `baseURL`/`webServer.url` = `http://localhost:3000/topis-saas/projekt/` (Root 404t wegen basePath!). `webServer` startet `npm run dev` automatisch. Live-Tests via `BASE_URL=https://roth-jan.github.io/topis-saas/projekt/`.
+- Config `playwright.config.ts`: `baseURL`/`webServer.url` = `http://localhost:3000/topis-saas/projekt/` (Root 404t wegen basePath!). `webServer` startet `npm run dev` automatisch. Live-Tests via `BASE_URL=https://topis.ntc.software/projekt/` (Prod) bzw. `BASE_URL=https://roth-jan.github.io/topis-saas/projekt/` (Test) — seit 20.09.2026 wirklich wirksam (vorher ignorierte die Config die Variable, Läufe trafen localhost).
 - Stand 20.09.2026: **27 passed, 2 `test.fixme`** (Suite war 16.07.–20.09. rot: Auswertungs-Buttons hinter „Weitere ▾“, Multi-Insert-Button „Serie“ — Helfer `gotoAuswertungPhase` klappt jetzt auf). Server braucht `npx playwright install chromium`. Vorher: **31 passed, 2 `test.fixme`** (cs-3 Headless-Download-Capture, uc-10 Canvas-Pixel-Kalibrierung — Features im Code vorhanden, nur E2E-Mechanik offen). Nachgezogen 02.07.2026 nach IA-/UX-Umbau: WelcomeOverlay via `addInitScript` unterdrückt, „Lastenheft"→„Module"/Auswertungs-Phase, obsoleter Root-Spec `tests/topis-saas.spec.ts` durch schlanke Smoke-Suite ersetzt. Bei belegtem Port 3000: `TOPIS_PORT=3100 npx playwright test`.
 - Use Cases: `uc-15` Cross-Review-Locks (Außengelände-Menü, Halle drehen, Bereich-Kappung), `uc-09` Lastenheft-Dropdown, `uc-10` Stellplatz-Formvarianten, `uc-11` Tor-Wandverankerung, `uc-12` Regal-Ebenen, `uc-13` Multi-Insert-Schemata, `uc-14` generische Properties; Customer-Szenarien `cs-1` Füllgrad-Ampel, `cs-2` Verlader-Bedarf, `cs-3` Bereich-CSV.
 - **Helper `tests/e2e/helpers/topisPage.ts`** (zentral für neue Tests):
@@ -338,7 +338,7 @@ npm run dev    # http://localhost:3000/topis-saas/projekt
 ### Build & Deploy (ZWEI Ziele, ein Repo)
 ```bash
 # 1) Hetzner (PRIMÄR seit 16.07.2026): https://topis.ntc.software
-./scripts/deploy-hetzner.sh      # Build mit TOPIS_BASE_PATH="" + rsync + Live-Check
+./scripts/deploy-hetzner.sh      # Build mit TOPIS_BASE_PATH="" + rsync + Live-Check (auf claw-docker: TOPIS_SSH_KEY=~/.ssh/pulsika_deploy)
 #    Server: 46.224.185.100, /opt/topis (nginx topis-web hinter jobbi-Caddy)
 
 # 2) GitHub Pages (übergangsweise parallel): roth-jan.github.io/topis-saas
