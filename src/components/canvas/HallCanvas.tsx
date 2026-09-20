@@ -3,13 +3,16 @@
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { useTopisStore, useActiveHall, useObjects, useZoom, usePan, useTool } from '@/lib/store';
 import { useBetriebsdatenStore, useHeatmapConfig } from '@/lib/betriebsdaten-store';
-import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor } from '@/types/topis';
+import { SCALE, TopisObject, ObjectType, OBJECT_COLORS, OBJECT_DEFAULTS, OBJECT_LABELS, Gang, PathArea, Conveyor, isOutdoorType } from '@/types/topis';
 import { getHeatmapColor, getMetrikWert, formatMetrikWert } from '@/lib/heatmap-utils';
 import { findPathBetweenObjects, lineCrossesAnyWall, buildGangGraph, findPath } from '@/lib/pathfinding';
 import { findNearestAnchor } from '@/lib/path-anchor';
 import { findGangSnap, extendEndpointToNearbyGang, isGangIsolated, type SnapResult } from '@/lib/gang-snap';
 import { findSnap, SNAP_COLORS, type SnapHit } from '@/lib/canvas-snap';
 import { pathForFormVariante, pointInFormVariante } from '@/lib/shape-render';
+import { computeAlignment } from '@/lib/alignment';
+import { hallOutline } from '@/lib/hall-shape';
+import { kettenPolygon, kettenPfeilPositionen, sampleMidline } from '@/lib/kette-geometry';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 
@@ -87,6 +90,12 @@ export function HallCanvas() {
   const selectedPathArea = useTopisStore((s) => s.selectedPathArea);
   const selectConveyor = useTopisStore((s) => s.selectConveyor);
   const selectedConveyor = useTopisStore((s) => s.selectedConveyor);
+  // Unterflurförderkette (Lastenheft 3.1.5)
+  const kettenWegbereiche = useTopisStore((s) => s.kettenWegbereiche);
+  const selectedKette = useTopisStore((s) => s.selectedKette);
+  const addKette = useTopisStore((s) => s.addKette);
+  const updateKette = useTopisStore((s) => s.updateKette);
+  const selectKette = useTopisStore((s) => s.selectKette);
   const setTool = useTopisStore((s) => s.setTool);
   const heatmapConfig = useHeatmapConfig();
   const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
@@ -98,6 +107,13 @@ export function HallCanvas() {
   const dragThresholdPassedRef = useRef(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragObject, setDragObject] = useState<TopisObject | null>(null);
+  // Ausrichtungslinien + Live-Maß beim Ziehen (in WELT-Koordinaten; draw() rendert sie oben).
+  const alignRef = useRef<{ vx: number[]; hy: number[]; measures: { x: number; y: number; text: string }[] } | null>(null);
+  // Serie ziehen (Drag-to-Fill, Factorio-Stil): Alt+Ziehen eines Objekts → Reihe von Kopien.
+  const [serieSrc, setSerieSrc] = useState<TopisObject | null>(null);
+  const [serieGhosts, setSerieGhosts] = useState<{ x: number; y: number; width: number; height: number }[]>([]);
+  // Hover-Feedback (A2): Objekt unter dem Cursor hervorheben.
+  const [hoverObjectId, setHoverObjectId] = useState<number | null>(null);
   // Tor-Pinsel ("Tor-Reihe"): an einer Wand ziehen → Vorschau mehrerer Tore
   // im festen Achsabstand, beim Loslassen als Batch anlegen (ein Undo-Schritt).
   const [pinselStart, setPinselStart] = useState<{ x: number; y: number } | null>(null);
@@ -128,6 +144,9 @@ export function HallCanvas() {
   // PathArea drawing state
   const [pathAreaStart, setPathAreaStart] = useState<{ x: number; y: number } | null>(null);
   const [pathAreaMousePos, setPathAreaMousePos] = useState<{ x: number; y: number } | null>(null);
+  // Bereich per Rechteck aufziehen (A3, Prison-Architect-„Foundation-Tool").
+  const [bereichStart, setBereichStart] = useState<{ x: number; y: number } | null>(null);
+  const [bereichMousePos, setBereichMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Measure tool state
   const [measureStart, setMeasureStart] = useState<{ x: number; y: number } | null>(null);
@@ -179,6 +198,8 @@ export function HallCanvas() {
   // Conveyor drawing state
   const [currentConveyor, setCurrentConveyor] = useState<{ points: { x: number; y: number }[] } | null>(null);
   const [conveyorMousePos, setConveyorMousePos] = useState<{ x: number; y: number } | null>(null);
+  // Kette-Zeichnen: Live-Vorschau des nächsten Punkts (Lastenheft 3.1.5)
+  const [ketteMousePos, setKetteMousePos] = useState<{ x: number; y: number } | null>(null);
 
   // Context menu state (for paths)
   const [contextMenu, setContextMenu] = useState<{
@@ -284,8 +305,14 @@ export function HallCanvas() {
 
   // Find object at position with click-cycling support
   const findObjectAt = useCallback((wx: number, wy: number): TopisObject | null => {
-    const hits = findAllObjectsAt(wx, wy);
+    let hits = findAllObjectsAt(wx, wy);
     if (hits.length === 0) return null;
+    // Bereiche sind Hintergrund-Zonen (enthalten ihre Stellplätze bewusst). Solange am
+    // Klickpunkt ein SOLIDES Objekt liegt, die Zonen beim Auswählen/Durchblättern ignorieren
+    // → ein Klick (auch mehrfach) auf einen Stellplatz wählt IMMER den Stellplatz, nicht die
+    // Zone darunter. Eine Zone wählt man an einer freien Stelle (ohne solides Objekt) an.
+    const solid = hits.filter((o) => o.type !== 'bereich');
+    if (solid.length > 0) hits = solid;
 
     // Check if this is a repeated click at the same position (within 3m tolerance)
     const now = Date.now();
@@ -520,65 +547,70 @@ export function HallCanvas() {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    // Clear canvas — neutrales Apple-Anthrazit als Zeichen-Viewport
-    // Theme-abhängig: helle Zeichenfläche im Light-Mode, Anthrazit im Dark-Mode.
-    ctx.fillStyle = isDark ? '#1b1b1d' : '#f4f4f6';
+    // Clear canvas — neutraler Zeichen-Viewport (leicht warmes Neutral).
+    // Theme-abhängig: warmes Hellgrau im Light-Mode, Anthrazit im Dark-Mode.
+    ctx.fillStyle = isDark ? '#1b1b1d' : '#e9e7e2';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid)
+    // Grundriss-Pfad (rect/L/T/U/C) einmal aufbauen — für Füllung UND Rand.
+    const traceHallPath = () => {
+      const outline = hallOutline(hall!);
+      if (outline.length === 0) return false;
+      ctx.beginPath();
+      outline.forEach((pt, i) => {
+        const s = worldToScreen(pt.x, pt.y);
+        if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+      });
+      ctx.closePath();
+      return true;
+    };
+
+    // 1) Halle ZUERST füllen (sonst überdeckt sie das Grid).
+    // Lastenheft 3.1.1.1: Grundform (rect/L/T/U/C) als Polygon; Aussparungen
+    // (Notch) zeigen den Viewport-Hintergrund, kein extra Clipping nötig.
     if (hall) {
-      const pos = worldToScreen(0, 0);
-      const w = hall.width * SCALE * zoom;
-      const h = hall.height * SCALE * zoom;
-      // Light-Mode: helle Hallenfläche; Dark-Mode: gespeicherte Hallenfarbe.
-      ctx.fillStyle = isDark ? (hall.color || '#26262a') : '#ffffff';
-      ctx.fillRect(pos.x, pos.y, w, h);
+      // Light-Mode: warme „Werkstatt"-Bodenfläche (heller als Viewport, damit
+      // die Halle sich abhebt); Dark-Mode: gespeicherte Hallenfarbe / warmes Anthrazit.
+      ctx.fillStyle = isDark ? (hall.color || '#26252a') : '#faf7f2';
+      if (traceHallPath()) ctx.fill();
     }
 
-    // 2) Grid ÜBER der Halle zeichnen — Major (5m) + Minor (1m, ab Zoom).
+    // 2) Grid ÜBER der Halle zeichnen — 3 Stufen: Neben (1m) + Mittel (5m) + Haupt (10m).
     // Grid wird überall (auch außerhalb) gezeichnet → Orientierung beim Pannen.
     // Höhere Opacity innerhalb der Halle weil das Grid auf dem hellen Halle-
-    // Hintergrund sichtbar bleiben muss; Außerhalb (schwarz) bleibt es subtil.
+    // Hintergrund sichtbar bleiben muss; Außerhalb bleibt es subtil.
     if (showGrid) {
-      const minorStepM = 1;
-      const majorStepM = 5;
-      const minorPx = minorStepM * SCALE * zoom;
-      const majorPx = majorStepM * SCALE * zoom;
-
-      if (minorPx >= 6) {
-        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(0, 0, 0, 0.06)';
+      const drawGridLines = (stepM: number, style: string) => {
+        const stepPx = stepM * SCALE * zoom;
+        if (stepPx < 6) return;
+        ctx.strokeStyle = style;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let x = pan.x % minorPx; x < canvas.width; x += minorPx) {
+        for (let x = pan.x % stepPx; x < canvas.width; x += stepPx) {
           ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
         }
-        for (let y = pan.y % minorPx; y < canvas.height; y += minorPx) {
+        for (let y = pan.y % stepPx; y < canvas.height; y += stepPx) {
           ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
         }
         ctx.stroke();
-      }
+      };
 
-      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.13)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      for (let x = pan.x % majorPx; x < canvas.width; x += majorPx) {
-        ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
-      }
-      for (let y = pan.y % majorPx; y < canvas.height; y += majorPx) {
-        ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
-      }
-      ctx.stroke();
+      // Nebenlinien (1m) — nur bei genügend Zoom, sehr fein
+      drawGridLines(1, isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.045)');
+      // Mittellinien (5m)
+      drawGridLines(5, isDark ? 'rgba(255, 255, 255, 0.13)' : 'rgba(0, 0, 0, 0.085)');
+      // Hauptlinien (10m) — kräftig, geben die grobe Orientierung
+      drawGridLines(10, isDark ? 'rgba(255, 255, 255, 0.24)' : 'rgba(0, 0, 0, 0.15)');
     }
 
     // 3) Halle-Border + Name nach dem Grid (sonst werden sie überzeichnet)
     if (hall) {
       const pos = worldToScreen(0, 0);
       const w = hall.width * SCALE * zoom;
-      const h = hall.height * SCALE * zoom;
 
       ctx.strokeStyle = isDark ? '#4a5568' : '#c4c8d0';
       ctx.lineWidth = 2;
-      ctx.strokeRect(pos.x, pos.y, w, h);
+      if (traceHallPath()) ctx.stroke();
 
       ctx.fillStyle = isDark ? '#718096' : '#8a8f99';
       ctx.font = `${12 * zoom}px Inter, sans-serif`;
@@ -627,6 +659,28 @@ export function HallCanvas() {
       ctx.lineWidth = 2;
       ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
       ctx.setLineDash([]);
+    }
+
+    // Bereich-Aufzieh-Vorschau (A3): Rechteck + Live-Maß (B × T in m).
+    if (bereichStart && bereichMousePos) {
+      const wx1 = Math.min(bereichStart.x, bereichMousePos.x), wy1 = Math.min(bereichStart.y, bereichMousePos.y);
+      const wx2 = Math.max(bereichStart.x, bereichMousePos.x), wy2 = Math.max(bereichStart.y, bereichMousePos.y);
+      const p1 = worldToScreen(wx1, wy1), p2 = worldToScreen(wx2, wy2);
+      const col = OBJECT_COLORS['bereich'] || '#a855f7';
+      ctx.save();
+      ctx.fillStyle = col; ctx.globalAlpha = 0.16;
+      ctx.fillRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      ctx.globalAlpha = 0.7; ctx.setLineDash([6, 4]); ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+      ctx.strokeRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      const label = `${(wx2 - wx1).toFixed(1).replace('.', ',')} × ${(wy2 - wy1).toFixed(1).replace('.', ',')} m`;
+      ctx.font = '700 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const cx = (p1.x + p2.x) / 2, cy = (p1.y + p2.y) / 2;
+      const tw = ctx.measureText(label).width, padX = 6, bh = 18;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.roundRect(cx - tw / 2 - padX, cy - bh / 2, tw + padX * 2, bh, 5); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(label, cx, cy);
+      ctx.restore();
     }
 
     // Draw Gänge
@@ -916,6 +970,91 @@ export function HallCanvas() {
       ctx.restore();
     });
 
+    // Draw Unterflurförderketten (Lastenheft 3.1.5): eigener Wegbereich mit
+    // fester Breite, Kurven+Geraden, EINER Fließrichtung (Pfeile). Als Boden-
+    // Wegbereich VOR den Objekten gezeichnet (Stellplätze liegen darüber).
+    kettenWegbereiche.forEach((k) => {
+      if (!k.punkte || k.punkte.length < 2) return;
+      const isSelK = selectedKette?.id === k.id;
+      const farbe = k.farbe || '#0891b2'; // Teal
+      ctx.save();
+      // 1) Bereichsfläche (Kontur-Polygon)
+      const poly = kettenPolygon(k);
+      if (poly.length >= 3) {
+        ctx.beginPath();
+        poly.forEach((pt, i) => {
+          const s = worldToScreen(pt.x, pt.y);
+          if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = farbe;
+        ctx.globalAlpha = isSelK ? 0.28 : 0.18;
+        ctx.fill();
+        ctx.globalAlpha = isSelK ? 0.95 : 0.6;
+        ctx.strokeStyle = farbe;
+        ctx.lineWidth = isSelK ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+      // 2) Mittellinie (gesampelt → folgt den Kurven)
+      const mid = sampleMidline(k.punkte);
+      if (mid.length >= 2) {
+        ctx.beginPath();
+        mid.forEach((m, i) => {
+          const s = worldToScreen(m.p.x, m.p.y);
+          if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+        });
+        ctx.strokeStyle = farbe;
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      // 3) Fließrichtungs-Pfeile (alle ~8 m)
+      const pfeile = kettenPfeilPositionen(k, 8);
+      pfeile.forEach(({ pos, richtung }) => {
+        const s = worldToScreen(pos.x, pos.y);
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(richtung);
+        ctx.fillStyle = farbe;
+        ctx.beginPath();
+        ctx.moveTo(7, 0); ctx.lineTo(-5, -5); ctx.lineTo(-5, 5); ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
+      // 4) Stützpunkte
+      k.punkte.forEach((p) => {
+        const s = worldToScreen(p.x, p.y);
+        ctx.fillStyle = farbe;
+        ctx.beginPath(); ctx.arc(s.x, s.y, isSelK ? 4 : 3, 0, Math.PI * 2); ctx.fill();
+      });
+      // 5) Name am ersten Punkt
+      if (zoom > 0.4 && k.name) {
+        const s = worldToScreen(k.punkte[0].x, k.punkte[0].y);
+        ctx.fillStyle = farbe;
+        ctx.font = `bold ${Math.max(9, 11 * zoom)}px Inter, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(k.name, s.x + 6, s.y - 4);
+      }
+      ctx.restore();
+    });
+
+    // Kette-Zeichnen: Vorschau-Linie vom letzten Stützpunkt zur Maus
+    if (tool === 'kette' && selectedKette && selectedKette.punkte.length > 0 && ketteMousePos) {
+      const last = selectedKette.punkte[selectedKette.punkte.length - 1];
+      const a = worldToScreen(last.x, last.y);
+      const b = worldToScreen(ketteMousePos.x, ketteMousePos.y);
+      ctx.save();
+      ctx.strokeStyle = selectedKette.farbe || '#0891b2';
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     // Draw current conveyor being drawn
     if (currentConveyor && currentConveyor.points.length > 0) {
       ctx.save();
@@ -1092,12 +1231,78 @@ export function HallCanvas() {
           ctx.fillStyle = baseColor;
           ctx.fill();
           ctx.restore();
-          // feine Kante (theme-abhängig), bei Auswahl kräftig
+          // feine Kante (theme-abhängig); Auswahl kräftig, Hover cyan hervorgehoben.
+          const isHovered = obj.id === hoverObjectId && !isSelected;
           roundPath();
-          ctx.strokeStyle = isSelected ? (isDark ? '#ffffff' : '#1d1d1f') : (isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.16)');
-          ctx.lineWidth = isSelected ? 2.5 : 1;
+          ctx.strokeStyle = isSelected
+            ? (isDark ? '#ffffff' : '#1d1d1f')
+            : isHovered ? '#22d3ee' : (isDark ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.16)');
+          ctx.lineWidth = isSelected ? 2.5 : isHovered ? 2 : 1;
           ctx.stroke();
         }
+      }
+
+      // Regal (Lastenheft 3.1.3.2): Fächer/Bays entlang der Längsachse andeuten
+      // + Ebenen-Zahl als Badge. Das Regal ist ein Stellplatz mit 2..n Ebenen;
+      // in der 2D-Draufsicht zeigen wir die Palettenplätze (Bays) und wie viele
+      // Ebenen es hat. Reine Darstellung — Kapazität/Rechnung unberührt.
+      if (obj.type === 'regal' && zoom > 0.25) {
+        const ebenen = obj.regalEbenen?.length || obj.ebenen || 3;
+        const bays = Math.max(1, obj.palettenPlaetzeProEbene || Math.floor(obj.width / 1.2) || 1);
+        const along = w >= h; // Längsachse
+        ctx.save();
+        ctx.strokeStyle = isDark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.28)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (along) {
+          for (let i = 1; i < bays; i++) {
+            const x = pos.x + (w * i) / bays;
+            ctx.moveTo(x, pos.y + 1); ctx.lineTo(x, pos.y + h - 1);
+          }
+        } else {
+          for (let i = 1; i < bays; i++) {
+            const y = pos.y + (h * i) / bays;
+            ctx.moveTo(pos.x + 1, y); ctx.lineTo(pos.x + w - 1, y);
+          }
+        }
+        ctx.stroke();
+        // Ebenen-Badge oben rechts („×N")
+        if (zoom > 0.4) {
+          const txt = `×${ebenen}`;
+          ctx.font = `bold ${Math.max(9, 10 * zoom)}px Inter, sans-serif`;
+          const tw = ctx.measureText(txt).width + 6;
+          const th = Math.max(12, 13 * zoom);
+          const bx = pos.x + w - tw - 2;
+          const by = pos.y + 2;
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.beginPath(); ctx.roundRect(bx, by, tw, th, 3); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(txt, bx + tw / 2, by + th / 2);
+        }
+        ctx.restore();
+      }
+
+      // Straße (Außengelände §1.1.6): gestrichelte Mittelmarkierung entlang der
+      // Längsachse — damit outdoor_road wie eine Fahrbahn liest statt wie ein
+      // graues Rechteck. Reine Darstellung.
+      if (obj.type === 'outdoor_road' && zoom > 0.25) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.85)'; // Amber wie Straßenmarkierung
+        ctx.lineWidth = Math.max(1, 1.5 * zoom);
+        ctx.setLineDash([10 * zoom, 8 * zoom]);
+        ctx.beginPath();
+        if (w >= h) {
+          const my = pos.y + h / 2;
+          ctx.moveTo(pos.x + 4, my); ctx.lineTo(pos.x + w - 4, my);
+        } else {
+          const mx = pos.x + w / 2;
+          ctx.moveTo(mx, pos.y + 4); ctx.lineTo(mx, pos.y + h - 4);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
       }
 
       // Object label — Tore und Bereiche unterschiedlich behandeln
@@ -1861,7 +2066,64 @@ export function HallCanvas() {
 
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost]);
+
+    // Ausrichtungslinien + Live-Maß beim Ziehen (Figma-/Prison-Architect-Gefühl). alignRef ist
+    // ein Ref → keine Dependency nötig; während des Ziehens löst updateObject den Redraw aus.
+    if (isDragging && dragObject && alignRef.current) {
+      const a = alignRef.current;
+      ctx.save();
+      const accent = isDark ? '#67e8f9' : '#0891b2';
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 4]);
+      for (const wx of a.vx) { const p = worldToScreen(wx, 0); ctx.beginPath(); ctx.moveTo(p.x, 0); ctx.lineTo(p.x, canvas.height); ctx.stroke(); }
+      for (const wy of a.hy) { const p = worldToScreen(0, wy); ctx.beginPath(); ctx.moveTo(0, p.y); ctx.lineTo(canvas.width, p.y); ctx.stroke(); }
+      ctx.setLineDash([]);
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (const m of a.measures) {
+        const p = worldToScreen(m.x, m.y);
+        const tw = ctx.measureText(m.text).width;
+        const padX = 5, bh = 16;
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.roundRect(p.x - tw / 2 - padX, p.y - bh / 2, tw + padX * 2, bh, 4); ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(m.text, p.x, p.y);
+      }
+      ctx.restore();
+    }
+
+    // Serie-ziehen-Vorschau (Drag-to-Fill): Geister-Kopien + Zähler am letzten Geist.
+    if (serieSrc && serieGhosts.length > 0) {
+      ctx.save();
+      const col = serieSrc.color || OBJECT_COLORS[serieSrc.type] || '#22c55e';
+      for (let i = 0; i < serieGhosts.length; i++) {
+        const g = serieGhosts[i];
+        const p = worldToScreen(g.x, g.y);
+        const gw = g.width * SCALE * zoom, gh = g.height * SCALE * zoom;
+        const rad = Math.max(0, Math.min(6 * zoom, gw * 0.22, gh * 0.22));
+        ctx.beginPath(); ctx.roundRect(p.x, p.y, gw, gh, rad);
+        ctx.globalAlpha = i === 0 ? 0.9 : 0.45; // Original kräftiger, Kopien blasser
+        ctx.fillStyle = col; ctx.fill();
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 1; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.globalAlpha = 1.0;
+      // Zähler-Pille am letzten Geist
+      const last = serieGhosts[serieGhosts.length - 1];
+      const lp = worldToScreen(last.x + last.width / 2, last.y + last.height / 2);
+      const label = `${serieGhosts.length}×`;
+      ctx.font = '700 12px Inter, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(label).width, padX = 6, bh = 18;
+      ctx.fillStyle = '#0891b2';
+      ctx.beginPath(); ctx.roundRect(lp.x - tw / 2 - padX, lp.y - bh / 2, tw + padX * 2, bh, 5); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(label, lp.x, lp.y);
+      ctx.restore();
+    }
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId, bereichStart, bereichMousePos, kettenWegbereiche, selectedKette, ketteMousePos]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2394,6 +2656,22 @@ export function HallCanvas() {
       return;
     }
 
+    // Kette zeichnen (Lastenheft 3.1.5): Klick fügt der aktiven Kette einen
+    // Stützpunkt hinzu. Ist keine Kette gewählt, wird eine neue angelegt (der
+    // KettenDialog wählt normalerweise vorher eine aus + schaltet auf dieses Tool).
+    if (tool === 'kette') {
+      const pt = { x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 };
+      let ziel = selectedKette;
+      if (!ziel) {
+        ziel = addKette({ name: `Kette ${kettenWegbereiche.length + 1}`, punkte: [], breite: 1.4, fliessrichtung: 'vorwaerts' });
+        selectKette(ziel);
+      }
+      updateKette(ziel.id, { punkte: [...ziel.punkte, pt] });
+      selectKette({ ...ziel, punkte: [...ziel.punkte, pt] });
+      setKetteMousePos(pt);
+      return;
+    }
+
     if (tool === 'select') {
       // Gang-Endpunkt-Drag (vor allem anderen): wenn ein Gang selektiert ist
       // und der Klick auf einem Endpunkt-Handle landet → Drag starten.
@@ -2439,9 +2717,31 @@ export function HallCanvas() {
         }
       }
 
+      // Stützpunkte des GEWÄHLTEN Wegs haben Vorrang vor Objekten darunter (wie
+      // die Gang-Endpunkt-Handles oben): ein Wegpunkt über einer Zone/einem
+      // Stellplatz wäre sonst nie greifbar, weil findObjectAt immer zuerst trifft.
+      if (selectedPath) {
+        const ownHit = findWaypointAt(world.x, world.y);
+        if (ownHit && ownHit.path.id === selectedPath.id) {
+          setSelectedWaypointIndex(ownHit.waypointIndex);
+          setDraggingWaypoint({ pathId: ownHit.path.id, waypointIndex: ownHit.waypointIndex });
+          setIsDragging(true);
+          return;
+        }
+      }
+
       // Dann normales Object-Drag
       const obj = findObjectAt(world.x, world.y);
       if (obj) {
+        // Alt gedrückt → „Serie ziehen": Objekt in einer Reihe vervielfältigen (Factorio-Stil).
+        // Nur für freie Objekte (nicht Tore — die haben den Tor-Pinsel).
+        if (e.altKey && obj.type !== 'tor') {
+          selectObject(obj);
+          setSerieSrc(obj);
+          setSerieGhosts([{ x: obj.x, y: obj.y, width: obj.width, height: obj.height }]);
+          setIsDragging(true);
+          return;
+        }
         selectObject(obj); // also clears selectedPath
         setSelectedWaypointIndex(null);
         // Wenn das angeklickte Tor in einem Sim-Auftrag steckt → fokussieren
@@ -2525,6 +2825,12 @@ export function HallCanvas() {
       setPinselStart(start);
       setPinselGhosts(computePinselGhosts(side, start, start, hall));
       return;
+    } else if (tool === 'bereich') {
+      // A3: Bereich per Rechteck aufziehen. Start merken; beim Ziehen Vorschau, beim
+      // Loslassen als Bereich in Ziehgröße anlegen (kleiner Klick → Standardgröße als Fallback).
+      setBereichStart({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
+      setBereichMousePos(null);
+      return;
     } else if (tool in OBJECT_DEFAULTS) {
       // Add new object using defaults - centered on click position
       const objectType = tool as ObjectType;
@@ -2576,8 +2882,9 @@ export function HallCanvas() {
         } else {
           objY = Math.max(0, Math.min(hall.height - objHeight, Math.round(world.y - objHeight / 2)));
         }
-      } else if (hall) {
-        // For non-Tor objects: clamp to hall boundaries
+      } else if (hall && !isOutdoorType(objectType)) {
+        // For non-Tor objects: clamp to hall boundaries. Außengelände (Lastenheft 3.1.6)
+        // liegt per Definition AUSSERHALB → nicht klemmen (Astra-Test 20.09.2026, C5).
         objX = Math.max(0, Math.min(hall.width - objWidth, objX));
         objY = Math.max(0, Math.min(hall.height - objHeight, objY));
       }
@@ -2626,6 +2933,17 @@ export function HallCanvas() {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     const world = screenToWorld(x, y);
+
+    // Hover-Feedback (A2): Objekt unter dem Cursor merken (nur im Select-Tool, nicht während
+    // laufender Aktionen). findAllObjectsAt ist seiteneffektfrei; Zonen sind niedrigere Priorität.
+    if (tool === 'select' && !isDragging && !serieSrc && !pinselStart && !gangEndpointDrag) {
+      const hits = findAllObjectsAt(world.x, world.y);
+      const solid = hits.filter((o) => o.type !== 'bereich');
+      const hoveredId = (solid[0] || hits[0])?.id ?? null;
+      if (hoveredId !== hoverObjectId) setHoverObjectId(hoveredId);
+    } else if (hoverObjectId !== null) {
+      setHoverObjectId(null); // sonst bleibt der cyan Umriss nach Tool-Wechsel stehen (Gemini 20.09.2026)
+    }
 
     // Tor-Pinsel: während des Ziehens die Geister-Tor-Reihe live nachführen.
     if (pinselStart && pinselSide && hall) {
@@ -2696,6 +3014,12 @@ export function HallCanvas() {
     // andere Werkzeuge: Snap-Preview ausblenden
     if (toolSnap) setToolSnap(null);
 
+    // Bereich aufziehen (A3): Vorschau-Rechteck live nachführen.
+    if (tool === 'bereich' && bereichStart) {
+      setBereichMousePos({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
+      return;
+    }
+
     // Update measure end position
     if (tool === 'measure' && measureStart) {
       setMeasureEnd({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
@@ -2705,6 +3029,12 @@ export function HallCanvas() {
     // Update conveyor preview position
     if (tool === 'conveyor' && currentConveyor) {
       setConveyorMousePos({ x: Math.round(world.x), y: Math.round(world.y) });
+      return;
+    }
+
+    // Update Kette preview position (Live-Linie zum nächsten Stützpunkt)
+    if (tool === 'kette' && selectedKette) {
+      setKetteMousePos({ x: Math.round(world.x * 10) / 10, y: Math.round(world.y * 10) / 10 });
       return;
     }
 
@@ -2762,6 +3092,28 @@ export function HallCanvas() {
       newH = Math.round(newH * 10) / 10;
 
       updateObject(selectedObject.id, { x: newX, y: newY, width: newW, height: newH });
+    } else if (tool === 'select' && serieSrc) {
+      // Serie ziehen: Reihe von Kopien entlang der dominanten Zieh-Achse, Abstand = Größe + 1 m
+      // Lücke (im Rastermaß). Vorschau als Geister; Anlegen beim Loslassen.
+      const src = serieSrc;
+      const dx = world.x - (src.x + src.width / 2);
+      const dy = world.y - (src.y + src.height / 2);
+      const horiz = Math.abs(dx) >= Math.abs(dy);
+      const ghosts: { x: number; y: number; width: number; height: number }[] = [];
+      if (horiz) {
+        const step = src.width + 1;
+        const dir = dx >= 0 ? 1 : -1;
+        const n = Math.max(1, Math.min(50, Math.floor(Math.abs(dx) / step) + 1));
+        for (let i = 0; i < n; i++) ghosts.push({ x: src.x + dir * i * step, y: src.y, width: src.width, height: src.height });
+      } else {
+        const step = src.height + 1;
+        const dir = dy >= 0 ? 1 : -1;
+        const n = Math.max(1, Math.min(50, Math.floor(Math.abs(dy) / step) + 1));
+        for (let i = 0; i < n; i++) ghosts.push({ x: src.x, y: src.y + dir * i * step, width: src.width, height: src.height });
+      }
+      // Auf Hallengrenzen begrenzen
+      const inBounds = hall ? ghosts.filter((g) => g.x >= 0 && g.y >= 0 && g.x + g.width <= hall.width && g.y + g.height <= hall.height) : ghosts;
+      setSerieGhosts(inBounds.length ? inBounds : [{ x: src.x, y: src.y, width: src.width, height: src.height }]);
     } else if (tool === 'select' && dragObject) {
       // Drag-Threshold: erst nach 3 px Maus-Bewegung als Verschieben werten
       // (verhindert versehentliches Verschieben beim Klicken — Nico 22.05.).
@@ -2786,8 +3138,19 @@ export function HallCanvas() {
         }
       }
 
-      // Clamp position within hall bounds
-      if (hall) {
+      // Ausrichtung/Snapping an Nachbarn + Wände (nur freie Objekte, nicht Tore — die rasten
+      // an der Wand). Snap-Toleranz ~8 px in Weltmeter umgerechnet, damit sie zoom-unabhängig
+      // „gleich stark" wirkt. Setzt Führungslinien + Live-Maß für draw().
+      if (dragObject.type !== 'tor') {
+        const threshM = 8 / (SCALE * zoom);
+        const rects = objects.map((o) => ({ id: o.id, x: o.x, y: o.y, width: o.width, height: o.height }));
+        const al = computeAlignment({ id: dragObject.id, x: newX, y: newY, width: dragObject.width, height: dragObject.height }, rects, hall, threshM);
+        newX = al.x; newY = al.y;
+        alignRef.current = (al.vx.length || al.hy.length || al.measures.length) ? { vx: al.vx, hy: al.hy, measures: al.measures } : null;
+      }
+
+      // Clamp position within hall bounds (Außengelände + Rampen bleiben frei/außen)
+      if (hall && !isOutdoorType(dragObject.type)) {
         newX = Math.max(0, Math.min(hall.width - dragObject.width, newX));
         newY = Math.max(0, Math.min(hall.height - dragObject.height, newY));
       }
@@ -2797,6 +3160,25 @@ export function HallCanvas() {
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Serie ziehen abschließen: Kopien (außer dem Original bei i=0) als Batch anlegen.
+    if (serieSrc) {
+      // Original per Position ausschließen — slice(1) verwarf eine echte Kopie, wenn das
+      // Original selbst außerhalb der Halle lag und weggefiltert wurde (Astra 20.09.2026).
+      const copies = serieGhosts.filter((g) => Math.abs(g.x - serieSrc.x) > 1e-6 || Math.abs(g.y - serieSrc.y) > 1e-6);
+      if (copies.length > 0) {
+        const { id: _id, x: _x, y: _y, name: _n, ...rest } = serieSrc;
+        void _id; void _x; void _y;
+        const baseName = (_n || 'Objekt').replace(/\s*\d+$/, '');
+        const newObjs = copies.map((g, i) => ({ ...rest, x: g.x, y: g.y, width: g.width, height: g.height, name: `${baseName} ${i + 2}` }));
+        addObjects(newObjs as Omit<TopisObject, 'id'>[]);
+        toast.success(`${copies.length} ${copies.length === 1 ? 'Kopie' : 'Kopien'} angelegt`);
+      }
+      setSerieSrc(null);
+      setSerieGhosts([]);
+      setIsDragging(false);
+      return;
+    }
+
     // Gang-Endpunkt-Drag beenden
     if (gangEndpointDrag) {
       setGangEndpointDrag(null);
@@ -2882,6 +3264,31 @@ export function HallCanvas() {
         setPathAreaMousePos(null);
         return;
       }
+
+      // Bereich (A3) — beim Loslassen als Rechteck anlegen (Mini-Ziehen → Standardgröße).
+      if (tool === 'bereich' && bereichStart) {
+        const def = OBJECT_DEFAULTS['bereich'];
+        const mp = bereichMousePos;
+        let x1 = bereichStart.x, y1 = bereichStart.y;
+        let width = mp ? Math.abs(mp.x - bereichStart.x) : 0;
+        let height = mp ? Math.abs(mp.y - bereichStart.y) : 0;
+        if (mp) { x1 = Math.min(bereichStart.x, mp.x); y1 = Math.min(bereichStart.y, mp.y); }
+        if (width < 1 || height < 1) { width = def.width; height = def.height; x1 = bereichStart.x - width / 2; y1 = bereichStart.y - height / 2; }
+        if (hall) {
+          // Erst Maß auf Hallengröße kappen, dann Position — sonst ragt ein über den Rand
+          // gezogener Bereich weiter hinaus (Cross-Review Astra+Gemini 20.09.2026).
+          width = Math.min(width, hall.width);
+          height = Math.min(height, hall.height);
+          x1 = Math.max(0, Math.min(hall.width - width, x1));
+          y1 = Math.max(0, Math.min(hall.height - height, y1));
+        }
+        const count = objects.filter(o => o.type === 'bereich').length + 1;
+        addObjects([{ type: 'bereich', x: Math.round(x1 * 10) / 10, y: Math.round(y1 * 10) / 10, width: Math.round(width * 10) / 10, height: Math.round(height * 10) / 10, name: `Bereich ${count}` }]);
+        toast.success(`Bereich erstellt (${width.toFixed(0)} m × ${height.toFixed(0)} m)`);
+        setBereichStart(null);
+        setBereichMousePos(null);
+        return;
+      }
     }
 
     // Stop waypoint dragging
@@ -2915,6 +3322,7 @@ export function HallCanvas() {
       toast.success('Wegpunkt verschoben');
     }
 
+    alignRef.current = null; // Führungslinien/Maße ausblenden
     setIsDragging(false);
     setDragObject(null);
     setResizeHandle(null);
@@ -3312,7 +3720,7 @@ export function HallCanvas() {
     if (tool === 'pan') return 'grab';
     if (resizeHandle === 'nw' || resizeHandle === 'se') return 'nwse-resize';
     if (resizeHandle === 'ne' || resizeHandle === 'sw') return 'nesw-resize';
-    if (tool === 'select') return dragObject ? 'move' : 'default';
+    if (tool === 'select') return (dragObject || serieSrc) ? 'move' : (hoverObjectId != null ? 'move' : 'default');
     if (tool === 'gang') return gangDrawStart ? 'crosshair' : 'crosshair';
     return 'crosshair';
   };

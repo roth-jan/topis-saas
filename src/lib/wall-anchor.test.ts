@@ -3,6 +3,7 @@ import {
   findNearestWall,
   anchorToWorldPoint,
   torBoxFromAnchor,
+  rampeBoxFromAnchor,
   reanchorTore,
   isValidTorPosition,
   deriveWalls,
@@ -128,6 +129,51 @@ describe('deriveWalls — Außenwände aus Hallen-Geometrie (Lastenheft 3.1.1.1)
       aussenwandRef: { wallIndex: nearest!.wallIndex, abstandS: nearest!.abstandS, abstandE: nearest!.abstandE },
     };
     expect(isValidTorPosition(anchored, walls)).toBe(true);
+  });
+});
+
+describe('rampeBoxFromAnchor — Rampen außen an der Wand (Lastenheft 3.1.2.2)', () => {
+  const W = 100, H = 50;
+  it('Nordwand: Rampe liegt OBERHALB (außen), Innenkante auf y=0', () => {
+    const box = rampeBoxFromAnchor({ wallIndex: 0, abstandS: 50, abstandE: 50 }, rechteckHalle, 4, 8);
+    expect(box).not.toBeNull();
+    expect(box!.side).toBe('north');
+    expect(box!.y).toBe(0 - 8);          // ragt nach außen (negativ)
+    expect(box!.x).toBeCloseTo(50 - 4 / 2, 5); // mittig um Ankerpunkt
+  });
+  it('Südwand: Rampe liegt UNTERHALB (außen), Innenkante auf y=H', () => {
+    const box = rampeBoxFromAnchor({ wallIndex: 2, abstandS: 50, abstandE: 50 }, rechteckHalle, 4, 8);
+    expect(box!.side).toBe('south');
+    expect(box!.y).toBe(H);              // beginnt an der Wand, geht nach außen
+  });
+  it('Ostwand: Rampe liegt RECHTS (außen), Innenkante auf x=W', () => {
+    const box = rampeBoxFromAnchor({ wallIndex: 1, abstandS: 25, abstandE: 25 }, rechteckHalle, 6, 10);
+    expect(box!.side).toBe('east');
+    expect(box!.x).toBe(W);
+  });
+  it('Westwand: Rampe liegt LINKS (außen)', () => {
+    const box = rampeBoxFromAnchor({ wallIndex: 3, abstandS: 25, abstandE: 25 }, rechteckHalle, 6, 10);
+    expect(box!.side).toBe('west');
+    expect(box!.x).toBe(0 - 6);
+  });
+  it('Tor vs. Rampe an derselben Nordwand liegen auf gegenüberliegenden Seiten', () => {
+    const anchor = { wallIndex: 0, abstandS: 50, abstandE: 50 };
+    const tor = torBoxFromAnchor(anchor, rechteckHalle, 4, 2);
+    const rampe = rampeBoxFromAnchor(anchor, rechteckHalle, 4, 2);
+    expect(tor!.y).toBe(0);       // Tor nach innen
+    expect(rampe!.y).toBe(0 - 2); // Rampe nach außen
+  });
+});
+
+describe('reanchorTore — zieht auch Rampen mit (Lastenheft 3.1.2.2)', () => {
+  it('Rampe folgt der Wand nach außen bei Geometrie-Änderung', () => {
+    const rampe: TopisObject = {
+      id: 1, type: 'rampe', name: 'R1', x: 48, y: -8, width: 4, height: 8, side: 'north',
+      aussenwandRef: { wallIndex: 0, abstandS: 50, abstandE: 50 },
+    };
+    const out = reanchorTore([rampe], rechteckHalle);
+    expect(out[0].y).toBe(-8);            // bleibt außen
+    expect(out[0].x).toBeCloseTo(48, 5);
   });
 });
 

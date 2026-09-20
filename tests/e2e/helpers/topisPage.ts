@@ -186,6 +186,10 @@ export async function openModulDialog(
  */
 export async function gotoAuswertungPhase(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Auswertung' }).click();
+  // Seit UX-Paket 1 (16.07.2026) liegen Mengen-Modell / Relations-Plan / Bereichseinteilung
+  // hinter dem Umschalter „Weitere ▾" — erst aufklappen.
+  const weitere = page.getByRole('button', { name: /^Weitere/ });
+  if (await weitere.isVisible().catch(() => false)) await weitere.click();
   await expect(page.getByRole('button', { name: 'Relations-Plan' })).toBeVisible();
 }
 

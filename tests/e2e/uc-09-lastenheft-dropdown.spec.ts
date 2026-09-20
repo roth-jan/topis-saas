@@ -13,6 +13,7 @@ import {
   gotoTopis,
   closeAnyDialog,
   patchLayoutState,
+  gotoAuswertungPhase,
   openModulDialog,
   openAuswertungDialog,
 } from './helpers/topisPage';
@@ -42,7 +43,7 @@ test.describe('UC-9 Lastenheft-Dialoge', () => {
   test('Auswertungs-Phase enthält Mengen-Modell, Relations-Plan, Bereichseinteilung', async ({ page }) => {
     await gotoTopis(page);
     await seedOneObject(page);
-    await page.getByRole('button', { name: 'Auswertung' }).click();
+    await gotoAuswertungPhase(page);
     for (const name of Object.values(AUSWERTUNG_BUTTONS)) {
       await expect(page.getByRole('button', { name })).toBeVisible();
     }

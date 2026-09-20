@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth";
+import { ChunkReloadGuard } from "@/components/system/ChunkReloadGuard";
 
 // tweakcn „Elegant Luxury": Poppins als durchgängige Sans/Display-Schrift,
 // Libre Baskerville als elegante Serife, IBM Plex Mono für technische Werte.
@@ -44,6 +45,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
+          <ChunkReloadGuard />
           <AuthProvider>
             {children}
           </AuthProvider>

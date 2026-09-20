@@ -93,18 +93,30 @@ export function validateParams(params: LayoutParams): ValidationResult {
     // Tor-Breite entlang der Wand (Lastenheft-Eigenschaft). Nur „explizit", wenn eine Breite
     // WIRKLICH angegeben wurde — nie geraten (das LLM neigte dazu, 4 m zu erfinden).
     const hasExplicitBreite = g.torBreiteM != null && g.torBreiteM > 0;
-    // Achsabstand (Pitch) ZUERST bestimmen. Disambiguierung von „Abstand":
-    //  - explizit spacingM → Achsabstand.
-    //  - lueckeM + explizite Breite → „Abstand"/„Lücke" = Zwischenraum → Pitch = Breite + Lücke.
-    //  - lueckeM OHNE Breite → „Abstand 6" meint konventionell den Achsabstand (wie AS Halle 6).
-    //  - nichts → Default.
-    const spacingM = g.spacingM != null ? toM(g.spacingM)
-      : g.lueckeM != null && g.lueckeM >= 0
-        ? (hasExplicitBreite ? toM(g.torBreiteM!) + toM(g.lueckeM) : toM(g.lueckeM))
-        : hasExplicitBreite ? toM(g.torBreiteM!) + 1 : DEFAULT_SPACING_M;
-    // Breite: explizit übernehmen; sonst an den Achsabstand anpassen (nie breiter als der
-    // Pitch → Tore überlappen ohne explizite Breite NIE, auch bei engem Raster wie „Abstand 3").
-    const torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : Math.min(TOR_W, spacingM);
+    // Disambiguierung „Abstand" (Achsabstand) vs. „Lücke" (Zwischenraum) — Lastenheft
+    // §1.1.2.1 („distance between the gates" = Lücke) getrennt vom Mitte-zu-Mitte-Achsabstand.
+    // Zwei GETRENNTE Parameter (der Parser + die Edge-Function setzen genau einen):
+    //   - spacingM  → ACHSABSTAND (Mitte-zu-Mitte). Breite passt sich an (nie > Pitch).
+    //   - lueckeM   → echter ZWISCHENRAUM. Pitch = Breite + Lücke (Breite bleibt Default/explizit).
+    //   - nur Breite → Default-Lücke 1 m.
+    //   - nichts    → Default-Achsabstand.
+    let spacingM: number;
+    let torBreiteM: number;
+    if (g.spacingM != null) {
+      // Achsabstand: Breite entweder explizit oder auf den Pitch begrenzt (keine Überlappung).
+      spacingM = toM(g.spacingM);
+      torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : Math.min(TOR_W, spacingM);
+    } else if (g.lueckeM != null && g.lueckeM >= 0) {
+      // Echte Lücke: Breite bleibt Default (3.5) oder explizit → Pitch = Breite + Lücke.
+      torBreiteM = hasExplicitBreite ? toM(g.torBreiteM!) : TOR_W;
+      spacingM = torBreiteM + toM(g.lueckeM);
+    } else if (hasExplicitBreite) {
+      torBreiteM = toM(g.torBreiteM!);
+      spacingM = torBreiteM + 1;
+    } else {
+      spacingM = DEFAULT_SPACING_M;
+      torBreiteM = Math.min(TOR_W, spacingM);
+    }
     const lueckeEff = spacingM - torBreiteM; // effektive Lücke (nur bei EXPLIZITER Breite negativ)
 
     if (!Number.isFinite(count) || count < 1) { errors.push('Toranzahl fehlt oder ist ungültig.'); continue; }
@@ -116,7 +128,13 @@ export function validateParams(params: LayoutParams): ValidationResult {
     // Torreihe standardmäßig ZENTRIEREN (gleicher Randabstand links/rechts) —
     // außer der Nutzer gibt explizit einen Anfangsabstand vor.
     const rowLen = (count - 1) * spacingM;
-    const firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(torBreiteM / 2, (wallLen - rowLen) / 2);
+    let firstOffsetM = g.firstOffsetM != null ? toM(g.firstOffsetM) : Math.max(torBreiteM / 2, (wallLen - rowLen) / 2);
+    if (firstOffsetM < torBreiteM / 2) {
+      // Erste Torkante läge vor der Wandecke → das spätere Clamping in paramsToLayout würde
+      // die Tore ungleich schieben und überlappen lassen (Cross-Review Astra 20.09.2026).
+      warnings.push(`Startabstand ${firstOffsetM.toFixed(2)} m (${SIDE_LABEL[side]}) kleiner als halbe Torbreite — auf ${(torBreiteM / 2).toFixed(2)} m angehoben.`);
+      firstOffsetM = torBreiteM / 2;
+    }
     const requiredSpan = firstOffsetM + rowLen + torBreiteM / 2;
     // Kapazität VOR dem Bau (Lastenheft: Anzahl × Breite + (Anzahl−1) × Lücke ≤ Wandlänge).
     if (requiredSpan > wallLen + 0.01) {
@@ -516,6 +534,9 @@ function stellplatzForTor(
   const cy = t.y + t.height / 2;
   const h = Math.min(breite, height);
   const y = Math.max(0, Math.min(height - h, cy - h / 2));
+  // Ost/West-Stellplatz würde im horizontalen Mittelgang liegen → nicht bauen
+  // (Karte zeigt „gebaut < angefordert"). Vorher blockierte er den Gang (Astra 20.09.2026).
+  if (y < mgBottom && y + h > mgTop) return null;
   const mgL = width / 2 - aisleHHalf, mgR = width / 2 + aisleHHalf;
   if (t.side === 'west') {
     const x0 = t.width, w = Math.min(laenge, mgL - x0);
@@ -569,6 +590,8 @@ const SIDE_KEYWORDS: [RegExp, GateSide][] = [
 // Nicht (mehr) unterstützte Elemente → werden offen gemeldet statt still geschluckt.
 // (Stellplätze + Bereiche werden inzwischen gebaut → nicht mehr hier.)
 const UNSUPPORTED: [RegExp, string][] = [
+  // Astra-Test 20.09.2026 (A6): „runde Halle" wurde kommentarlos als Rechteck gebaut.
+  [/\brund(?:e|en|er|es)?\b|kreisf(?:ö|oe)rmig|gebogen|geschwungen|freiform|freihand|oval/, 'Runde/gebogene/Freiform-Wände (nur Rechteck, L, T, U, C)'],
   [/regal/, 'Regale'],
   // Mittelgang wird gebaut → nur sonstige Gänge/Fahrgänge sind noch unsupported.
   [/\b(?:fahr)?g(?:a|ä)ng/, 'Gänge/Fahrgänge'],
@@ -588,6 +611,19 @@ function matchSpacing(seg: string, allowBareDecimal: boolean): number | undefine
     if (d) return parseFloat(d[1]);
   }
   return undefined;
+}
+
+/** „ süd", „im süden", „süd abstand 6", „süden lücke 2 m, 4 m breit" → true.
+ *  Alles, was nach Entfernen von Seite, Füllwörtern und Maßangaben übrig bleibt, macht es unrein. */
+function istReinesSeitenSegment(seg: string): boolean {
+  const rest = seg
+    .replace(/\b(?:im|in|auf|nach|an|der|die|das|mit|je|jeweils|und)\b/g, ' ')
+    .replace(/\b(?:nord(?:en)?|s(?:ü|u)d(?:en)?|sueden|ost(?:en)?|west(?:en)?)\b/g, ' ')
+    .replace(/\d+(?:\.\d+)?\s*m?(?:eter)?\s*(?:raster|abstand|l(?:ü|ue)cke|zwischenraum|breit(?:e)?)/g, ' ')
+    .replace(/(?:raster|abstand|l(?:ü|ue)cke|zwischenraum|breite?)\s*(?:zum\s*n(?:ä|ae)chsten(?:\s*tor)?|zwischen)?\s*\d+(?:\.\d+)?\s*m?(?:eter)?/g, ' ')
+    .replace(/\b(?:zum|n(?:ä|ae)chsten|tor(?:e)?|zwischen)\b/g, ' ')
+    .replace(/[\s,.;]+/g, '');
+  return rest.length === 0;
 }
 
 function sideOf(seg: string): GateSide | null {
@@ -639,25 +675,64 @@ export function parseCanonical(input: string): LayoutParams | null {
   // Tor-Breite NUR im Tor-Kontext (sonst würde „100 m breite" der HALLE als Tor-Breite gelesen).
   const matchBreite = (s: string) => s.match(/tor\w*[^.,;]{0,20}?(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*breit/)?.[1]
     ?? s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*breit(?:e)?[^.,;]{0,20}?\btore?\b/)?.[1];
-  const matchLuecke = (s: string) => s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:abstand|l[üu]cke)/)?.[1]
-    ?? s.match(/(?:abstand|l[üu]cke)[^\d]{0,10}(\d+(?:\.\d+)?)/)?.[1];
+  // ECHTE Lücke (Zwischenraum): „Lücke", „Zwischenraum", „zwischen …", „dazwischen",
+  // „Abstand zum nächsten Tor", „Abstand zwischen" → lueckeM. (C11-Semantik)
+  const matchGap = (s: string) =>
+    s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:l[üu]cke|zwischenraum|abstand\s+zum\s+n[äa]chsten|abstand\s+zwischen|zwischen\b)/)?.[1]
+    ?? s.match(/(?:l[üu]cke|zwischenraum|dazwischen|abstand\s+zum\s+n[äa]chsten|abstand\s+zwischen)[^\d]{0,12}(\d+(?:\.\d+)?)/)?.[1];
+  // Reiner ACHSABSTAND: „Abstand N" / „Raster N" (NICHT „…zum nächsten/zwischen") + bloße Zahl.
+  const matchAchse = (s: string, allowBare: boolean) =>
+    s.match(/(\d+(?:\.\d+)?)\s*m(?:eter)?n?\s*(?:raster|abstand)(?!\s*(?:zum|zwischen))/)?.[1]
+    ?? s.match(/(?:raster|abstand)(?!\s*(?:zum|zwischen))[^\d]{0,4}(\d+(?:\.\d+)?)/)?.[1]
+    ?? (matchSpacing(s, allowBare) != null ? String(matchSpacing(s, allowBare)) : undefined);
   const globalBreite = matchBreite(low);
-  const globalLuecke = matchLuecke(low) ?? (matchSpacing(low, false) != null ? String(matchSpacing(low, false)) : undefined);
+  const globalGap = matchGap(low);
+  const globalAchse = matchAchse(low, false);
 
   // Torreihen aus Segmenten (getrennt durch , ; oder „und").
   const segments = low.split(/[,;]|\bund\b/);
   const gates: GateGroup[] = [];
+  // C12: „N Tore Nord und Süd" wird an „und" zu [„… nord", „ süd"] gespalten — das
+  // zweite Segment hat eine Seite, aber KEINE Zahl. Solche reinen Seiten-Segmente
+  // (keine Ziffern → nicht „und 6 Bereiche") erben die Torreihe des Vorgängers.
+  let lastTor: Omit<GateGroup, 'side'> | null = null;
   for (const seg of segments) {
     const cm = seg.match(/(\d+)\s*tore?\b/);
     const side = sideOf(seg);
     if (cm && side) {
       const noDims = !/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/.test(seg);
       const breite = matchBreite(seg) ?? globalBreite;
-      const luecke = matchLuecke(seg) ?? (matchSpacing(seg, noDims) != null ? String(matchSpacing(seg, noDims)) : undefined) ?? globalLuecke;
-      gates.push({
-        count: parseInt(cm[1], 10), side,
+      // Lücke hat Vorrang; nur wenn keine Lücke-Angabe da ist, zählt „Abstand" als Achsabstand.
+      // Lokale Angaben des Segments schlagen globale: hat DIESES Segment einen Achsabstand,
+      // darf die Lücke einer ANDEREN Torreihe ihn nicht überschreiben (Astra 20.09.2026).
+      const localGap = matchGap(seg);
+      const localAchse = matchAchse(seg, noDims);
+      const gap = localGap ?? (localAchse == null ? globalGap : undefined);
+      const achse = gap == null ? (localAchse ?? globalAchse) : undefined;
+      const common = {
+        count: parseInt(cm[1], 10),
         ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
-        ...(luecke != null ? { lueckeM: parseFloat(luecke) } : {}),
+        ...(gap != null ? { lueckeM: parseFloat(gap) } : {}),
+        ...(achse != null ? { spacingM: parseFloat(achse) } : {}),
+      };
+      gates.push({ ...common, side });
+      lastTor = common;
+    } else if (side && !cm && lastTor && istReinesSeitenSegment(seg)) {
+      // NUR ein reines Seiten-Segment (z.B. „ süd" aus „… Nord und Süd", auch „im süden",
+      // auch „süd abstand 6" — Astra-Test 20.09.2026 A5) erbt die Torreihe des Vorgängers.
+      // Zonen-Klauseln wie „wareneingang im westen" enthalten weitere Wörter → greifen NICHT.
+      // Eigene Abstand/Lücke/Breite-Angaben des Segments schlagen die geerbten.
+      const gap = matchGap(seg);
+      const achse = gap == null ? matchAchse(seg, false) : undefined;
+      const breite = matchBreite(seg);
+      const inherited = { ...lastTor };
+      if (gap != null || achse != null) { delete inherited.lueckeM; delete inherited.spacingM; }
+      gates.push({
+        ...inherited,
+        ...(breite != null ? { torBreiteM: parseFloat(breite) } : {}),
+        ...(gap != null ? { lueckeM: parseFloat(gap) } : {}),
+        ...(achse != null ? { spacingM: parseFloat(achse) } : {}),
+        side,
       });
     }
   }
@@ -668,11 +743,18 @@ export function parseCanonical(input: string): LayoutParams | null {
   for (const [re, label] of [[/wareneingang/, 'Wareneingang'], [/warenausgang/, 'Warenausgang']] as [RegExp, string][]) {
     const m = low.match(re);
     if (m) {
-      const after = low.slice(m.index ?? 0, (m.index ?? 0) + 40);
+      const idx = m.index ?? 0;
+      // Nur bis zum Klausel-Ende lesen — sonst färbt „Warenausgang Ost" auf „Wareneingang West" ab.
+      const after = (low.slice(idx).split(/[,;]/)[0] ?? '').slice(0, 40);
+      // C12: Seite kann NACH („Wareneingang West") ODER VOR dem Schlüsselwort stehen
+      // („im Norden Wareneingang"). Zuerst danach suchen, dann im Text davor — aber nur
+      // innerhalb derselben Klausel (nach dem letzten , oder ;), damit die Seite eines
+      // vorherigen Tor-Segments nicht fälschlich auf die Zone abfärbt.
+      const before = (low.slice(Math.max(0, idx - 25), idx).split(/[,;]/).pop() ?? '');
       const dim = after.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/);
       zonen.push({
         name: label,
-        side: sideOf(after) ?? undefined,
+        side: sideOf(after) ?? sideOf(before) ?? undefined,
         ...(dim ? { laengeM: parseFloat(dim[1]), breiteM: parseFloat(dim[2]) } : {}),
       });
     }

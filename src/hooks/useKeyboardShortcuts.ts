@@ -15,6 +15,7 @@ export function useKeyboardShortcuts() {
   const selectedObject = useTopisStore((s) => s.selectedObject);
   const selectObject = useTopisStore((s) => s.selectObject);
   const addObject = useTopisStore((s) => s.addObject);
+  const updateObject = useTopisStore((s) => s.updateObject);
   const undo = useTopisStore((s) => s.undo);
   const redo = useTopisStore((s) => s.redo);
   const canUndo = useTopisStore((s) => s.canUndo);
@@ -44,6 +45,39 @@ export function useKeyboardShortcuts() {
     const kopie = addObject({ ...rest, x: selectedObject.x + dx, y: selectedObject.y + dy, name: selectedObject.name ? `${selectedObject.name} (Kopie)` : 'Kopie' });
     selectObject(kopie);
     toast.success('Objekt dupliziert');
+  }
+
+  // 90°-Drehung eines ausgewählten Objekts (Spiel-Gefühl „R rotiert das Teil").
+  // Achsenparallel: Breite/Höhe tauschen um den Mittelpunkt → Hit-Detection,
+  // Wege & Snapping bleiben rechteckbasiert gültig (Rechenlogik unangetastet).
+  function rotateSelected(): boolean {
+    if (!selectedObject) return false;
+    // Kreise sind rotationsinvariant → keine sichtbare Drehung.
+    if (selectedObject.shape === 'circle') {
+      toast.info('Kreis-Objekt ist nicht drehbar');
+      return true;
+    }
+    const w = selectedObject.width;
+    const h = selectedObject.height;
+    const cx = selectedObject.x + w / 2;
+    const cy = selectedObject.y + h / 2;
+    const newW = h;
+    const newH = w;
+    const patch: Partial<typeof selectedObject> = {
+      width: newW,
+      height: newH,
+      x: cx - newW / 2,
+      y: cy - newH / 2,
+      rotation: ((selectedObject.rotation || 0) + 90) % 360,
+    };
+    // Trapez/Polygon: normierte Punkte 90° im Uhrzeigersinn mitdrehen (x,y)→(1-y,x),
+    // damit die Form mitdreht statt nur die Bounding-Box.
+    if (selectedObject.polygonPunkte && selectedObject.polygonPunkte.length > 0) {
+      patch.polygonPunkte = selectedObject.polygonPunkte.map((p) => ({ x: 1 - p.y, y: p.x }));
+    }
+    updateObject(selectedObject.id, patch);
+    toast.success('Objekt gedreht (90°)');
+    return true;
   }
 
   useEffect(() => {
@@ -87,6 +121,9 @@ export function useKeyboardShortcuts() {
             toast.success('Pfad-Werkzeug');
             break;
           case 'r':
+            // Spiel-Gefühl: ist ein Objekt ausgewählt, dreht R es um 90°.
+            // Sonst greift die alte Belegung (Regal-Werkzeug).
+            if (rotateSelected()) break;
             setTool('regal');
             toast.success('Regal-Werkzeug');
             break;
@@ -174,5 +211,5 @@ export function useKeyboardShortcuts() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setTool, toggleGrid, toggleSnap, setZoom, zoom, deleteObject, selectedObject, selectObject, addObject, undo, redo, canUndo, canRedo]);
+  }, [setTool, toggleGrid, toggleSnap, setZoom, zoom, deleteObject, selectedObject, selectObject, addObject, updateObject, undo, redo, canUndo, canRedo]);
 }

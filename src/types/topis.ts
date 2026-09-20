@@ -56,6 +56,13 @@ export type ObjectType =
   | 'sattelplatz'            // 3.1.6 — Außengelände Sattelplatz
   | 'wechselbrueckenplatz';  // 3.1.6 — Außengelände Wechselbrückenplatz
 
+/** Objekttypen, die per Lastenheft AUSSERHALB der Halle liegen (3.1.2.2 Rampen, 3.1.6 Außengelände).
+ *  Werden beim Platzieren/Ziehen nicht in die Hallenfläche geklemmt. */
+export const OUTDOOR_TYPES: ReadonlySet<ObjectType> = new Set<ObjectType>([
+  'outdoor_area', 'outdoor_road', 'trailer_spot', 'parking', 'sattelplatz', 'wechselbrueckenplatz', 'rampe',
+]);
+export function isOutdoorType(t: string): boolean { return OUTDOOR_TYPES.has(t as ObjectType); }
+
 export interface TopisObject {
   id: number;
   type: ObjectType;

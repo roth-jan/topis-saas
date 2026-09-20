@@ -24,7 +24,7 @@ test.describe('UC-13 Multi-Insert numbering schemes', () => {
       await clearStorage(page);
 
       // Open Multi-Insert dialog from toolbar
-      await page.getByRole('button', { name: 'Multi-Insert' }).click();
+      await page.getByRole('button', { name: /Multi-Insert/ }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
 
       // Anzahl = 5

@@ -47,11 +47,26 @@ describe('nl-layout — validateParams', () => {
   });
 
   it('OHNE explizite Breite passt sich die Tor-Breite dem Achsabstand an (keine Überlappung)', () => {
-    // „Abstand 3" ohne Breite: Tore werden 3.0 m breit (min(3.5, 3)), Lücke 0 → ok, kein Fehler.
-    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 40, side: 'north', lueckeM: 3 }] });
+    // „Abstand 3" (Achsabstand, spacingM) ohne Breite: Tore werden 3.0 m breit (min(3.5, 3)), Lücke 0.
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 40, side: 'north', spacingM: 3 }] });
     expect(r.ok).toBe(true);
     const { objects } = paramsToLayout(r.filled);
     expect(objects.every((o) => o.type === 'tor' && o.width === 3)).toBe(true);
+  });
+
+  it('C11: lueckeM = echter Zwischenraum, auch OHNE Breite (Pitch = Default-Breite + Lücke)', () => {
+    // „6 m Lücke" ohne Breite: Tore 3.5 m breit, Achsabstand 3.5+6 = 9.5 m (NICHT 6 als Achsabstand!).
+    const r = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 10, side: 'north', lueckeM: 6 }] });
+    expect(r.ok).toBe(true);
+    expect(r.filled.gates![0].spacingM).toBeCloseTo(9.5, 6);
+    expect(r.filled.gates![0].torBreiteM).toBeCloseTo(3.5, 6);
+  });
+
+  it('C11: spacingM = Achsabstand ≠ lueckeM = Zwischenraum (gleiche Zahl, anderer Pitch)', () => {
+    const achse = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 10, side: 'north', spacingM: 6 }] });
+    const luecke = validateParams({ action: 'createHall', hall: { lengthM: 210, widthM: 58 }, gates: [{ count: 10, side: 'north', lueckeM: 6 }] });
+    expect(achse.filled.gates![0].spacingM).toBeCloseTo(6, 6);        // Achsabstand = 6
+    expect(luecke.filled.gates![0].spacingM).toBeCloseTo(9.5, 6);     // Lücke 6 → Pitch 9.5
   });
 
   it('Tor-Breite + Lücke: Pitch = Breite + Lücke, Kapazität geprüft', () => {
@@ -89,8 +104,9 @@ describe('nl-layout — parseCanonical', () => {
     expect(p.hall.lengthM).toBe(210);
     expect(p.hall.widthM).toBe(58);
     expect(p.gates).toHaveLength(1);
-    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', lueckeM: 3.75 });
-    // Ohne Tor-Breite meint „Abstand" den Achsabstand → Pitch bleibt 3.75 (AS-konform, passt in 210 m).
+    expect(p.gates![0]).toMatchObject({ count: 50, side: 'north', spacingM: 3.75 });
+    expect(p.gates![0].lueckeM).toBeUndefined();
+    // „Abstand" = Achsabstand → Pitch 3.75 (AS-konform, passt in 210 m).
     const v = validateParams(p);
     expect(v.ok).toBe(true);
     expect(v.filled.gates![0].spacingM).toBeCloseTo(3.75, 6);
@@ -126,6 +142,38 @@ describe('nl-layout — parseCanonical', () => {
     expect(p.ignored?.some((x) => x.includes('12x3'))).toBeFalsy();
   });
 
+  it('C12: „50 Tore Nord und Süd" → zwei Torreihen (Serie über „und")', () => {
+    const p = parseCanonical('Halle 210x58, 50 Tore Nord und Süd')!;
+    expect(p.gates).toHaveLength(2);
+    expect(p.gates!.map((g) => g.side).sort()).toEqual(['north', 'south']);
+    expect(p.gates!.every((g) => g.count === 50)).toBe(true);
+  });
+
+  it('C12: „N Tore Nord und Süd Abstand 4" — Spec wird auf beide Seiten vererbt', () => {
+    const p = parseCanonical('Halle 210x58, 40 Tore Nord Abstand 4 und Süd')!;
+    expect(p.gates).toHaveLength(2);
+    expect(p.gates!.every((g) => g.count === 40 && g.spacingM === 4)).toBe(true);
+  });
+
+  it('C12: „und 6 Bereiche" wird NICHT als Torreihe fehlinterpretiert', () => {
+    const p = parseCanonical('Halle 210x58, 20 Tore Nord und 6 Bereiche')!;
+    expect(p.gates).toHaveLength(1);
+    expect(p.gates![0].side).toBe('north');
+    expect(p.bereiche).toBe(6);
+  });
+
+  it('C12: Zonen-Seite VOR dem Schlüsselwort — „im Norden Wareneingang"', () => {
+    const p = parseCanonical('Halle 100x50, 10 Tore Süd, im Norden Wareneingang')!;
+    const we = p.zonen?.find((z) => z.name === 'Wareneingang');
+    expect(we?.side).toBe('north');
+  });
+
+  it('C12: Zonen-Seite NACH dem Schlüsselwort bleibt erhalten — „Wareneingang West"', () => {
+    const p = parseCanonical('Halle 100x50, 10 Tore Süd, Wareneingang West')!;
+    const we = p.zonen?.find((z) => z.name === 'Wareneingang');
+    expect(we?.side).toBe('west');
+  });
+
   it('P0: nicht unterstützte Elemente werden gemeldet (nicht still geschluckt)', () => {
     const p = parseCanonical('Halle 100x50, 10 Tore Nord, 3 Fahrgänge, Bereiche, Sicherheitsabstand 2m')!;
     const ign = (p.ignored ?? []).join(' | ');
@@ -136,9 +184,28 @@ describe('nl-layout — parseCanonical', () => {
 
   it('bare Abstand „115 Tore Nord 3,75" (ohne Schlüsselwort) → Achsabstand', () => {
     const p = parseCanonical('Halle 210x58, 115 Tore Nord 3,75')!;
-    expect(p.gates![0].lueckeM).toBe(3.75);
+    expect(p.gates![0].spacingM).toBe(3.75);
+    expect(p.gates![0].lueckeM).toBeUndefined();
     // Ohne Tor-Breite = Achsabstand → validiert zu spacingM 3.75.
     expect(validateParams(p).filled.gates![0].spacingM).toBeCloseTo(3.75, 6);
+  });
+
+  it('C11: „Lücke" wird als Zwischenraum geparst, „Abstand" als Achsabstand', () => {
+    const gap = parseCanonical('Halle 210x58, 20 Tore Nord 6 m Lücke')!;
+    expect(gap.gates![0]).toMatchObject({ count: 20, side: 'north', lueckeM: 6 });
+    expect(gap.gates![0].spacingM).toBeUndefined();
+    const achse = parseCanonical('Halle 210x58, 20 Tore Nord Abstand 6')!;
+    expect(achse.gates![0]).toMatchObject({ count: 20, side: 'north', spacingM: 6 });
+    expect(achse.gates![0].lueckeM).toBeUndefined();
+    // Gleiche Zahl, anderer Pitch:
+    expect(validateParams(gap).filled.gates![0].spacingM).toBeCloseTo(9.5, 6);
+    expect(validateParams(achse).filled.gates![0].spacingM).toBeCloseTo(6, 6);
+  });
+
+  it('C11: „zwischen den Toren 5 m" → Zwischenraum (lueckeM)', () => {
+    const p = parseCanonical('Halle 210x58, 15 Tore Nord, 5 m zwischen den Toren')!;
+    expect(p.gates![0].lueckeM).toBe(5);
+    expect(p.gates![0].spacingM).toBeUndefined();
   });
 
   it('gibt null ohne erkennbare Maße', () => {
@@ -411,5 +478,62 @@ describe('nl-layout — Cross-Dock (Stellplätze je Tor)', () => {
     const { objects } = paramsToLayout(filled);
     expect(objects.filter((o) => o.type === 'bereich').length).toBeGreaterThan(0);
     expect(objects.filter((o) => o.type === 'stellplatz').length).toBeGreaterThan(0);
+  });
+});
+
+// ---- Cross-Review GPT-6 Astra 20.09.2026 — vier bestätigte Parser/Generator-Fälle ----
+describe('Cross-Review Astra 20.09.2026', () => {
+  it('A2: expliziter Startabstand 0 erzeugt keine überlappenden Tore', () => {
+    const v = validateParams({ action: 'createHall', hall: { lengthM: 100, widthM: 60 }, gates: [{ count: 2, side: 'north', torBreiteM: 3.5, spacingM: 3.5, firstOffsetM: 0 }] });
+    expect(v.ok).toBe(true);
+    expect(v.warnings.some((w) => /Startabstand/.test(w))).toBe(true);
+    const l = paramsToLayout(v.filled);
+    expect(findLayoutCollisions(l.objects)).toEqual([]);
+  });
+  it('A3: Ost/West-Stellplatz wird nicht in den horizontalen Mittelgang gebaut', () => {
+    const v = validateParams({ action: 'createHall', hall: { lengthM: 100, widthM: 60 }, gates: [{ count: 1, side: 'west' }], stellplaetzeJeTor: true });
+    expect(v.ok).toBe(true);
+    const l = paramsToLayout(v.filled);
+    const sp = l.objects.filter((o) => o.type === 'stellplatz');
+    // einziges West-Tor sitzt mittig (y≈28) → sein Stellplatz läge im Mittelgang 28–32 → nicht gebaut
+    expect(sp.filter((o) => o.y! < 32 && o.y! + o.height > 28)).toEqual([]);
+  });
+  it('A4: lokaler Achsabstand einer Reihe wird nicht von der Lücke einer anderen Reihe überschrieben', () => {
+    const p = parseCanonical('Halle 100x60, 2 Tore Nord Lücke 1 m, 2 Tore Süd Abstand 10 m')!;
+    expect(p.gates).toEqual([
+      { count: 2, side: 'north', lueckeM: 1 },
+      { count: 2, side: 'south', spacingM: 10 },
+    ]);
+  });
+  it('A5: Zonen-Seite liest nicht in die nächste Klausel hinein', () => {
+    const p = parseCanonical('Halle 100x60, Wareneingang West, Warenausgang Ost')!;
+    expect(p.zonen).toEqual([{ name: 'Wareneingang', side: 'west' }, { name: 'Warenausgang', side: 'east' }]);
+  });
+});
+
+// ---- Astra-UI-Test 20.09.2026 (Prüfbericht) — A5 + A6 ----
+describe('Astra-UI-Test 20.09.2026', () => {
+  it('A5: „10 Tore Nord und Süd Abstand 6" ergibt ZWEI Reihen mit Achsabstand 6', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord und Süd Abstand 6')!;
+    expect(p.gates).toEqual([
+      { count: 10, side: 'north', spacingM: 6 },
+      { count: 10, side: 'south', spacingM: 6 },
+    ]);
+  });
+  it('A5b: eigene Angabe des Seiten-Segments schlägt die geerbte („Nord Abstand 6 und Süd Lücke 2")', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord Abstand 6 und Süd Lücke 2')!;
+    expect(p.gates).toEqual([
+      { count: 10, side: 'north', spacingM: 6 },
+      { count: 10, side: 'south', lueckeM: 2 },
+    ]);
+  });
+  it('A5c: Zonen-Klausel mit Seite erbt weiterhin KEINE Torreihe', () => {
+    const p = parseCanonical('Halle 120x50, 10 Tore Nord, Wareneingang im Westen')!;
+    expect(p.gates).toHaveLength(1);
+  });
+  it('A6: „runde Halle" wird offen unter ignored gemeldet, nicht still als Rechteck gebaut', () => {
+    const p = parseCanonical('runde Halle 100x50')!;
+    expect(p.hall).toEqual({ lengthM: 100, widthM: 50 });
+    expect(p.ignored?.some((i) => /Runde/.test(i))).toBe(true);
   });
 });
