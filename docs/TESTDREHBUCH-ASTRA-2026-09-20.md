@@ -173,3 +173,26 @@ Pro Testfall eine Zeile: **ID · Ergebnis (✅/❌) · Soll · Ist · Beleg** (S
 Unklares als **Hypothese** kennzeichnen. Priorität: P1 = falsche Rechnung / Datenverlust / Absturz,
 P2 = Bedienung / Anzeige / A11y. Am Ende: Konsolen-Fehler (`Errors`) gesammelt auflisten, auch wenn
 kein Testfall betroffen ist.
+
+---
+
+## Anhang — Nachtest nach Prüfbericht vom 20.09.2026 (Test-System-Stand `0c48926d`)
+
+Dein Prüfbericht war exakt; alle 4 bestätigten Abweichungen und die 2 Zusatzbeobachtungen
+sind behoben und auf dem Test-System. Bitte **nur diese Fälle** erneut fahren, mit denselben Eingaben:
+
+| ID | Was geändert wurde | Soll jetzt |
+|---|---|---|
+| **E1 / E2** | Ursache war ein Deploy-Wechsel während deines Tests (dein Browser hatte noch das alte Chunk-Manifest). Die App lädt sich bei `ChunkLoadError` jetzt einmal selbst neu. | `/check` öffnet, „Demo ansehen" zeigt 4 Ampel-KPIs, Radar, Heatmap, Min/Colli 1,9–2,2. Dann E2 (Tastatur). |
+| **A5** | Parser erkennt „Nord und Süd Abstand 6" jetzt als zwei Reihen. | Vorschau „20 Tore", 10 Nord + 10 Süd, beide Reihen Achsabstand 6 m. |
+| **A6** | „rund/gebogen/Freiform" wird gemeldet. | `runde Halle 100x50` → unter „Nicht übernommen": „Runde/gebogene/Freiform-Wände (nur Rechteck, L, T, U, C)". Halle wird trotzdem als Rechteck vorgeschlagen — korrekt. |
+| **C7** | Panel liest jetzt den aktualisierten Anker. | Nach Breite 100 → 150: S = 21,75, **E = 128,25** (Summe 150). |
+| **C5** | Außengelände wird nicht mehr in die Halle geklemmt. | Klick 10 m unterhalb der Südwand → Straße liegt bei y ≈ 55–60, also **außerhalb**. |
+| **C2** | Rampen haben jetzt die Karte „Wand-Verankerung (außen)". | Rampe zeigt Wand-Index 2 (Süd), S/E editierbar, Rampe wandert beim Ändern an der Wand entlang. |
+
+**Klarstellungen zu deinen offenen Punkten:**
+- **B6:** Deine Hypothese stimmt — Bereiche sind für Wege **absichtlich undurchlässig** (Lastenheft: Zone = starre Gruppierung), deshalb die Ablehnung. Bitte den Aufbau ändern: statt eines Bereichs einen **Stellplatz 12 × 3** setzen und den Weg so zeichnen, dass ein Endpunkt **auf dem Stellplatz** liegt. Dann Weg auswählen, Endpunkt packen und verschieben → der Punkt bewegt sich, der Stellplatz wird nicht selektiert.
+- **C6:** Die Drehung ist hiermit **ausdrücklich autorisiert** — sie ist der Testgegenstand. Es ist dein eigener Teststand auf dem Test-System, nichts Produktives.
+- **D2:** Das Cockpit rechnet in Monatsmengen; deine Umrechnung (21 Tage) war richtig. FTE, Produktivität, Rang und Spitze stehen nicht im Cockpit, sondern im **Kunden-Check-Ergebnis** (`/check`, nach E1) und auf **Kennzahlen** (`/dashboard`). Im Cockpit reicht: Min/Colli konstant, MA-Stunden exakt doppelt — das hast du belegt, D2 gilt als bestanden.
+- **B3:** Kopienbildung ist belegt, bestanden. Die Namensdopplung „Stellplatz 2" bei vorhandenen Objekten nehme ich als Verbesserungspunkt auf, kein Fehler.
+- **Store-Zugriff:** `window.__topisStore` existiert nur im **Seitenkontext**, nicht in der isolierten Welt einer Erweiterung. Falls dein Werkzeug „JavaScript in der Seite ausführen" anbietet, dort ausführen; sonst wie bisher über die Oberfläche belegen — das hat gereicht.
