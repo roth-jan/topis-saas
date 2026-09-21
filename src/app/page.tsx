@@ -2,6 +2,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/Logo';
 import { ArrowRight, LayoutGrid, Route, BarChart3, Users } from 'lucide-react';
+import { REFERENZHALLEN } from '@/lib/data/referenzhallen';
+import { KONTAKT_EMAIL } from '@/lib/kontakt';
+
+const N_HALLEN = REFERENZHALLEN.length;
 
 export default function Home() {
   return (
@@ -14,9 +18,9 @@ export default function Home() {
             <span className="font-display text-[15px] tracking-tight" style={{ fontWeight: 700 }}>TOPIS</span>
           </div>
           <nav className="flex items-center gap-1.5">
-            <Link href="/check" className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">Hallen-Check</Link>
-            <Button asChild size="sm" className="h-8 gap-1.5 rounded-lg">
-              <Link href="/cockpit">Prozessmodell öffnen <ArrowRight className="h-3.5 w-3.5" /></Link>
+            <Link href="/cockpit" className="hidden rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline">Prozessmodell</Link>
+            <Button asChild size="sm" className="h-8 rounded-lg">
+              <Link href="/check">Hallen-Check starten</Link>
             </Button>
           </nav>
         </div>
@@ -27,28 +31,26 @@ export default function Home() {
         <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-primary" /> ROTH Logistikberatung
         </div>
-        <h1 className="font-display text-5xl leading-[1.05] tracking-tight sm:text-6xl" style={{ fontWeight: 700 }}>
-          Hallenplanung,<br /><span className="text-primary">intelligent optimiert.</span>
+        <h1 className="font-display text-4xl leading-[1.08] tracking-tight sm:text-5xl" style={{ fontWeight: 700 }}>
+          Ihre Umschlaghalle,<br />in Minuten pro Colli gemessen.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-          TOPIS — Operative Planung und interaktive Simulation. Umschlaghallen entwerfen,
-          Wege berechnen, Produktivität steigern. Direkt im Browser.
+        <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+          TOPIS vergleicht Ihre Halle mit {N_HALLEN} Umschlaghallen, zeigt den Personalbedarf je Stunde
+          und rechnet durch, was ein anderes Layout bringt. Entwickelt aus der Projektarbeit der ROTH Logistikberatung.
         </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
-            <Link href="/cockpit">Prozessmodell berechnen <ArrowRight className="h-4 w-4" /></Link>
+        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Button asChild size="lg" className="h-11 rounded-xl px-6">
+            <Link href="/check">Hallen-Check starten</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="h-11 rounded-xl px-6">
-            <Link href="/check">Hallen-Check</Link>
+            <Link href="/cockpit">Prozessmodell berechnen</Link>
           </Button>
           <Button asChild variant="ghost" size="lg" className="h-11 rounded-xl px-6 text-muted-foreground">
             <Link href="/projekt">Hallenplan zeichnen</Link>
           </Button>
         </div>
-        {/* Erwartung sauber setzen: Der Blindtest 21.07. stolperte darüber, dass
-            „Cockpit" nach Hallenansicht klang. Zeichnen ist optional. */}
         <p className="mt-4 text-sm text-muted-foreground">
-          Das Prozessmodell rechnet auch ohne Hallenplan — zeichnen macht den Verteilweg nur genauer.
+          Kostenlos und ohne Anmeldung. Ihre Daten bleiben auf Ihrem Rechner.
         </p>
       </section>
 
@@ -116,15 +118,14 @@ export default function Home() {
       {/* Features */}
       <section className="mx-auto max-w-6xl px-5 pb-20">
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary">Funktionen</p>
-          <h2 className="mt-2 font-display text-3xl tracking-tight" style={{ fontWeight: 700 }}>Alles für die operative Hallenplanung</h2>
-          <p className="mt-3 text-muted-foreground">Vom Grundriss bis zur Kennzahl — ein durchgängiger Workflow, direkt im Browser.</p>
+          <h2 className="font-display text-3xl tracking-tight" style={{ fontWeight: 700 }}>Was TOPIS für Ihre Halle rechnet</h2>
+          <p className="mt-3 text-muted-foreground">Vom Grundriss bis zur Kennzahl, alles im Browser.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { icon: LayoutGrid, t: 'Hallenplanung', d: 'Tore, Stellplätze, Bereiche und Wände maßstabsgetreu zeichnen.' },
-            { icon: Route, t: 'Wegeoptimierung', d: 'A*-Pathfinding über das Gang-Netzwerk, automatische Verteilwege.' },
-            { icon: BarChart3, t: 'Kennzahlen', d: 'Prozesszeit, Distanzen, Produktivität — Benchmark gegen Referenzhallen.' },
+            { icon: Route, t: 'Verteilwege', d: 'Kürzeste Wege über Ihr Gangnetz, daraus der Weg je Colli vom Tor zum Stellplatz.' },
+            { icon: BarChart3, t: 'Kennzahlen', d: `Minuten pro Colli, Produktivität und Rang im Vergleich mit ${N_HALLEN} Hallen.` },
             { icon: Users, t: 'Zusammenarbeit', d: 'Layouts in der Cloud speichern und gezielt im Team teilen.' },
           ].map(({ icon: Icon, t, d }) => (
             <div key={t} className="rounded-2xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
@@ -142,17 +143,17 @@ export default function Home() {
       <section className="mx-auto max-w-6xl px-5 pb-24">
         <div className="overflow-hidden rounded-3xl border border-border bg-muted/40 px-8 py-14 text-center">
           <h2 className="mx-auto max-w-2xl font-display text-3xl tracking-tight sm:text-4xl" style={{ fontWeight: 700 }}>
-            Bereit, Ihre Halle zu optimieren?
+            Wie steht Ihre Halle da?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-            Sofort im Editor loslegen — oder in Sekunden prüfen lassen, wie produktiv Ihre Halle heute arbeitet.
+            In zwei Minuten sehen Sie Ihre Kennzahlen. Mit der Demo sogar ohne eigene Daten.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-6">
-              <Link href="/cockpit">Prozessmodell berechnen <ArrowRight className="h-4 w-4" /></Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="h-11 rounded-xl px-6">
+            <Button asChild size="lg" className="h-11 rounded-xl px-6">
               <Link href="/check">Hallen-Check starten</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="h-11 gap-2 rounded-xl px-6">
+              <Link href="/cockpit">Prozessmodell berechnen <ArrowRight className="h-4 w-4" /></Link>
             </Button>
           </div>
         </div>
@@ -169,7 +170,7 @@ export default function Home() {
           <div className="flex gap-5">
             <Link href="#" className="hover:text-foreground">Impressum</Link>
             <Link href="#" className="hover:text-foreground">Datenschutz</Link>
-            <a href="mailto:info@roth-logistik.de" className="hover:text-foreground">Kontakt</a>
+            <a href={`mailto:${KONTAKT_EMAIL}`} className="hover:text-foreground">Kontakt</a>
           </div>
         </div>
       </footer>

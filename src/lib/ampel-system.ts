@@ -1,6 +1,7 @@
 import type { GesamtErgebnis } from '@/types/prozessmodell';
 import type { BenchmarkErgebnis } from '@/lib/benchmarking';
 import type { ReferenzHalle } from '@/lib/data/referenzhallen';
+import { zahl } from '@/lib/format';
 
 /**
  * Ampel-KPI: Ein einzelner Kennwert mit Ampelbewertung.
@@ -27,6 +28,8 @@ export interface AmpelBewertung {
   gelbeAmpeln: number;
   /** Hauptaussage für CTA */
   headline: string;
+  /** Begründung in einem Satz unter der Hauptaussage */
+  unterzeile: string;
   /** Potenzial in MA-Stunden/Tag */
   potenzialMAStunden: number;
 }
@@ -74,14 +77,15 @@ export function bewerteKPIs(
     kpis.push({
       id: 'minProColli',
       label: 'Prozesszeit',
-      wert: wert.toFixed(2),
+      wert: zahl(wert, 2),
       einheit: 'Min/Colli',
-      referenz: `Benchmark: ${bestMinProColli.toFixed(2)}`,
+      referenz: `Beste Vergleichshalle: ${zahl(bestMinProColli, 2)}`,
       status,
       delta: deltaProzent,
+      // Fachkräftemangel-Logik: Stunden werden FREI für mehr Volumen, nicht „eingespart".
       potenzialText: einsparStunden > 0.5
-        ? `${einsparStunden.toFixed(1)} MA-h/Tag einsparbar`
-        : 'Im Benchmark-Bereich',
+        ? `Rund ${zahl(einsparStunden)} MA-Stunden pro Tag frei für zusätzliches Volumen`
+        : 'Im Bereich der besten Vergleichshallen',
     });
   }
 
@@ -99,13 +103,13 @@ export function bewerteKPIs(
     kpis.push({
       id: 'colliProMAh',
       label: 'Produktivität',
-      wert: Math.round(colliProMAh).toString(),
+      wert: zahl(colliProMAh),
       einheit: 'Colli/MA-h',
-      referenz: `Benchmark: ${Math.round(bestColliProMAh)}`,
+      referenz: `Beste Vergleichshalle: ${zahl(bestColliProMAh)}`,
       status,
       delta: deltaProzent,
       potenzialText: ratio < 0.9
-        ? `${Math.round((1 - ratio) * 100)}% unter Best Practice`
+        ? `${zahl((1 - ratio) * 100)} % unter der besten Vergleichshalle`
         : 'Gute Produktivität',
     });
   }
@@ -120,15 +124,15 @@ export function bewerteKPIs(
 
     kpis.push({
       id: 'rang',
-      label: 'Benchmark-Rang',
+      label: 'Rang',
       wert: `Platz ${rang}`,
       einheit: `von ${anzahl}`,
-      referenz: `${anzahl - 1} Referenzhallen + Ihre Halle`,
+      referenz: `${anzahl - 1} Vergleichshallen + Ihre Halle`,
       status,
       delta: 0,
       potenzialText: rang > 3
-        ? `${rang - 3} Plätze Verbesserungspotenzial`
-        : 'Top 3 im Benchmark',
+        ? `${rang - 3} Plätze bis in die Top 3`
+        : 'Unter den besten drei',
     });
   }
 
@@ -147,13 +151,13 @@ export function bewerteKPIs(
       kpis.push({
         id: 'spitzenfaktor',
         label: 'Lastverteilung',
-        wert: spitzenFaktor.toFixed(1),
+        wert: zahl(spitzenFaktor, 1),
         einheit: 'Spitze/Ø',
-        referenz: 'Optimal: ≤ 1.5',
+        referenz: 'Gut bis 1,5',
         status,
         delta: ((spitzenFaktor - 1.5) / 1.5) * 100,
         potenzialText: spitzenFaktor > 1.5
-          ? `Spitzenbelastung ${((spitzenFaktor - 1) * 100).toFixed(0)}% über Durchschnitt — Überlastungsgefahr`
+          ? `Die Spitzenstunde liegt ${zahl((spitzenFaktor - 1) * 100)} % über dem Durchschnitt`
           : 'Gleichmäßige Auslastung',
       });
     }
@@ -170,14 +174,17 @@ export function bewerteKPIs(
     : 0;
 
   // Headline generieren
+  // Botschaft = Fachkräftemangel: Stunden, die das vorhandene Team anders einsetzen kann —
+  // nie „Einsparpotenzial" (Personalabbau), das widerspricht der ROTH-Positionierung.
+  const deltaProzent = ((ergebnis.minProColli - bestMinProColli) / bestMinProColli) * 100;
   let headline = '';
-  if (roteAmpeln >= 2) {
-    const deltaProzent = ((ergebnis.minProColli - bestMinProColli) / bestMinProColli) * 100;
-    headline = `${Math.round(deltaProzent)}% langsamer als Benchmark — ${potenzialMAStunden.toFixed(0)} MA-h/Tag Einsparpotenzial`;
-  } else if (roteAmpeln === 1 || gelbeAmpeln >= 2) {
-    headline = `Optimierungspotenzial identifiziert: ${potenzialMAStunden.toFixed(1)} MA-h/Tag`;
+  let unterzeile = '';
+  if (roteAmpeln >= 2 || roteAmpeln === 1 || gelbeAmpeln >= 2) {
+    headline = `Ihr Team könnte rund ${zahl(potenzialMAStunden)} MA-Stunden pro Tag anders einsetzen`;
+    unterzeile = `Die Prozesszeit liegt ${zahl(deltaProzent)} % über der besten von ${benchmarkErgebnis.anzahlHallen - 1} Vergleichshallen. Wo die Zeit hängen bleibt, zeigt ein Gespräch mit unseren Beratern.`;
   } else {
-    headline = 'Gute Performance — im Benchmark-Bereich';
+    headline = 'Ihre Halle liegt im Bereich der besten Vergleichshallen';
+    unterzeile = 'Mit monatlichen Daten sehen Sie, ob das so bleibt — und wo die nächsten Minuten pro Colli liegen.';
   }
 
   return {
@@ -185,6 +192,7 @@ export function bewerteKPIs(
     roteAmpeln,
     gelbeAmpeln,
     headline,
+    unterzeile,
     potenzialMAStunden,
   };
 }

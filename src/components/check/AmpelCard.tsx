@@ -1,48 +1,40 @@
 'use client';
 
+import { CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import type { AmpelKPI } from '@/lib/ampel-system';
+import { zahl } from '@/lib/format';
 
 interface AmpelCardProps {
   kpi: AmpelKPI;
 }
 
-const STATUS_COLORS = {
-  gruen: { bg: 'bg-green-500/10', border: 'border-green-500/30', dot: 'bg-green-500', text: 'text-green-400' },
-  gelb: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', dot: 'bg-yellow-500', text: 'text-yellow-400' },
-  rot: { bg: 'bg-red-500/10', border: 'border-red-500/30', dot: 'bg-red-500', text: 'text-red-400' },
+// Status nie nur über Farbe: jede Ampel trägt Symbol + Wort.
+const STATUS = {
+  gruen: { wort: 'Im Rahmen', Icon: CheckCircle2, rand: 'border-emerald-600/25', flaeche: 'bg-emerald-600/[0.06]', text: 'text-emerald-800 dark:text-emerald-300' },
+  gelb: { wort: 'Beobachten', Icon: AlertCircle, rand: 'border-amber-600/30', flaeche: 'bg-amber-500/[0.08]', text: 'text-amber-800 dark:text-amber-300' },
+  rot: { wort: 'Handlungsbedarf', Icon: AlertTriangle, rand: 'border-red-700/25', flaeche: 'bg-red-700/[0.06]', text: 'text-red-800 dark:text-red-300' },
 };
 
-/**
- * Ampel-Karte: Zeigt einen KPI mit farbigem Status-Punkt.
- */
 export function AmpelCard({ kpi }: AmpelCardProps) {
-  const colors = STATUS_COLORS[kpi.status];
-
+  const s = STATUS[kpi.status];
+  const delta = kpi.id === 'minProColli' || kpi.id === 'colliProMAh' ? kpi.delta : 0;
   return (
-    <div className={`rounded-xl border ${colors.border} ${colors.bg} p-4 flex flex-col gap-2`}>
-      {/* Status Dot + Label */}
-      <div className="flex items-center gap-2">
-        <div className={`w-3 h-3 rounded-full ${colors.dot} shadow-lg`} />
-        <span className="text-sm text-muted-foreground">{kpi.label}</span>
-      </div>
-
-      {/* Wert */}
-      <div className="flex items-baseline gap-1.5">
-        <span className={`text-2xl font-bold ${colors.text}`}>{kpi.wert}</span>
+    <div className={`flex flex-col rounded-lg border ${s.rand} ${s.flaeche} p-4`}>
+      <span className="text-sm font-medium text-foreground">{kpi.label}</span>
+      <span className={`mt-1 flex items-center gap-1 text-xs font-medium ${s.text}`}>
+        <s.Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {s.wort}
+      </span>
+      <div className="mt-3 flex items-baseline gap-1.5">
+        <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">{kpi.wert}</span>
         <span className="text-sm text-muted-foreground">{kpi.einheit}</span>
       </div>
-
-      {/* Referenz */}
-      <div className="text-xs text-muted-foreground">
-        {kpi.referenz}
+      <div className="mt-auto pt-3 text-xs text-muted-foreground">
+        <div>{kpi.referenz}</div>
+        {Math.abs(delta) >= 1 && (
+          <div className={`font-medium ${s.text}`}>{delta > 0 ? '+' : ''}{zahl(delta)} % gegenüber der besten</div>
+        )}
       </div>
-
-      {/* Delta */}
-      {kpi.delta !== 0 && (
-        <div className={`text-xs font-medium ${colors.text}`}>
-          {kpi.delta > 0 ? '+' : ''}{Math.round(kpi.delta)}% vs. Benchmark
-        </div>
-      )}
     </div>
   );
 }
