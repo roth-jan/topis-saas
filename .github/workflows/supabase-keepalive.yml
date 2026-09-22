@@ -1,0 +1,27 @@
+# Hält das Supabase-Projekt (Free-Tier) wach: Supabase pausiert Free-Projekte nach
+# 7 Tagen ohne Zugriff → Login/Cloud in Prod tot (so geschehen bis 20.09.2026).
+# Eine echte DB-Abfrage alle 2 Tage genügt. URL + anon-Key sind öffentlich
+# (stecken ohnehin im ausgelieferten Frontend), RLS gibt anonym nichts zurück.
+name: Supabase wach halten
+
+on:
+  schedule:
+    - cron: '17 4 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: https://febebiqrjvazjozyowdt.supabase.co
+      SUPABASE_ANON_KEY: sb_publishable_CFynKMmiZicqX7_UxLrhJQ__1SyD3iX
+    steps:
+      - name: DB-Abfrage über die REST-API
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 \
+            "$SUPABASE_URL/rest/v1/layouts?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+          echo "Supabase REST → $code"
+          # 540 = Projekt pausiert → Lauf rot, damit es auffällt (GitHub mailt bei Fehlschlag)
+          [ "$code" = "200" ]
