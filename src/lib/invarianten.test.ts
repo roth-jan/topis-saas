@@ -77,3 +77,13 @@ describe('Invariante — Demo-Datenkonsistenz', () => {
     expect(summeColli).toBeGreaterThan(records.length);
   });
 });
+
+describe('Demo + Eckdaten sind reproduzierbar (21.09.2026)', () => {
+  it('generateDemoRecords liefert bei jedem Aufruf identische Daten', () => {
+    const a = generateDemoRecords().records;
+    const b = generateDemoRecords().records;
+    expect(b.length).toBe(a.length);
+    expect(b.reduce((s, r) => s + r.colli, 0)).toBe(a.reduce((s, r) => s + r.colli, 0));
+    expect(b[123]).toEqual(a[123]);
+  });
+});

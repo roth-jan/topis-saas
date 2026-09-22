@@ -30,12 +30,27 @@ const AS_SEKTIONEN = [
   'Überzone SE', 'BP1', 'BP2',
 ];
 
+/** Deterministischer Zufall (mulberry32). Demo und Eckdaten-Analyse müssen bei gleicher
+ *  Eingabe IMMER dieselben Zahlen liefern — vorher würfelte jeder Aufruf neu, zwei Tester
+ *  sahen für dieselbe Demo 3.983 bzw. 3.936 Colli/Tag (Screenshot-Vergleich 21.09.2026). */
+function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 /**
  * Generiert Dummy-ScandatenRecords aus Eckdaten (1 Tag, Nachtschicht-Profil).
  * Die Records haben realistische Verteilungen für sichtbare Heatmaps.
  */
 export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord[] {
   const { tore, colliProTag, flaecheQm } = eckdaten;
+  const rnd = seededRandom(tore * 100003 + colliProTag * 31 + (flaecheQm || 0));
   const sektionen = Math.ceil(tore / 5);
   const datum = '2026-01-15';
   const records: ScandatenRecord[] = [];
@@ -46,7 +61,7 @@ export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord
   for (let i = 0; i < tore; i++) {
     // Mittlere Tore (20-40% der Position) bekommen mehr Traffic
     const relPos = i / tore;
-    const w = relPos > 0.15 && relPos < 0.45 ? 1.8 + Math.random() * 0.4 : 0.6 + Math.random() * 0.4;
+    const w = relPos > 0.15 && relPos < 0.45 ? 1.8 + rnd() * 0.4 : 0.6 + rnd() * 0.4;
     torGewichte.push(w);
   }
   const sumGewichte = torGewichte.reduce((a, b) => a + b, 0);
@@ -63,7 +78,7 @@ export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord
     for (let t = 0; t < tore; t++) {
       const torColli = Math.max(1, Math.round(stundenColli * (torGewichte[t] / sumGewichte)));
       const sektion = `Sektion ${Math.floor(t / 5) + 1}`;
-      const minute = Math.floor(Math.random() * 60);
+      const minute = Math.floor(rnd() * 60);
 
       records.push({
         id: idCounter++,
@@ -73,7 +88,7 @@ export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord
         stellplatz: `Tor ${t + 1}`,
         messpunkt: t + 1,
         messpunktName: `Tor ${t + 1}`,
-        tour: `T${1000 + Math.floor(Math.random() * 200)}`,
+        tour: `T${1000 + Math.floor(rnd() * 200)}`,
         dispogebiet: sektion,
         ausgangsrelation: sektion,
         sendungen: Math.max(1, Math.round(torColli / 3)),
@@ -107,6 +122,7 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
 
   const records: ScandatenRecord[] = [];
   let idCounter = 1;
+  const rnd = seededRandom(20260113);
 
   // Tor-Gewichte: Hotspot auf Tore 10-30 (60% des Volumens)
   const torGewichte: number[] = [];
@@ -114,12 +130,12 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
     let w: number;
     if (i >= 9 && i <= 29) {
       // Hotspot: ~2.5x Durchschnitt
-      w = 2.0 + Math.random() * 1.0;
+      w = 2.0 + rnd() * 1.0;
     } else if (i >= 45 && i <= 65) {
       // Sekundär-Cluster Nordseite
-      w = 1.0 + Math.random() * 0.5;
+      w = 1.0 + rnd() * 0.5;
     } else {
-      w = 0.3 + Math.random() * 0.4;
+      w = 0.3 + rnd() * 0.4;
     }
     torGewichte.push(w);
   }
@@ -148,7 +164,7 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
   for (let tag = 0; tag < TAGE; tag++) {
     const datum = `2026-01-${String(13 + tag).padStart(2, '0')}`;
     // Tägliche Schwankung +-10%
-    const tagesFaktor = 0.9 + Math.random() * 0.2;
+    const tagesFaktor = 0.9 + rnd() * 0.2;
     const tagesColli = Math.round(COLLI_PRO_TAG * tagesFaktor);
 
     for (let stunde = 0; stunde < 24; stunde++) {
@@ -165,8 +181,8 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
         const torColli = Math.round(stundenColli * (torGewichte[t] / sumGewichte));
         if (torColli < 1) continue;
         const relation = getRelation(t);
-        const minute = Math.floor(Math.random() * 60);
-        const sekunde = Math.floor(Math.random() * 60);
+        const minute = Math.floor(rnd() * 60);
+        const sekunde = Math.floor(rnd() * 60);
 
         records.push({
           id: idCounter++,
@@ -176,7 +192,7 @@ export function generateDemoRecords(): { records: ScandatenRecord[]; eckdaten: E
           stellplatz: `Tor ${t + 1}`,
           messpunkt: t + 1,
           messpunktName: `Tor ${t + 1}`,
-          tour: `T${1000 + Math.floor(Math.random() * 500)}`,
+          tour: `T${1000 + Math.floor(rnd() * 500)}`,
           dispogebiet: relation,
           ausgangsrelation: relation,
           sendungen: Math.max(1, Math.round(torColli / 3)),

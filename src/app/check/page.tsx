@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, FileUp, Loader2, ArrowLeft, CheckCircle, BarChart3, ClipboardList, Eye } from 'lucide-react';
+import { Upload, FileUp, Loader2, ArrowLeft, CheckCircle, BarChart3, ClipboardList, Eye, Lock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -20,6 +20,8 @@ import { berechneIstSoll } from '@/lib/ist-soll-rechner';
 import { KundenCheckResults } from '@/components/check/KundenCheckResults';
 import { Fachbegriff } from '@/components/ui/fachbegriff';
 import { generateRecordsFromEckdaten, generateDemoRecords } from '@/lib/eckdaten-analyse';
+import { datum } from '@/lib/format';
+import { SiteFooter } from '@/components/SiteFooter';
 import type { Eckdaten } from '@/lib/eckdaten-analyse';
 
 import type { ScandatenRecord } from '@/types/scandaten';
@@ -120,7 +122,7 @@ export default function CheckPage() {
       const daten = records.filter((r) => r.scandatum).map((r) => r.scandatum);
       const minDatum = daten.length > 0 ? daten.sort()[0] : '?';
       const maxDatum = daten.length > 0 ? daten.sort().reverse()[0] : '?';
-      setDateiInfo(`${records.length.toLocaleString('de-DE')} Datensätze · ${uniqueStellplaetze.size} Tore · ${uniqueRelationen.size} Relationen · ${minDatum} – ${maxDatum}`);
+      setDateiInfo(`${records.length.toLocaleString('de-DE')} Datensätze · ${uniqueStellplaetze.size} Tore · ${uniqueRelationen.size} Relationen · ${datum(minDatum)} – ${datum(maxDatum)}`);
 
       // Step 3: Auto-Layout
       setAnalyseSchritt(2);
@@ -399,7 +401,7 @@ export default function CheckPage() {
           </div>
           <nav className="flex items-center gap-3">
             <Link href="/projekt" className="text-sm text-muted-foreground hover:text-foreground">
-              Editor
+              Hallenplan-Editor
             </Link>
           </nav>
         </div>
@@ -411,12 +413,12 @@ export default function CheckPage() {
           <div className="space-y-8">
             {/* Hero */}
             <div className="text-center space-y-4 py-8">
-              <h1 className="text-4xl font-bold tracking-tight">
-                Wie produktiv ist <span className="text-primary">Ihre Halle</span>?
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Wie produktiv ist Ihre Halle?
               </h1>
-              <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-                Erhalten Sie in Sekunden eine vollständige Produktivitätsanalyse
-                mit Benchmark-Vergleich gegen {REFERENZHALLEN.length} Referenzhallen.
+              <p className="text-base text-muted-foreground max-w-xl mx-auto sm:text-lg">
+                Minuten pro Colli, Personalbedarf je Stunde und Ihr Platz im Vergleich
+                mit {REFERENZHALLEN.length} Umschlaghallen. Kostenlos, ohne Anmeldung.
               </p>
             </div>
 
@@ -440,11 +442,11 @@ export default function CheckPage() {
                     <p className="text-sm text-muted-foreground mt-1">CSV / Excel hochladen</p>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Höchste Genauigkeit — echte Heatmap, Stundenprofil, gewichteter Verteilweg
+                    Das genaueste Ergebnis: Tor-Auslastung und Stundenprofil aus Ihren echten Scans
                   </p>
                   <div className="flex flex-wrap justify-center gap-1">
                     {['WMS-Export', 'Scandaten', 'Betriebsdaten'].map((f) => (
-                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
+                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-xs">{f}</span>
                     ))}
                   </div>
                 </CardContent>
@@ -460,19 +462,19 @@ export default function CheckPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setPhase('eckdaten'); } }}
               >
                 <CardContent className="py-8 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto group-hover:bg-orange-500/20 transition-colors">
-                    <ClipboardList className="h-7 w-7 text-orange-500" />
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
+                    <ClipboardList className="h-7 w-7 text-primary" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold">Eckdaten</h3>
                     <p className="text-sm text-muted-foreground mt-1">4 Felder ausfüllen</p>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Schneller Überblick — Kennzahlen und Benchmark aus wenigen Angaben
+                    Erster Überblick aus vier Zahlen, die Sie im Kopf haben
                   </p>
                   <div className="flex flex-wrap justify-center gap-1">
                     {['Tore', 'Colli/Tag', 'Fläche', 'FTE'].map((f) => (
-                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
+                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-xs">{f}</span>
                     ))}
                   </div>
                 </CardContent>
@@ -488,24 +490,29 @@ export default function CheckPage() {
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleDemo(); } }}
               >
                 <CardContent className="py-8 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto group-hover:bg-blue-500/20 transition-colors">
-                    <Eye className="h-7 w-7 text-blue-500" />
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto group-hover:bg-primary/20 transition-colors">
+                    <Eye className="h-7 w-7 text-primary" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold">Demo ansehen</h3>
-                    <p className="text-sm text-muted-foreground mt-1">1 Klick — sofort sehen</p>
+                    <p className="text-sm text-muted-foreground mt-1">Ein Klick, ohne eigene Daten</p>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Ohne eigene Daten — Beispielanalyse einer Umschlaghalle mit 115 Toren
+                    Beispielanalyse einer realen Umschlaghalle mit 115 Toren
                   </p>
                   <div className="flex flex-wrap justify-center gap-1">
-                    {['115 Tore', '4.000 Colli/Tag', 'Heatmap', 'Ampeln'].map((f) => (
-                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-[10px]">{f}</span>
+                    {['115 Tore', 'rund 3.800 Colli/Tag', 'Tor-Auslastung', 'Ampeln'].map((f) => (
+                      <span key={f} className="px-2 py-0.5 bg-muted rounded-full text-xs">{f}</span>
                     ))}
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            <p className="flex items-center justify-center gap-2 text-center text-sm text-muted-foreground">
+              <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Ihre Daten bleiben auf Ihrem Rechner. Die Auswertung läuft im Browser, nichts wird hochgeladen oder gespeichert.
+            </p>
 
             {/* Error */}
             {error && (
@@ -554,6 +561,10 @@ export default function CheckPage() {
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                       oder klicken zum Auswählen · WMS-Export, Scandaten, Betriebsdaten
+                    </p>
+                    <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                      <Lock className="h-3.5 w-3.5" aria-hidden="true" />
+                      Die Datei wird nur in Ihrem Browser gelesen, nicht hochgeladen.
                     </p>
                   </div>
                   <Button variant="outline" size="sm" className="gap-2">
@@ -708,7 +719,7 @@ export default function CheckPage() {
               {ANALYSE_STEPS.map((step, i) => (
                 <div key={i} className="flex items-center gap-3">
                   {i < analyseSchritt ? (
-                    <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                    <CheckCircle className="h-4 w-4 text-primary shrink-0" />
                   ) : i === analyseSchritt ? (
                     <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
                   ) : (
@@ -727,9 +738,9 @@ export default function CheckPage() {
         {phase === 'results' && ergebnis && (
           <div className="space-y-6">
             {/* Result Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-2xl font-bold">Hallen-Check Ergebnis</h2>
+                <h2 className="text-2xl font-bold">Ihr Hallen-Check</h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   {dateiName} · {dateiInfo}
                 </p>
@@ -763,16 +774,7 @@ export default function CheckPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-16">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex justify-between items-center text-sm text-muted-foreground">
-            <span>TOPIS Hallen-Check · ROTH Logistikberatung © 2026</span>
-            <a href="mailto:info@roth-logistik.de" className="hover:text-foreground">
-              info@roth-logistik.de
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter className="mt-16" />
     </div>
   );
 }

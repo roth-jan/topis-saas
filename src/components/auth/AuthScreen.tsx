@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { X, ArrowRight, Loader2, Mail, CheckCircle2 } from 'lucide-react';
 import { LogoMark } from '@/components/Logo';
+import { appUrl } from '@/lib/base-path';
 
 type Tab = 'login' | 'signup' | 'magic';
 
@@ -162,6 +163,13 @@ export function AuthScreen({ open, onOpenChange }: { open: boolean; onOpenChange
                 {tab === 'signup' ? 'Konto erstellen' : tab === 'magic' ? 'Login-Link senden' : 'Einloggen'}
                 {!busy && tab !== 'magic' && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
               </Button>
+              {tab === 'signup' && (
+                <p className="text-center text-[11px] leading-snug text-muted-foreground">
+                  Mit der Registrierung gilt unsere{' '}
+                  {/* neuer Tab: der Login liegt über dem Editor, ungespeicherte Arbeit soll bleiben */}
+                  <a href={appUrl('/datenschutz/')} target="_blank" rel="noopener" className="text-primary underline-offset-2 hover:underline">Datenschutzerklärung</a>.
+                </p>
+              )}
             </div>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">

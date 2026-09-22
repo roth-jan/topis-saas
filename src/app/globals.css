@@ -90,6 +90,12 @@
 
   /* Charts */
   --chart-1: oklch(0.5054 0.1905 27.5181);
+  /* Kunden-Check-Diagramme (validiert 21.09.2026, dataviz-Validator: CVD + Kontrast PASS) */
+  --viz-halle: #9b2c2c;
+  --viz-vergleich: #ba7331;
+  --viz-achse: #d9d1c9;
+  --viz-heat-lo: #f3dcd6;
+  --viz-heat-hi: #7a1f1f;
   --chart-2: oklch(0.4650 0.1470 24.9381);
   --chart-3: oklch(0.3958 0.1331 25.7230);
   --chart-4: oklch(0.5553 0.1455 48.9975);
@@ -138,6 +144,11 @@
 
   /* Charts */
   --chart-1: oklch(0.7106 0.1661 22.2162);
+  --viz-halle: #cb4644;
+  --viz-vergleich: #b48c2b;
+  --viz-achse: #4a433e;
+  --viz-heat-lo: #4a2826;
+  --viz-heat-hi: #ef6b66;
   --chart-2: oklch(0.6368 0.2078 25.3313);
   --chart-3: oklch(0.5771 0.2152 27.3250);
   --chart-4: oklch(0.8369 0.1644 84.4286);
