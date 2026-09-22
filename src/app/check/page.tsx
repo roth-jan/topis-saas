@@ -21,7 +21,7 @@ import { KundenCheckResults } from '@/components/check/KundenCheckResults';
 import { Fachbegriff } from '@/components/ui/fachbegriff';
 import { generateRecordsFromEckdaten, generateDemoRecords } from '@/lib/eckdaten-analyse';
 import { datum } from '@/lib/format';
-import { KONTAKT_EMAIL } from '@/lib/kontakt';
+import { SiteFooter } from '@/components/SiteFooter';
 import type { Eckdaten } from '@/lib/eckdaten-analyse';
 
 import type { ScandatenRecord } from '@/types/scandaten';
@@ -774,16 +774,7 @@ export default function CheckPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-16">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>TOPIS Hallen-Check · ROTH Logistikberatung © 2026</span>
-            <a href={`mailto:${KONTAKT_EMAIL}`} className="hover:text-foreground">
-              {KONTAKT_EMAIL}
-            </a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter className="mt-16" />
     </div>
   );
 }

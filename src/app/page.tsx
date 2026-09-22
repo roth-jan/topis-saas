@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LogoMark } from '@/components/Logo';
 import { ArrowRight, LayoutGrid, Route, BarChart3, Users } from 'lucide-react';
 import { REFERENZHALLEN } from '@/lib/data/referenzhallen';
-import { KONTAKT_EMAIL } from '@/lib/kontakt';
+import { SiteFooter } from '@/components/SiteFooter';
 
 const N_HALLEN = REFERENZHALLEN.length;
 
@@ -159,21 +159,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-5 py-8 text-sm text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
-            <LogoMark size={24} />
-            <span className="font-display text-foreground" style={{ fontWeight: 600 }}>TOPIS</span>
-            <span>© 2026 ROTH Logistikberatung</span>
-          </div>
-          <div className="flex gap-5">
-            <Link href="#" className="hover:text-foreground">Impressum</Link>
-            <Link href="#" className="hover:text-foreground">Datenschutz</Link>
-            <a href={`mailto:${KONTAKT_EMAIL}`} className="hover:text-foreground">Kontakt</a>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
