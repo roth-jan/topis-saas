@@ -55,6 +55,12 @@ test.describe('UC-18 Kunden-Check per Tastatur', () => {
 
     await page.keyboard.press(' ');
 
+    // Erst auf die Upload-Ansicht warten, dann tabben. Ohne dieses Warten startet
+    // der Test unter paralleler Last, bevor die Ablagezone im Baum ist, und tabbt
+    // an ihr vorbei — der Testfall flackerte dadurch nur im Gesamtlauf.
+    await expect(page.locator('[role="button"][tabindex="0"]').filter({ hasText: /CSV|Datei|ablegen|hochladen/i }).first())
+      .toBeVisible({ timeout: 15_000 });
+
     // Die Ablagezone muss per Tastatur nicht nur ERREICHBAR sein, sondern auch
     // AUSLÖSEN. Das Dasein eines Elements mit role/tabindex beweist nichts —
     // ein fehlender Tastaturhandler fiele nicht auf (Cross-Review Astra 27.09.2026).

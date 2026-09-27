@@ -99,7 +99,15 @@ export default function CheckPage() {
   const setDatenHerkunft = useProzessmodellStore((s) => s.setDatenHerkunft);
 
   // ============ Analyse-Pipeline (records → Ergebnis) ============
-  const runAnalyseFromRecords = useCallback(async (records: ScandatenRecord[], fileName: string, quelle: Datenquelle) => {
+  const runAnalyseFromRecords = useCallback(async (
+    records: ScandatenRecord[],
+    fileName: string,
+    quelle: Datenquelle,
+    // Vom Kunden angegebene Hallenfläche. Ohne sie wird die Halle aus der Anzahl
+    // der Tore geschätzt — bei Eckdaten-Eingabe ist sie aber bekannt und muss die
+    // Hallenmaße bestimmen (Browser-Prüfung Codex 27.09.2026, P1).
+    flaecheQm?: number,
+  ) => {
     setPhase('analyzing');
     setDatenquelle(quelle);
     setError(null);
@@ -127,7 +135,7 @@ export default function CheckPage() {
       // Step 3: Auto-Layout
       setAnalyseSchritt(2);
       await tick();
-      const layout = generateAutoLayout(records);
+      const layout = generateAutoLayout(records, { flaecheQm });
 
       // Step 4: Prozessmodell berechnen
       setAnalyseSchritt(3);
@@ -276,7 +284,7 @@ export default function CheckPage() {
 
     const records = generateRecordsFromEckdaten(eckdaten);
     const name = eckdaten.hallenName || 'Eckdaten-Eingabe';
-    runAnalyseFromRecords(records, name, 'eckdaten');
+    runAnalyseFromRecords(records, name, 'eckdaten', eckdaten.flaecheQm);
   }, [eckTore, eckColli, eckFlaeche, eckFte, eckName, runAnalyseFromRecords]);
 
   // ============ Demo Pipeline ============

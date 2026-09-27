@@ -127,19 +127,22 @@ test.describe('UC-16 Mehrfachauswahl', () => {
     await seedTorreihe(page, 20);
     await page.getByRole('button', { name: 'alle markieren' }).first().click();
 
+    // 4,5 m: 20 Tore ab x=2 enden damit bei 91 m und passen auf die 100-m-Wand.
+    // (5 m bräuchten 100,5 m — das lehnt TOPIS seit dem Codex-Fund zu Recht ab,
+    //  siehe eigener Testfall weiter unten.)
     await page.getByRole('combobox').last().click();
     await page.getByRole('option', { name: /Achsmaß/ }).click();
-    await page.locator('input[type="number"]').last().fill('5');
+    await page.locator('input[type="number"]').last().fill('4.5');
     await page.getByRole('button', { name: 'Verteilen' }).click();
 
     await expect.poll(async () => {
       const t = await tore(page);
-      return t.length > 1 && Math.abs((t[1].x - t[0].x) - 5) < 0.01;
+      return t.length > 1 && Math.abs((t[1].x - t[0].x) - 4.5) < 0.01;
     }, { timeout: 5_000 }).toBe(true);
 
     const t = await tore(page);
     for (let i = 1; i < t.length; i++) {
-      expect(t[i].x - t[i - 1].x).toBeCloseTo(5, 1);
+      expect(t[i].x - t[i - 1].x).toBeCloseTo(4.5, 1);
     }
     // Lastenheft 3.1.2: Verankerung darf durch das Verteilen nicht verlorengehen
     for (const tor of t) {
@@ -147,6 +150,25 @@ test.describe('UC-16 Mehrfachauswahl', () => {
       expect(tor.y).toBeCloseTo(0, 1);
       expect(tor.aussenwandRef!.abstandS + tor.aussenwandRef!.abstandE).toBeCloseTo(100, 1);
     }
+  });
+
+  test('ein Achsmaß, das nicht auf die Wand passt, wird abgelehnt', async ({ page }) => {
+    // Browser-Prüfung Codex 27.09.2026 (P2): „Achsmaß 200 m" schob mehrere Tore
+    // deckungsgleich auf den Wandanschlag — und meldete trotzdem Erfolg.
+    await seedTorreihe(page, 20);
+    await page.getByRole('button', { name: 'alle markieren' }).first().click();
+
+    const vorher = await tore(page);
+    await page.getByRole('combobox').last().click();
+    await page.getByRole('option', { name: /Achsmaß/ }).click();
+    await page.locator('input[type="number"]').last().fill('200');
+    await page.getByRole('button', { name: 'Verteilen' }).click();
+    await page.waitForTimeout(500);
+
+    // Nichts darf sich bewegt haben, und kein Tor darf auf einem anderen liegen
+    const nachher = await tore(page);
+    expect(nachher.map((t) => t.x)).toEqual(vorher.map((t) => t.x));
+    expect(new Set(nachher.map((t) => Math.round(t.x * 100))).size).toBe(nachher.length);
   });
 
   test('gemeinsames Verschieben versetzt die ganze Reihe', async ({ page }) => {

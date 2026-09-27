@@ -48,6 +48,36 @@ function seededRandom(seed: number): () => number {
  * Generiert Dummy-ScandatenRecords aus Eckdaten (1 Tag, Nachtschicht-Profil).
  * Die Records haben realistische Verteilungen für sichtbare Heatmaps.
  */
+/**
+ * Verteilt eine Gesamtmenge ganzzahlig auf Gewichte, ohne die Summe zu verändern
+ * (größte-Reste-Verfahren).
+ *
+ * Grund (Browser-Prüfung Codex, 27.09.2026, P1): Vorher bekam jedes Tor in jeder
+ * Stunde per `Math.max(1, …)` mindestens ein Colli. Bei 40 Toren und 18 aktiven
+ * Stunden waren das 720 Colli — unabhängig von der Eingabe. Wer 100 Colli/Tag
+ * eintrug, bekam eine Auswertung über 720 und damit einen um das 7,2-Fache zu
+ * hohen Personalbedarf. Die Mindestmenge ist deshalb ersatzlos weg; Tore ohne
+ * Colli erzeugen einfach keinen Scan-Datensatz — genauso wie in echten Daten.
+ */
+function verteileGanzzahlig(gesamt: number, gewichte: number[]): number[] {
+  const summeGewichte = gewichte.reduce((a, b) => a + b, 0);
+  if (!(gesamt > 0) || !(summeGewichte > 0)) return gewichte.map(() => 0);
+
+  const exakt = gewichte.map((g) => (gesamt * g) / summeGewichte);
+  const ganz = exakt.map((v) => Math.floor(v));
+  let rest = gesamt - ganz.reduce((a, b) => a + b, 0);
+
+  // Der Rest geht an die größten Nachkommaanteile — so bleibt die Verteilung
+  // dem Profil treu und die Summe stimmt auf das Colli genau.
+  const reihenfolge = exakt
+    .map((v, i) => ({ i, nachkomma: v - Math.floor(v) }))
+    .sort((a, b) => b.nachkomma - a.nachkomma);
+  for (let k = 0; k < reihenfolge.length && rest > 0; k++, rest--) {
+    ganz[reihenfolge[k].i] += 1;
+  }
+  return ganz;
+}
+
 export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord[] {
   const { tore, colliProTag, flaecheQm } = eckdaten;
   const rnd = seededRandom(tore * 100003 + colliProTag * 31 + (flaecheQm || 0));
@@ -66,17 +96,26 @@ export function generateRecordsFromEckdaten(eckdaten: Eckdaten): ScandatenRecord
   }
   const sumGewichte = torGewichte.reduce((a, b) => a + b, 0);
 
-  // Für jede Stunde Records generieren
-  for (let stunde = 0; stunde < 24; stunde++) {
-    const gewicht = STUNDEN_GEWICHTE[stunde] || 0;
-    if (gewicht === 0) continue;
+  // Tagesmenge zuerst exakt auf die aktiven Stunden aufteilen, dann innerhalb der
+  // Stunde exakt auf die Tore. Beide Schritte über das größte-Reste-Verfahren, damit
+  // am Ende genau `colliProTag` herauskommt — die Eingabe des Kunden darf durch das
+  // Schätzprofil verteilt, aber nicht verändert werden (Codex-Fund P1, 27.09.2026).
+  const aktiveStunden = Array.from({ length: 24 }, (_, h) => h).filter((h) => (STUNDEN_GEWICHTE[h] || 0) > 0);
+  const colliJeStunde = verteileGanzzahlig(
+    colliProTag,
+    aktiveStunden.map((h) => STUNDEN_GEWICHTE[h] || 0),
+  );
 
-    const stundenColli = Math.round(colliProTag * gewicht);
+  for (let si = 0; si < aktiveStunden.length; si++) {
+    const stunde = aktiveStunden[si];
+    const stundenColli = colliJeStunde[si];
     if (stundenColli === 0) continue;
 
-    // Colli auf Tore verteilen
+    // Colli auf Tore verteilen — ohne Mindestmenge je Tor
+    const colliJeTor = verteileGanzzahlig(stundenColli, torGewichte);
     for (let t = 0; t < tore; t++) {
-      const torColli = Math.max(1, Math.round(stundenColli * (torGewichte[t] / sumGewichte)));
+      const torColli = colliJeTor[t];
+      if (torColli === 0) continue; // kein Colli, kein Scan — wie in echten Daten
       const sektion = `Sektion ${Math.floor(t / 5) + 1}`;
       const minute = Math.floor(rnd() * 60);
 

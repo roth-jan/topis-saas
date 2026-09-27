@@ -180,7 +180,7 @@ interface TopisStore extends TopisState {
   updateObjects: (ids: number[], updates: Partial<TopisObject>) => void;
   moveObjects: (ids: number[], dx: number, dy: number, opts?: { snapshot?: boolean }) => { dx: number; dy: number };
   deleteObjects: (ids: number[]) => void;
-  verteileObjects: (ids: number[], modus: VerteilModus, wert?: number) => void;
+  verteileObjects: (ids: number[], modus: VerteilModus, wert?: number) => { verteilt: number; grund?: string };
   richteObjectsAus: (ids: number[], modus: 'start' | 'mitte' | 'ende') => void;
 
   // Path Actions
@@ -870,7 +870,7 @@ export const useTopisStore = create<TopisStore>()(
   verteileObjects: (ids, modus, wert) => {
     const state = get();
     const objs = state.objects.filter((o) => ids.includes(o.id));
-    if (objs.length < 2) return;
+    if (objs.length < 2) return { verteilt: 0, grund: 'Mindestens zwei Objekte markieren.' };
 
     const activeHall = state.halls.find((h) => h.id === state.activeHallId);
     const walls = activeHall ? deriveWalls(activeHall) : [];
@@ -895,6 +895,33 @@ export const useTopisStore = create<TopisStore>()(
       if (modus === 'achsabstand') return verteileMitAchsabstand(items, wert ?? 0);
       return verteileMitLuecke(items, wert ?? 0);
     };
+
+    // Passt die gewünschte Reihe überhaupt auf die Strecke? Ohne diese Prüfung
+    // schob die anschließende Begrenzung alle Objekte auf den Wandanschlag: Bei
+    // „Achsmaß 200 m" in einer 100-m-Halle landeten vier Tore deckungsgleich auf
+    // demselben Punkt, und die Oberfläche meldete trotzdem Erfolg (Browser-Prüfung
+    // Codex 27.09.2026, P2). Lieber gar nichts tun und klar sagen, warum.
+    if (modus !== 'gleichmaessig') {
+      const mass = wert ?? 0;
+      for (const [wallIndex, tore] of toreProWand) {
+        if (tore.length < 2) continue;
+        const wall = walls[wallIndex];
+        const wandLaenge = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+        const horizontal = Math.abs(wall.x2 - wall.x1) >= Math.abs(wall.y2 - wall.y1);
+        const groessen = tore.map((t) => (horizontal ? t.width : t.height));
+        const benoetigt = modus === 'achsabstand'
+          ? mass * (tore.length - 1) + groessen[groessen.length - 1]
+          : groessen.reduce((a, b) => a + b, 0) + mass * (tore.length - 1);
+        const start = Math.min(...tore.map((t) => t.aussenwandRef!.abstandS - (horizontal ? t.width : t.height) / 2));
+        if (start + benoetigt > wandLaenge + 1e-6) {
+          const passend = (wandLaenge - start - groessen[groessen.length - 1]) / (tore.length - 1);
+          return {
+            verteilt: 0,
+            grund: `${tore.length} Tore brauchen bei ${mass} m rund ${Math.ceil(benoetigt)} m, die Wand hat ab dem ersten Tor aber nur ${Math.floor(wandLaenge - start)} m. Höchstens ${Math.max(0, Math.floor(passend * 10) / 10)} m möglich.`,
+          };
+        }
+      }
+    }
 
     get().pushSnapshot();
     set((innerState) => {
@@ -949,6 +976,7 @@ export const useTopisStore = create<TopisStore>()(
       return { objects, selectedObject };
     });
     ids.forEach((id) => get().scheduleRecomputeForObject(id));
+    return { verteilt: objs.length };
   },
 
   richteObjectsAus: (ids, modus) => {

@@ -288,6 +288,7 @@ function PathProperties() {
 function MultiObjectProperties() {
   const selectedIds = useSelectedIds();
   const objects = useTopisStore((s) => s.objects);
+  const hall = useTopisStore((s) => s.halls.find((h) => h.id === s.activeHallId));
   const updateObjects = useTopisStore((s) => s.updateObjects);
   const moveObjects = useTopisStore((s) => s.moveObjects);
   const deleteObjects = useTopisStore((s) => s.deleteObjects);
@@ -323,6 +324,20 @@ function MultiObjectProperties() {
       toast.error('Keine gültige Größe eingegeben');
       return;
     }
+    // Größer als die Halle ist keine Größe, sondern ein Vertipper. Vorher wurde eine
+    // Torbreite von 200 m in einer 100-m-Halle stillschweigend übernommen; die Tore
+    // rutschten durch ihre Wandverankerung in negative Koordinaten (Browser-Prüfung
+    // Codex 27.09.2026, P2). Null und negative Werte fingen wir schon vorher ab.
+    if (hall) {
+      if (updates.width !== undefined && updates.width > hall.width) {
+        toast.error(`Breite ${updates.width} m passt nicht — die Halle ist nur ${hall.width} m breit.`);
+        return;
+      }
+      if (updates.height !== undefined && updates.height > hall.height) {
+        toast.error(`Tiefe ${updates.height} m passt nicht — die Halle ist nur ${hall.height} m tief.`);
+        return;
+      }
+    }
     updateObjects(selectedIds, updates);
     toast.success(`Größe für ${auswahl.length} Objekte gesetzt`);
   };
@@ -344,7 +359,13 @@ function MultiObjectProperties() {
       toast.error('Bitte einen Abstand in Metern eingeben');
       return;
     }
-    verteileObjects(selectedIds, modus, wert);
+    // Erfolg erst melden, wenn wirklich verteilt wurde — passt das Maß nicht auf die
+    // Wand, sagt der Store das jetzt mit Grund (Codex-Fund P2 27.09.2026).
+    const ergebnis = verteileObjects(selectedIds, modus, wert);
+    if (ergebnis.verteilt === 0) {
+      toast.error(ergebnis.grund ?? 'Verteilen nicht möglich');
+      return;
+    }
     toast.success(
       modus === 'gleichmaessig'
         ? 'Gleichmäßig verteilt'

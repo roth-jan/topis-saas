@@ -23,21 +23,63 @@ export interface AutoLayoutResult {
 /** Stellplatz-Keys wie "Tor 23" nicht erneut prefixen (sonst "Tor Tor 23"). */
 const torName = (key: string) => (/^tor\b/i.test(key.trim()) ? key.trim() : `Tor ${key}`);
 
+/** Zusatzangaben, die nicht in den Scandaten stehen, aber die Halle bestimmen. */
+export interface AutoLayoutOptionen {
+  /** Vom Kunden angegebene Hallenfläche in m². Bestimmt die Hallenmaße. */
+  flaecheQm?: number;
+}
+
+/** Typisches Längen-zu-Tiefen-Verhältnis einer Umschlaghalle (lang und schmal). */
+const HALLEN_VERHAELTNIS = 3.5;
+
+/**
+ * Leitet die Hallenmaße aus der angegebenen Fläche ab.
+ *
+ * Grund (Browser-Prüfung Codex, 27.09.2026, P1): Die Fläche wurde vorher gar nicht
+ * verwendet — 50.000 m² Eingabe ergaben eine Halle von 90 × 31,5 m, also 2.835 m²
+ * und damit 94 % zu wenig. Die Maße sind die Grundlage jeder Wegstrecke, also war
+ * die ganze räumliche Auswertung von der Eingabe abgekoppelt.
+ *
+ * Die Tiefe bleibt im realistischen Bereich (30–80 m), die Länge ergibt sich aus der
+ * Fläche. Reicht die Länge nicht für die Tore, gewinnt die Torreihe — sonst läge ein
+ * Teil der Tore außerhalb der Halle; die Fläche wird dann entsprechend tiefer.
+ */
+function hallenMasseAusFlaeche(flaecheQm: number, mindestBreite: number): { width: number; height: number } {
+  const tiefe = Math.min(80, Math.max(30, Math.sqrt(flaecheQm / HALLEN_VERHAELTNIS)));
+  const laenge = flaecheQm / tiefe;
+  if (laenge >= mindestBreite) {
+    return { width: Math.round(laenge * 10) / 10, height: Math.round(tiefe * 10) / 10 };
+  }
+  return {
+    width: mindestBreite,
+    height: Math.round(Math.max(20, flaecheQm / mindestBreite) * 10) / 10,
+  };
+}
+
 /**
  * Generiert ein komplettes Hallenlayout aus Scandaten-Records.
+ *
+ * @param optionen - Angaben außerhalb der Scandaten, vor allem die Hallenfläche.
+ *   Fehlt sie (z.B. beim Upload echter Scandaten), wird die Halle wie bisher aus
+ *   der Anzahl der Tore geschätzt.
  */
-export function generateAutoLayout(records: ScandatenRecord[]): AutoLayoutResult {
+export function generateAutoLayout(records: ScandatenRecord[], optionen: AutoLayoutOptionen = {}): AutoLayoutResult {
   // 1. Unique Stellplätze (= Tore) und Relationen (= Bereiche) extrahieren
   const stellplaetze = extractUniqueStellplaetze(records);
   const relationen = extractUniqueRelationen(records);
 
-  // 2. Hallengröße berechnen — Tore verteilen sich auf Süd- UND Nord-Wand,
-  // die Breite bemisst sich also an den Toren pro Wand. Tiefe realer
-  // Umschlaghallen liegt bei ~30-60m, unabhängig von der Länge.
+  // 2. Hallengröße bestimmen — Tore verteilen sich auf Süd- UND Nord-Wand,
+  // die Mindestbreite bemisst sich also an den Toren pro Wand. Ist die Fläche
+  // bekannt, gibt sie die Maße vor; sonst Schätzung wie bisher (Tiefe realer
+  // Umschlaghallen liegt bei ~30-60 m, unabhängig von der Länge).
   const toreAnzahl = stellplaetze.length;
   const bereicheAnzahl = relationen.length;
-  const hallWidth = Math.max(60, Math.ceil(toreAnzahl / 2) * 4.5);
-  const hallHeight = Math.max(30, Math.min(60, hallWidth * 0.35));
+  const mindestBreite = Math.max(60, Math.ceil(toreAnzahl / 2) * 4.5);
+  const masse = optionen.flaecheQm && optionen.flaecheQm > 0
+    ? hallenMasseAusFlaeche(optionen.flaecheQm, mindestBreite)
+    : { width: mindestBreite, height: Math.max(30, Math.min(60, mindestBreite * 0.35)) };
+  const hallWidth = masse.width;
+  const hallHeight = masse.height;
 
   // 3. Hall erstellen
   const hall: Hall = {

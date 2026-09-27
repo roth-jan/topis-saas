@@ -374,3 +374,49 @@ describe('Cross-Review 27.09.2026 — Astra-Funde', () => {
     expect(useTopisStore.getState().objects.map((o) => o.x)).toEqual([10, 30]);
   });
 });
+
+/**
+ * Grenzwerte — Browser-Prüfung durch Codex am 27.09.2026 (P2).
+ * Unmögliche Maße wurden stillschweigend angenommen: „Achsmaß 200 m" in einer
+ * 100-m-Halle schob vier Tore deckungsgleich auf den Wandanschlag, und die
+ * Oberfläche meldete trotzdem Erfolg.
+ */
+describe('Codex-Grenzwerte — unmögliche Maße', () => {
+  beforeEach(reset);
+
+  it('Achsmaß größer als die Wand wird abgelehnt, nichts verschiebt sich', () => {
+    const tore = toreAnNordwand(5, 0, 6);
+    const vorher = useTopisStore.getState().objects.map((o) => o.x);
+    const r = useTopisStore.getState().verteileObjects(tore.map((t) => t.id), 'achsabstand', 200);
+    expect(r.verteilt).toBe(0);
+    expect(r.grund).toMatch(/Wand|m möglich/);
+    expect(useTopisStore.getState().objects.map((o) => o.x)).toEqual(vorher);
+  });
+
+  it('kein Tor landet auf demselben Punkt wie ein anderes', () => {
+    const tore = toreAnNordwand(5, 0, 6);
+    useTopisStore.getState().verteileObjects(tore.map((t) => t.id), 'achsabstand', 200);
+    const xs = useTopisStore.getState().objects.map((o) => Math.round(o.x * 100));
+    expect(new Set(xs).size).toBe(xs.length);
+  });
+
+  it('ein passendes Maß geht weiterhin durch', () => {
+    const tore = toreAnNordwand(5, 0, 6);
+    const r = useTopisStore.getState().verteileObjects(tore.map((t) => t.id), 'achsabstand', 8);
+    expect(r.verteilt).toBe(5);
+    const objs = useTopisStore.getState().objects.slice().sort((a, b) => a.x - b.x);
+    for (let i = 1; i < objs.length; i++) expect(objs[i].x - objs[i - 1].x).toBeCloseTo(8);
+  });
+
+  it('lichte Weite, die nicht auf die Wand passt, wird ebenfalls abgelehnt', () => {
+    const tore = toreAnNordwand(10, 0, 6);
+    const r = useTopisStore.getState().verteileObjects(tore.map((t) => t.id), 'luecke', 60);
+    expect(r.verteilt).toBe(0);
+  });
+
+  it('gleichmäßig verteilen bleibt immer möglich — es nutzt nur vorhandenen Platz', () => {
+    const tore = toreAnNordwand(5, 0, 6);
+    const r = useTopisStore.getState().verteileObjects(tore.map((t) => t.id), 'gleichmaessig');
+    expect(r.verteilt).toBe(5);
+  });
+});
