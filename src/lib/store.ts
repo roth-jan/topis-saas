@@ -20,15 +20,96 @@ import {
   ProjektSnapshot,
   MittlererWegRun,
   Verlader,
+  isOutdoorType,
 } from '@/types/topis';
 import type { LayoutSnapshot } from '@/types/betriebsdaten';
 import { findPathBetweenObjects, buildGangGraph, findPath, generateBasicGangNet } from './pathfinding';
 import { findNearestWall, torBoxFromAnchor, rampeBoxFromAnchor, reanchorTore, deriveWalls } from './wall-anchor';
+import { verteileGleichmaessig, verteileMitAchsabstand, verteileMitLuecke, richteAus, dominanteAchse, type VerteilItem } from './multi-select';
 import type { GeneratedLayout } from './nl-layout';
 import * as mengenActions from './mengen-store-actions';
 
+/** Verteil-Modi der Mehrfachauswahl (siehe multi-select.ts). */
+export type VerteilModus = 'gleichmaessig' | 'achsabstand' | 'luecke';
+
 // Modul-lokaler Debounce-Timer für Path-Auto-Recompute beim Object-Move
 let _recomputeTimer: number | null = null;
+
+/**
+ * Wendet die Wand-Anker-Regeln (Lastenheft 3.1.2) auf ein gemergtes Objekt an.
+ *
+ * Zwei Fälle, wie bisher in updateObject:
+ *  - Tor wurde über x/y bewegt → an die nächste Außenwand snappen, aussenwandRef neu setzen.
+ *  - Abstand S/E wurde direkt gesetzt → x/y aus dem Anker neu berechnen, damit das Tor
+ *    (bzw. die Rampe, 3.1.2.2) auf der Wand entlangwandert.
+ *
+ * Als eigene Funktion, weil die Mehrfachauswahl (updateObjects/moveObjects) dieselben
+ * Regeln braucht — sonst lösen sich Tore beim Sammel-Verschieben von der Wand.
+ */
+function applyAnchorRules(
+  merged: TopisObject,
+  updates: Partial<TopisObject>,
+  walls: ReturnType<typeof deriveWalls>,
+): TopisObject {
+  if (walls.length === 0) return merged;
+
+  if (
+    merged.type === 'tor' &&
+    (updates.x !== undefined || updates.y !== undefined) &&
+    updates.aussenwandRef === undefined
+  ) {
+    const px = merged.x + merged.width / 2;
+    const py = merged.y + merged.height / 2;
+    // Ohne Distanzlimit: Tore sind laut Lastenheft 3.1.2 AUSSCHLIESSLICH auf
+    // Außenwänden zulässig. Mit dem alten 30-m-Limit blieb ein in großen Hallen
+    // (>60 m tief) in die Mitte gezogenes Tor frei liegen — mit veralteter
+    // aussenwandRef (Cross-Review Gemini 20.09.2026).
+    const nearest = findNearestWall(px, py, walls, Infinity);
+    if (nearest) {
+      const box = torBoxFromAnchor(
+        { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
+        walls,
+        merged.width,
+        merged.height,
+      );
+      if (box) {
+        return {
+          ...merged,
+          x: box.x,
+          y: box.y,
+          side: box.side ?? merged.side,
+          aussenwandRef: {
+            wallIndex: nearest.wallIndex,
+            abstandS: nearest.abstandS,
+            abstandE: nearest.abstandE,
+          },
+        };
+      }
+    }
+    return merged;
+  }
+
+  if (
+    (merged.type === 'tor' || merged.type === 'rampe') &&
+    updates.aussenwandRef !== undefined &&
+    merged.aussenwandRef &&
+    updates.x === undefined &&
+    updates.y === undefined
+  ) {
+    // Lastenheft 3.1.2 — Abstand S/E im Panel direkt geändert: Tor muss
+    // auf der Wand entlangwandern (Niko Schritt 5). x/y aus dem neuen
+    // Anker neu berechnen, sonst ändert sich nur die Zahl, nicht das Tor.
+    // Rampen (3.1.2.2) genauso, nur nach außen (Astra-Test 20.09.2026, C2).
+    const box = merged.type === 'tor'
+      ? torBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height)
+      : rampeBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height);
+    if (box) {
+      return { ...merged, x: box.x, y: box.y, side: box.side ?? merged.side };
+    }
+  }
+
+  return merged;
+}
 
 // ==================== UNDO/REDO ====================
 const MAX_UNDO_STACK = 50;
@@ -55,6 +136,7 @@ function restoreLayoutSnapshot(snapshot: LayoutSnapshot): Partial<TopisState> {
     pathAreas: structuredClone(snapshot.pathAreas ?? []),
     conveyors: structuredClone(snapshot.conveyors ?? []),
     selectedObject: null,
+    selectedIds: [],
     selectedPath: null,
     selectedGang: null,
     selectedPathArea: null,
@@ -87,6 +169,16 @@ interface TopisStore extends TopisState {
   updateObject: (id: number, updates: Partial<TopisObject>) => void;
   deleteObject: (id: number) => void;
   selectObject: (obj: TopisObject | null) => void;
+
+  // Mehrfachauswahl (Tester-Feedback Michael Laufenburg 27.09.2026)
+  setSelectedIds: (ids: number[]) => void;
+  toggleSelectedId: (id: number) => void;
+  selectObjectsInRect: (rect: { x: number; y: number; width: number; height: number }) => number[];
+  updateObjects: (ids: number[], updates: Partial<TopisObject>) => void;
+  moveObjects: (ids: number[], dx: number, dy: number, opts?: { snapshot?: boolean }) => void;
+  deleteObjects: (ids: number[]) => void;
+  verteileObjects: (ids: number[], modus: VerteilModus, wert?: number) => void;
+  richteObjectsAus: (ids: number[], modus: 'start' | 'mitte' | 'ende') => void;
 
   // Path Actions
   addPath: (path: Omit<Path, 'id'>) => void;
@@ -216,6 +308,7 @@ const initialState: TopisState = {
   objects: [],
   objectIdCounter: 1,
   selectedObject: null,
+    selectedIds: [],
   paths: [],
   pathIdCounter: 1,
   selectedPath: null,
@@ -456,6 +549,7 @@ export const useTopisStore = create<TopisStore>()(
         conveyors: rotatedConveyors,
         kettenWegbereiche: rotatedKetten,
         selectedObject: null,
+    selectedIds: [],
       };
     });
     get().scheduleRecomputeForObject(-1);
@@ -562,60 +656,7 @@ export const useTopisStore = create<TopisStore>()(
       let mergedSelected: TopisObject | null = null;
       const newObjects = state.objects.map(o => {
         if (o.id === id) {
-          let merged = { ...o, ...updates };
-          if (
-            merged.type === 'tor' &&
-            walls.length > 0 &&
-            (updates.x !== undefined || updates.y !== undefined) &&
-            updates.aussenwandRef === undefined
-          ) {
-            const px = merged.x + merged.width / 2;
-            const py = merged.y + merged.height / 2;
-            // Ohne Distanzlimit: Tore sind laut Lastenheft 3.1.2 AUSSCHLIESSLICH auf
-            // Außenwänden zulässig. Mit dem alten 30-m-Limit blieb ein in großen Hallen
-            // (>60 m tief) in die Mitte gezogenes Tor frei liegen — mit veralteter
-            // aussenwandRef (Cross-Review Gemini 20.09.2026).
-            const nearest = findNearestWall(px, py, walls, Infinity);
-            if (nearest) {
-              const box = torBoxFromAnchor(
-                { wallIndex: nearest.wallIndex, abstandS: nearest.abstandS, abstandE: nearest.abstandE },
-                walls,
-                merged.width,
-                merged.height,
-              );
-              if (box) {
-                merged = {
-                  ...merged,
-                  x: box.x,
-                  y: box.y,
-                  side: box.side ?? merged.side,
-                  aussenwandRef: {
-                    wallIndex: nearest.wallIndex,
-                    abstandS: nearest.abstandS,
-                    abstandE: nearest.abstandE,
-                  },
-                };
-              }
-            }
-          } else if (
-            (merged.type === 'tor' || merged.type === 'rampe') &&
-            walls.length > 0 &&
-            updates.aussenwandRef !== undefined &&
-            merged.aussenwandRef &&
-            updates.x === undefined &&
-            updates.y === undefined
-          ) {
-            // Lastenheft 3.1.2 — Abstand S/E im Panel direkt geändert: Tor muss
-            // auf der Wand entlangwandern (Niko Schritt 5). x/y aus dem neuen
-            // Anker neu berechnen, sonst ändert sich nur die Zahl, nicht das Tor.
-            // Rampen (3.1.2.2) genauso, nur nach außen (Astra-Test 20.09.2026, C2).
-            const box = merged.type === 'tor'
-              ? torBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height)
-              : rampeBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height);
-            if (box) {
-              merged = { ...merged, x: box.x, y: box.y, side: box.side ?? merged.side };
-            }
-          }
+          const merged = applyAnchorRules({ ...o, ...updates }, updates, walls);
           mergedSelected = merged;
           return merged;
         }
@@ -670,7 +711,255 @@ export const useTopisStore = create<TopisStore>()(
       };
     });
   },
-  selectObject: (obj) => set({ selectedObject: obj, selectedPath: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null, selectedKette: null }),
+  selectObject: (obj) => set({ selectedObject: obj, selectedIds: obj ? [obj.id] : [], selectedPath: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null, selectedKette: null }),
+
+  // ==================== MEHRFACHAUSWAHL ====================
+  // Tester-Feedback Michael Laufenburg 27.09.2026: „man kann nur jedes einzelne Tor
+  // bearbeiten … es wäre gut wenn man 20 Tore über eine ,alle markieren' Funktion
+  // auf eine gleiche Größe bringen und auch verschieben könnte."
+
+  setSelectedIds: (ids) => set((state) => {
+    const vorhanden = ids.filter((id) => state.objects.some((o) => o.id === id));
+    // Das Einzel-Panel zeigt bei genau einem Treffer weiterhin die volle Objektmaske.
+    const single = vorhanden.length === 1 ? state.objects.find((o) => o.id === vorhanden[0]) ?? null : null;
+    return {
+      selectedIds: vorhanden,
+      selectedObject: single,
+      selectedPath: null,
+      selectedGang: null,
+      selectedPathArea: null,
+      selectedConveyor: null,
+      selectedKette: null,
+    };
+  }),
+
+  toggleSelectedId: (id) => {
+    const state = get();
+    const drin = state.selectedIds.includes(id);
+    const next = drin ? state.selectedIds.filter((x) => x !== id) : [...state.selectedIds, id];
+    get().setSelectedIds(next);
+  },
+
+  selectObjectsInRect: (rect) => {
+    const state = get();
+    const x2 = rect.x + rect.width;
+    const y2 = rect.y + rect.height;
+    // Berührung genügt (wie in CAD-Programmen): ein Tor muss nicht komplett im
+    // Rahmen liegen, um markiert zu werden — sonst ist eine Torreihe an der Wand
+    // kaum greifbar, weil sie halb außerhalb des Hallenrechtecks sitzt.
+    const treffer = state.objects.filter((o) =>
+      o.x < x2 && o.x + o.width > rect.x && o.y < y2 && o.y + o.height > rect.y
+    );
+    const ids = treffer.map((o) => o.id);
+    get().setSelectedIds(ids);
+    return ids;
+  },
+
+  updateObjects: (ids, updates) => {
+    if (ids.length === 0) return;
+    get().pushSnapshot();
+    const idSet = new Set(ids);
+    set((state) => {
+      const activeHall = state.halls.find((h) => h.id === state.activeHallId);
+      const walls = activeHall ? deriveWalls(activeHall) : [];
+      const objects = state.objects.map((o) =>
+        idSet.has(o.id) ? applyAnchorRules({ ...o, ...updates }, updates, walls) : o
+      );
+      const selectedObject = state.selectedObject
+        ? (objects.find((o) => o.id === state.selectedObject!.id) ?? state.selectedObject)
+        : null;
+      return { objects, selectedObject };
+    });
+    if (updates.x !== undefined || updates.y !== undefined || updates.width !== undefined || updates.height !== undefined) {
+      ids.forEach((id) => get().scheduleRecomputeForObject(id));
+    }
+  },
+
+  moveObjects: (ids, dx, dy, opts) => {
+    if (ids.length === 0 || (dx === 0 && dy === 0)) return;
+    // Beim Ziehen auf der Leinwand nur im ERSTEN Frame einen Snapshot ablegen —
+    // sonst füllt ein einziger Drag den kompletten Undo-Stack.
+    if (opts?.snapshot !== false) get().pushSnapshot();
+    const idSet = new Set(ids);
+    set((state) => {
+      const activeHall = state.halls.find((h) => h.id === state.activeHallId);
+      const walls = activeHall ? deriveWalls(activeHall) : [];
+      // Gemeinsamer Clamp: die ganze Auswahl wird so weit begrenzt, dass kein
+      // Innen-Objekt aus der Halle rutscht — sonst zerfällt beim Anschlag die
+      // Anordnung, weil einzelne Objekte stehenbleiben und andere weiterlaufen.
+      let effDx = dx;
+      let effDy = dy;
+      if (activeHall) {
+        for (const o of state.objects) {
+          if (!idSet.has(o.id) || isOutdoorType(o.type)) continue;
+          effDx = Math.max(effDx, -o.x);
+          effDx = Math.min(effDx, activeHall.width - o.width - o.x);
+          effDy = Math.max(effDy, -o.y);
+          effDy = Math.min(effDy, activeHall.height - o.height - o.y);
+        }
+      }
+      if (effDx === 0 && effDy === 0) return {};
+
+      const objects = state.objects.map((o) => {
+        if (!idSet.has(o.id)) return o;
+        const updates = { x: o.x + effDx, y: o.y + effDy };
+        return applyAnchorRules({ ...o, ...updates }, updates, walls);
+      });
+      const selectedObject = state.selectedObject
+        ? (objects.find((o) => o.id === state.selectedObject!.id) ?? state.selectedObject)
+        : null;
+      return { objects, selectedObject };
+    });
+    ids.forEach((id) => get().scheduleRecomputeForObject(id));
+  },
+
+  deleteObjects: (ids) => {
+    if (ids.length === 0) return;
+    get().pushSnapshot();
+    set((state) => {
+      // Parent-Bindung (3.1.2): Kinder der gelöschten Objekte mitnehmen
+      const idsToDelete = new Set(ids);
+      let gewachsen = true;
+      while (gewachsen) {
+        gewachsen = false;
+        for (const o of state.objects) {
+          if (o.parentObjectId != null && idsToDelete.has(o.parentObjectId) && !idsToDelete.has(o.id)) {
+            idsToDelete.add(o.id);
+            gewachsen = true;
+          }
+        }
+      }
+      return {
+        objects: state.objects.filter((o) => !idsToDelete.has(o.id)),
+        selectedObject: state.selectedObject && idsToDelete.has(state.selectedObject.id) ? null : state.selectedObject,
+        selectedIds: state.selectedIds.filter((id) => !idsToDelete.has(id)),
+        paths: state.paths.map((p) => {
+          const verwaist = (p.startObjectId != null && idsToDelete.has(p.startObjectId)) || (p.endObjectId != null && idsToDelete.has(p.endObjectId));
+          if (!verwaist) return p;
+          return { ...p, name: p.name.startsWith('⚠ ') ? p.name : `⚠ ${p.name}` };
+        }),
+        simAuftraege: state.simAuftraege.filter((a) => !idsToDelete.has(a.vonObjectId) && !idsToDelete.has(a.nachObjectId)),
+      };
+    });
+  },
+
+  verteileObjects: (ids, modus, wert) => {
+    const state = get();
+    const objs = state.objects.filter((o) => ids.includes(o.id));
+    if (objs.length < 2) return;
+
+    const activeHall = state.halls.find((h) => h.id === state.activeHallId);
+    const walls = activeHall ? deriveWalls(activeHall) : [];
+
+    // Tore verteilen sich ENTLANG IHRER WAND (Lastenheft 3.1.2), nicht in x/y — sonst
+    // löst die Verteilung die Verankerung. Gemischte Auswahl: Tore je Wand getrennt,
+    // freie Objekte über die dominante Achse.
+    const toreProWand = new Map<number, TopisObject[]>();
+    const freie: TopisObject[] = [];
+    for (const o of objs) {
+      if (o.type === 'tor' && o.aussenwandRef && walls[o.aussenwandRef.wallIndex]) {
+        const liste = toreProWand.get(o.aussenwandRef.wallIndex) ?? [];
+        liste.push(o);
+        toreProWand.set(o.aussenwandRef.wallIndex, liste);
+      } else {
+        freie.push(o);
+      }
+    }
+
+    const rechne = (items: VerteilItem[]) => {
+      if (modus === 'gleichmaessig') return verteileGleichmaessig(items);
+      if (modus === 'achsabstand') return verteileMitAchsabstand(items, wert ?? 0);
+      return verteileMitLuecke(items, wert ?? 0);
+    };
+
+    get().pushSnapshot();
+    set((innerState) => {
+      const patches = new Map<number, Partial<TopisObject>>();
+
+      for (const [wallIndex, tore] of toreProWand) {
+        if (tore.length < 2) continue;
+        const wall = walls[wallIndex];
+        const wandLaenge = Math.hypot(wall.x2 - wall.x1, wall.y2 - wall.y1);
+        const horizontal = Math.abs(wall.x2 - wall.x1) >= Math.abs(wall.y2 - wall.y1);
+        // Achsposition auf der Wand: abstandS zeigt auf die Tor-MITTE, die Verteil-Lib
+        // rechnet mit der führenden Kante → um die halbe Torbreite versetzen.
+        const items: VerteilItem[] = tore.map((t) => {
+          const size = horizontal ? t.width : t.height;
+          return { id: t.id, pos: t.aussenwandRef!.abstandS - size / 2, size };
+        });
+        const neu = rechne(items);
+        for (const item of items) {
+          const pos = neu.get(item.id);
+          if (pos === undefined) continue;
+          const tor = tore.find((t) => t.id === item.id)!;
+          const abstandS = Math.max(0, Math.min(wandLaenge, pos + item.size / 2));
+          patches.set(tor.id, {
+            aussenwandRef: { wallIndex, abstandS, abstandE: wandLaenge - abstandS },
+          });
+        }
+      }
+
+      if (freie.length >= 2) {
+        const achse = dominanteAchse(freie);
+        const items: VerteilItem[] = freie.map((o) => ({
+          id: o.id,
+          pos: achse === 'x' ? o.x : o.y,
+          size: achse === 'x' ? o.width : o.height,
+        }));
+        const neu = rechne(items);
+        for (const [id, pos] of neu) {
+          patches.set(id, achse === 'x' ? { x: pos } : { y: pos });
+        }
+      }
+
+      if (patches.size === 0) return {};
+
+      const objects = innerState.objects.map((o) => {
+        const patch = patches.get(o.id);
+        if (!patch) return o;
+        return applyAnchorRules({ ...o, ...patch }, patch, walls);
+      });
+      const selectedObject = innerState.selectedObject
+        ? (objects.find((o) => o.id === innerState.selectedObject!.id) ?? innerState.selectedObject)
+        : null;
+      return { objects, selectedObject };
+    });
+    ids.forEach((id) => get().scheduleRecomputeForObject(id));
+  },
+
+  richteObjectsAus: (ids, modus) => {
+    const state = get();
+    const objs = state.objects.filter((o) => ids.includes(o.id));
+    if (objs.length < 2) return;
+
+    // Quer zur Reihe ausrichten: eine Torreihe an der Nordwand spannt in x, also
+    // wird in y bündig gemacht. Tore selbst bleiben durch applyAnchorRules an der Wand.
+    const achse = dominanteAchse(objs) === 'x' ? 'y' : 'x';
+    const items: VerteilItem[] = objs.map((o) => ({
+      id: o.id,
+      pos: achse === 'x' ? o.x : o.y,
+      size: achse === 'x' ? o.width : o.height,
+    }));
+    const neu = richteAus(items, modus);
+    if (neu.size === 0) return;
+
+    get().pushSnapshot();
+    set((innerState) => {
+      const activeHall = innerState.halls.find((h) => h.id === innerState.activeHallId);
+      const walls = activeHall ? deriveWalls(activeHall) : [];
+      const objects = innerState.objects.map((o) => {
+        const pos = neu.get(o.id);
+        if (pos === undefined) return o;
+        const patch = achse === 'x' ? { x: pos } : { y: pos };
+        return applyAnchorRules({ ...o, ...patch }, patch, walls);
+      });
+      const selectedObject = innerState.selectedObject
+        ? (objects.find((o) => o.id === innerState.selectedObject!.id) ?? innerState.selectedObject)
+        : null;
+      return { objects, selectedObject };
+    });
+    ids.forEach((id) => get().scheduleRecomputeForObject(id));
+  },
 
   // Path Actions
   addPath: (path) => {
@@ -716,7 +1005,8 @@ export const useTopisStore = create<TopisStore>()(
       selectedPath: state.selectedPath?.autoGenerated ? null : state.selectedPath
     }));
   },
-  selectPath: (path) => set({ selectedPath: path, selectedObject: null, selectedGang: null, selectedPathArea: null, selectedConveyor: null, selectedKette: null }),
+  selectPath: (path) => set({ selectedPath: path, selectedObject: null,
+    selectedIds: [], selectedGang: null, selectedPathArea: null, selectedConveyor: null, selectedKette: null }),
 
   // PathArea Actions
   addPathArea: (area) => {
@@ -783,7 +1073,8 @@ export const useTopisStore = create<TopisStore>()(
     });
     get().scheduleRecomputeForObject(-1);
   },
-  selectPathArea: (area) => set({ selectedPathArea: area, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedGang: null, selectedKette: null }),
+  selectPathArea: (area) => set({ selectedPathArea: area, selectedObject: null,
+    selectedIds: [], selectedPath: null, selectedConveyor: null, selectedGang: null, selectedKette: null }),
 
   // Mittlerer-Weg-Run Actions (Lastenheft 3.2.4)
   saveMittlererWegRun: (run) => {
@@ -825,7 +1116,8 @@ export const useTopisStore = create<TopisStore>()(
     }));
     get().scheduleRecomputeForObject(-1);
   },
-  selectGang: (gang) => set({ selectedGang: gang, selectedObject: null, selectedPath: null, selectedConveyor: null, selectedPathArea: null, selectedKette: null }),
+  selectGang: (gang) => set({ selectedGang: gang, selectedObject: null,
+    selectedIds: [], selectedPath: null, selectedConveyor: null, selectedPathArea: null, selectedKette: null }),
   toggleShowGaenge: () => set((state) => ({ showGaenge: !state.showGaenge })),
 
   // FFZ Actions
@@ -858,7 +1150,8 @@ export const useTopisStore = create<TopisStore>()(
       selectedConveyor: state.selectedConveyor?.id === id ? null : state.selectedConveyor
     }));
   },
-  selectConveyor: (conveyor) => set({ selectedConveyor: conveyor, selectedObject: null, selectedPath: null, selectedGang: null, selectedPathArea: null, selectedKette: null }),
+  selectConveyor: (conveyor) => set({ selectedConveyor: conveyor, selectedObject: null,
+    selectedIds: [], selectedPath: null, selectedGang: null, selectedPathArea: null, selectedKette: null }),
 
   // View Actions
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(5, zoom)) }),
@@ -1016,6 +1309,7 @@ export const useTopisStore = create<TopisStore>()(
       pathAreaIdCounter: nextId(pathAreas, st.pathAreaIdCounter),
       conveyorIdCounter: nextId(conveyors, st.conveyorIdCounter),
       selectedObject: null,
+    selectedIds: [],
       selectedPath: null,
       selectedPathArea: null,
       selectedConveyor: null,
@@ -1226,6 +1520,7 @@ export const useTopisStore = create<TopisStore>()(
       kettenWegbereichIdCounter: state.kettenWegbereichIdCounter + 1,
       selectedKette: neu,
       selectedObject: null,
+    selectedIds: [],
       selectedPath: null,
       selectedGang: null,
       selectedPathArea: null,
@@ -1256,6 +1551,7 @@ export const useTopisStore = create<TopisStore>()(
     set({
       selectedKette: k,
       selectedObject: null,
+    selectedIds: [],
       selectedPath: null,
       selectedGang: null,
       selectedPathArea: null,
@@ -1366,6 +1662,7 @@ export const useObjectIndex = (): Map<number, TopisObject> => useTopisStore((sta
   return _objectIndexCache.map;
 });
 export const useSelectedObject = () => useTopisStore((state) => state.selectedObject);
+export const useSelectedIds = () => useTopisStore((state) => state.selectedIds);
 export const useHalls = () => useTopisStore((state) => state.halls);
 export const useActiveHall = () => useTopisStore((state) =>
   state.halls.find(h => h.id === state.activeHallId) || state.halls[0]

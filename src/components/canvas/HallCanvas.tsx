@@ -100,6 +100,18 @@ export function HallCanvas() {
   const heatmapConfig = useHeatmapConfig();
   const betriebsAnalyse = useBetriebsdatenStore((s) => s.analyse);
 
+  // Mehrfachauswahl (Tester-Feedback Michael Laufenburg 27.09.2026): Auswahlrahmen
+  // aufziehen, Shift-Klick zum Dazunehmen, gemeinsames Verschieben.
+  const selectedIds = useTopisStore((s) => s.selectedIds);
+  const setSelectedIds = useTopisStore((s) => s.setSelectedIds);
+  const toggleSelectedId = useTopisStore((s) => s.toggleSelectedId);
+  const selectObjectsInRect = useTopisStore((s) => s.selectObjectsInRect);
+  const moveObjects = useTopisStore((s) => s.moveObjects);
+  /** Aufgezogener Auswahlrahmen in Welt-Koordinaten, solange die Maus gedrückt ist. */
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  /** Letzte Cursor-Position beim Gruppen-Drag — moveObjects rechnet relativ. */
+  const groupDragRef = useRef<{ x: number; y: number; snapshot: boolean } | null>(null);
+
   const [isDragging, setIsDragging] = useState(false);
   // Drag-Threshold: 3px Maus-Bewegung bevor Object-Move startet. Verhindert
   // versehentliches Verschieben beim Klicken auf ein Element (Nico 22.05.).
@@ -1130,7 +1142,7 @@ export function HallCanvas() {
       ctx.save();
 
       const baseColor = obj.color || OBJECT_COLORS[obj.type] || '#666';
-      const isSelected = selectedObject?.id === obj.id;
+      const isSelected = selectedObject?.id === obj.id || selectedIds.includes(obj.id);
 
       // Generischer Kreis-Pfad: Objekte mit shape='circle' werden als Kreis gezeichnet.
       // Beispiel-Verwendung: Messpunkt, Scanner, RFID-Reader, Sensor — alles über
@@ -1865,6 +1877,38 @@ export function HallCanvas() {
       }
     }
 
+    // Mehrfachauswahl: jedes markierte Objekt bekommt einen Rahmen (ohne Greifpunkte —
+    // die Ecken gehören dem Einzel-Resize).
+    if (selectedIds.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = '#00bcd4';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      for (const id of selectedIds) {
+        const o = objects.find((obj) => obj.id === id);
+        if (!o) continue;
+        const p = worldToScreen(o.x, o.y);
+        ctx.strokeRect(p.x - 2, p.y - 2, o.width * SCALE * zoom + 4, o.height * SCALE * zoom + 4);
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Aufgezogener Auswahlrahmen
+    if (marquee) {
+      const a = worldToScreen(Math.min(marquee.x0, marquee.x1), Math.min(marquee.y0, marquee.y1));
+      const b = worldToScreen(Math.max(marquee.x0, marquee.x1), Math.max(marquee.y0, marquee.y1));
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 188, 212, 0.12)';
+      ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      ctx.strokeStyle = '#00bcd4';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
     // Draw selection handles
     if (selectedObject) {
       const pos = worldToScreen(selectedObject.x, selectedObject.y);
@@ -2123,7 +2167,7 @@ export function HallCanvas() {
       ctx.fillStyle = '#ffffff'; ctx.fillText(label, lp.x, lp.y);
       ctx.restore();
     }
-  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId, bereichStart, bereichMousePos, kettenWegbereiche, selectedKette, ketteMousePos]);
+  }, [hall, objects, gaenge, showGaenge, showGrid, zoom, pan, selectedObject, selectedIds, marquee, selectedPath, selectedWaypointIndex, selectedGang, selectedPathArea, selectedConveyor, worldToScreen, gangDrawStart, gangMousePos, gangSnap, gangGraphNodes, tool, toolSnap, paths, pathAreas, currentPath, pathMousePos, pathDrawing, pathDragStart, pathAreaStart, pathAreaMousePos, measureStart, measureEnd, conveyors, currentConveyor, conveyorMousePos, heatmapConfig, betriebsAnalyse, cockpitRoute, simAuftraege, simAuftragPending, focusedTorId, showAllSimRoutes, animationActiveId, animationProgress, isDark, pinselGhosts, nlGhost, isDragging, dragObject, serieSrc, serieGhosts, hoverObjectId, bereichStart, bereichMousePos, kettenWegbereiche, selectedKette, ketteMousePos]);
 
   // Initial centering - only once on mount
   const initializedRef = useRef(false);
@@ -2742,6 +2786,26 @@ export function HallCanvas() {
           setIsDragging(true);
           return;
         }
+        // Shift/Cmd/Strg-Klick: Objekt zur Mehrfachauswahl dazunehmen bzw. rausnehmen.
+        if (e.shiftKey || e.metaKey || e.ctrlKey) {
+          toggleSelectedId(obj.id);
+          setSelectedWaypointIndex(null);
+          return;
+        }
+
+        // Klick auf ein Objekt, das bereits Teil einer Mehrfachauswahl ist → die ganze
+        // Gruppe ziehen. Ein selectObject() würde die Auswahl auf dieses eine Tor
+        // zusammenfallen lassen, genau das soll hier nicht passieren.
+        if (selectedIds.length > 1 && selectedIds.includes(obj.id)) {
+          setDragObject(obj);
+          setDragStart({ x: world.x - obj.x, y: world.y - obj.y });
+          groupDragRef.current = { x: world.x, y: world.y, snapshot: true };
+          setIsDragging(true);
+          dragMouseStartRef.current = { x: e.clientX, y: e.clientY };
+          dragThresholdPassedRef.current = false;
+          return;
+        }
+
         selectObject(obj); // also clears selectedPath
         setSelectedWaypointIndex(null);
         // Wenn das angeklickte Tor in einem Sim-Auftrag steckt → fokussieren
@@ -2807,9 +2871,11 @@ export function HallCanvas() {
         return;
       }
 
-      // Nothing found - deselect all
-      selectObject(null);
+      // Nichts getroffen → Auswahlrahmen aufziehen. Abgewählt wird erst beim
+      // Loslassen, wenn der Rahmen leer blieb (siehe handleMouseUp).
+      setMarquee({ x0: world.x, y0: world.y, x1: world.x, y1: world.y });
       setSelectedWaypointIndex(null);
+      setIsDragging(true);
       return;
     } else if (tool === 'pan') {
       setIsDragging(true);
@@ -3114,6 +3180,23 @@ export function HallCanvas() {
       // Auf Hallengrenzen begrenzen
       const inBounds = hall ? ghosts.filter((g) => g.x >= 0 && g.y >= 0 && g.x + g.width <= hall.width && g.y + g.height <= hall.height) : ghosts;
       setSerieGhosts(inBounds.length ? inBounds : [{ x: src.x, y: src.y, width: src.width, height: src.height }]);
+    } else if (tool === 'select' && marquee) {
+      setMarquee({ ...marquee, x1: world.x, y1: world.y });
+    } else if (tool === 'select' && dragObject && groupDragRef.current) {
+      // Gruppen-Drag: alle markierten Objekte um dasselbe Delta verschieben.
+      if (!dragThresholdPassedRef.current && dragMouseStartRef.current) {
+        const mdx = e.clientX - dragMouseStartRef.current.x;
+        const mdy = e.clientY - dragMouseStartRef.current.y;
+        if (Math.hypot(mdx, mdy) < 3) return;
+        dragThresholdPassedRef.current = true;
+      }
+      const ref = groupDragRef.current;
+      // Auf 0.1 m runden — sonst zittert die ganze Reihe mit jedem Mauspixel.
+      const dx = Math.round((world.x - ref.x) * 10) / 10;
+      const dy = Math.round((world.y - ref.y) * 10) / 10;
+      if (dx === 0 && dy === 0) return;
+      moveObjects(selectedIds, dx, dy, { snapshot: ref.snapshot });
+      groupDragRef.current = { x: ref.x + dx, y: ref.y + dy, snapshot: false };
     } else if (tool === 'select' && dragObject) {
       // Drag-Threshold: erst nach 3 px Maus-Bewegung als Verschieben werten
       // (verhindert versehentliches Verschieben beim Klicken — Nico 22.05.).
@@ -3160,6 +3243,32 @@ export function HallCanvas() {
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Auswahlrahmen abschließen: alles darin markieren. Ein Rahmen unter 0.5 m
+    // Kantenlänge war ein Klick ins Leere → abwählen (altes Verhalten).
+    if (marquee) {
+      const x = Math.min(marquee.x0, marquee.x1);
+      const y = Math.min(marquee.y0, marquee.y1);
+      const width = Math.abs(marquee.x1 - marquee.x0);
+      const height = Math.abs(marquee.y1 - marquee.y0);
+      setMarquee(null);
+      setIsDragging(false);
+      if (width < 0.5 && height < 0.5) {
+        selectObject(null);
+        return;
+      }
+      const ids = selectObjectsInRect({ x, y, width, height });
+      if (ids.length > 1) toast.success(`${ids.length} Objekte markiert`);
+      return;
+    }
+
+    // Gruppen-Drag beenden
+    if (groupDragRef.current) {
+      groupDragRef.current = null;
+      setDragObject(null);
+      setIsDragging(false);
+      return;
+    }
+
     // Serie ziehen abschließen: Kopien (außer dem Original bei i=0) als Batch anlegen.
     if (serieSrc) {
       // Original per Position ausschließen — slice(1) verwarf eine echte Kopie, wenn das

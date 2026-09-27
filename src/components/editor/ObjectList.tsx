@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useTopisStore, useObjects, useSelectedObject, useActiveHall } from '@/lib/store';
+import { useTopisStore, useObjects, useSelectedObject, useSelectedIds, useActiveHall } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TopisObject } from '@/types/topis';
-import { Square, LayoutGrid, Box, Slash, ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import { Square, LayoutGrid, Box, Slash, ChevronDown, ChevronRight, Settings, CheckSquare } from 'lucide-react';
+import { toast } from 'sonner';
 
 const typeIcons: Record<string, React.ReactNode> = {
   tor: <Square className="h-3 w-3" />,
@@ -38,6 +39,9 @@ export function ObjectList() {
   const hydrated = useTopisStore((s) => s._hydrated);
   const selectedObject = useSelectedObject();
   const selectObject = useTopisStore((s) => s.selectObject);
+  const selectedIds = useSelectedIds();
+  const setSelectedIds = useTopisStore((s) => s.setSelectedIds);
+  const toggleSelectedId = useTopisStore((s) => s.toggleSelectedId);
   const hall = useActiveHall();
   const updateHall = useTopisStore((s) => s.updateHall);
 
@@ -127,15 +131,32 @@ export function ObjectList() {
                   <span className="capitalize">{type}</span>
                   <Badge variant="secondary" className="ml-auto">{objs.length}</Badge>
                 </button>
+                {/* Ganze Gruppe markieren — Sammel-Eigenschaften öffnen sich dann rechts. */}
+                {objs.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setSelectedIds(objs.map((o) => o.id));
+                      toast.success(`${objs.length} × ${type} markiert`);
+                    }}
+                    className="ml-8 flex items-center gap-1.5 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                    title={`Alle ${objs.length} ${type} markieren`}
+                  >
+                    <CheckSquare className="h-3 w-3" /> alle markieren
+                  </button>
+                )}
 
                 {!collapsed[type] && (
                   <div className="ml-4 space-y-1">
                     {objs.map(obj => (
                       <button
                         key={obj.id}
-                        onClick={() => selectObject(obj)}
+                        onClick={(e) => {
+                          // Shift/Cmd/Strg-Klick: zur Mehrfachauswahl dazunehmen
+                          if (e.shiftKey || e.metaKey || e.ctrlKey) toggleSelectedId(obj.id);
+                          else selectObject(obj);
+                        }}
                         className={`flex items-center gap-2 w-full p-2 rounded text-sm transition-colors
-                          ${selectedObject?.id === obj.id
+                          ${selectedObject?.id === obj.id || selectedIds.includes(obj.id)
                             ? 'bg-primary/20 text-primary'
                             : 'hover:bg-muted'
                           }`}

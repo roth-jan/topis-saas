@@ -13,6 +13,11 @@ export function useKeyboardShortcuts() {
   const zoom = useTopisStore((s) => s.zoom);
   const deleteObject = useTopisStore((s) => s.deleteObject);
   const selectedObject = useTopisStore((s) => s.selectedObject);
+  // Mehrfachauswahl (Tester-Feedback Michael Laufenburg 27.09.2026)
+  const selectedIds = useTopisStore((s) => s.selectedIds);
+  const setSelectedIds = useTopisStore((s) => s.setSelectedIds);
+  const deleteObjects = useTopisStore((s) => s.deleteObjects);
+  const objects = useTopisStore((s) => s.objects);
   const selectObject = useTopisStore((s) => s.selectObject);
   const addObject = useTopisStore((s) => s.addObject);
   const updateObject = useTopisStore((s) => s.updateObject);
@@ -150,11 +155,15 @@ export function useKeyboardShortcuts() {
             break;
           case 'escape':
             selectObject(null);
+            setSelectedIds([]);
             setTool('select');
             break;
           case 'delete':
           case 'backspace':
-            if (selectedObject) {
+            if (selectedIds.length > 1) {
+              deleteObjects(selectedIds);
+              toast.success(`${selectedIds.length} Objekte gelöscht`);
+            } else if (selectedObject) {
               deleteObject(selectedObject.id);
               toast.success('Objekt gelöscht');
             }
@@ -201,15 +210,25 @@ export function useKeyboardShortcuts() {
             if (canRedo()) { redo(); toast.success('Wiederholt'); }
             else toast.info('Nichts zum Wiederholen');
             break;
-          case 'a':
+          case 'a': {
             e.preventDefault();
-            toast.info('Alle auswählen');
+            // Mit gedrücktem Shift nur den Typ des gewählten Objekts (z.B. alle Tore).
+            const ziel = e.shiftKey && selectedObject
+              ? objects.filter((o) => o.type === selectedObject.type)
+              : objects;
+            if (ziel.length === 0) {
+              toast.info('Nichts zum Auswählen');
+              break;
+            }
+            setSelectedIds(ziel.map((o) => o.id));
+            toast.success(`${ziel.length} Objekte markiert`);
             break;
+          }
         }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setTool, toggleGrid, toggleSnap, setZoom, zoom, deleteObject, selectedObject, selectObject, addObject, updateObject, undo, redo, canUndo, canRedo]);
+  }, [setTool, toggleGrid, toggleSnap, setZoom, zoom, deleteObject, selectedObject, selectObject, addObject, updateObject, undo, redo, canUndo, canRedo, selectedIds, setSelectedIds, deleteObjects, objects]);
 }

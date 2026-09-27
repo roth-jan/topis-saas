@@ -1,6 +1,7 @@
 'use client';
 
-import { useTopisStore, useSelectedObject, useSelectedGang, useSelectedPathArea, useSelectedConveyor } from '@/lib/store';
+import { useTopisStore, useSelectedObject, useSelectedIds, useSelectedGang, useSelectedPathArea, useSelectedConveyor } from '@/lib/store';
+import type { VerteilModus } from '@/lib/store';
 import type { TopisObject } from '@/types/topis';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, Copy, RotateCw, Route, Settings } from 'lucide-react';
+import { Trash2, Copy, RotateCw, Route, Settings, Layers, AlignHorizontalSpaceAround, MoveHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 // Sub-panel for Gang properties
 function GangProperties() {
@@ -277,8 +281,251 @@ function PathProperties() {
   );
 }
 
+/**
+ * Sammel-Eigenschaften der Mehrfachauswahl (Tester-Feedback Michael Laufenburg, 27.09.2026):
+ * gleiche Größe geben, gemeinsam verschieben, auf Bauplanmaß verteilen, bündig ausrichten.
+ */
+function MultiObjectProperties() {
+  const selectedIds = useSelectedIds();
+  const objects = useTopisStore((s) => s.objects);
+  const updateObjects = useTopisStore((s) => s.updateObjects);
+  const moveObjects = useTopisStore((s) => s.moveObjects);
+  const deleteObjects = useTopisStore((s) => s.deleteObjects);
+  const verteileObjects = useTopisStore((s) => s.verteileObjects);
+  const richteObjectsAus = useTopisStore((s) => s.richteObjectsAus);
+  const setSelectedIds = useTopisStore((s) => s.setSelectedIds);
+
+  const [breite, setBreite] = useState('');
+  const [tiefe, setTiefe] = useState('');
+  const [dx, setDx] = useState('0');
+  const [dy, setDy] = useState('0');
+  const [modus, setModus] = useState<VerteilModus>('achsabstand');
+  const [abstand, setAbstand] = useState('5');
+
+  const auswahl = objects.filter((o) => selectedIds.includes(o.id));
+  if (auswahl.length < 2) return null;
+
+  // Typen zusammenfassen: „20 × Tor" statt 20 Zeilen
+  const typen = new Map<string, number>();
+  for (const o of auswahl) typen.set(o.type, (typen.get(o.type) ?? 0) + 1);
+
+  const einheitlich = (werte: number[]) => (new Set(werte.map((w) => w.toFixed(3))).size === 1 ? werte[0] : null);
+  const gleicheBreite = einheitlich(auswahl.map((o) => o.width));
+  const gleicheTiefe = einheitlich(auswahl.map((o) => o.height));
+
+  const setzeGroesse = () => {
+    const updates: Partial<TopisObject> = {};
+    const b = parseFloat(breite.replace(',', '.'));
+    const t = parseFloat(tiefe.replace(',', '.'));
+    if (b > 0) updates.width = b;
+    if (t > 0) updates.height = t;
+    if (Object.keys(updates).length === 0) {
+      toast.error('Keine gültige Größe eingegeben');
+      return;
+    }
+    updateObjects(selectedIds, updates);
+    toast.success(`Größe für ${auswahl.length} Objekte gesetzt`);
+  };
+
+  const verschiebe = () => {
+    const x = parseFloat(dx.replace(',', '.')) || 0;
+    const y = parseFloat(dy.replace(',', '.')) || 0;
+    if (x === 0 && y === 0) {
+      toast.error('Kein Versatz eingegeben');
+      return;
+    }
+    moveObjects(selectedIds, x, y);
+    toast.success(`${auswahl.length} Objekte verschoben`);
+  };
+
+  const verteile = () => {
+    const wert = parseFloat(abstand.replace(',', '.'));
+    if (modus !== 'gleichmaessig' && !(wert > 0)) {
+      toast.error('Bitte einen Abstand in Metern eingeben');
+      return;
+    }
+    verteileObjects(selectedIds, modus, wert);
+    toast.success(
+      modus === 'gleichmaessig'
+        ? 'Gleichmäßig verteilt'
+        : `Abstand ${wert} m gesetzt (${modus === 'achsabstand' ? 'Achsmaß' : 'lichte Weite'})`,
+    );
+  };
+
+  return (
+    <ScrollArea className="h-full">
+      <div className="space-y-4 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="flex items-center gap-2 font-semibold">
+              <Layers className="h-4 w-4" /> {auswahl.length} Objekte
+            </h3>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {[...typen.entries()].map(([typ, n]) => (
+                <Badge key={typ} variant="secondary">
+                  {n} × {typ}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Alle markierten löschen"
+            onClick={() => {
+              deleteObjects(selectedIds);
+              toast.success(`${auswahl.length} Objekte gelöscht`);
+            }}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Gemeinsame Größe */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Gleiche Größe</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex h-9 items-center gap-1.5 rounded-lg border bg-muted/30 px-2.5 focus-within:ring-1 focus-within:ring-ring">
+                <span className="w-3 shrink-0 text-center font-mono text-[11px] text-muted-foreground">B</span>
+                <input
+                  type="number"
+                  step="0.05"
+                  value={breite}
+                  placeholder={gleicheBreite !== null ? String(gleicheBreite) : 'gemischt'}
+                  onChange={(e) => setBreite(e.target.value)}
+                  className="w-full border-0 bg-transparent p-0 text-[13px] tabular-nums outline-none"
+                />
+              </div>
+              <div className="flex h-9 items-center gap-1.5 rounded-lg border bg-muted/30 px-2.5 focus-within:ring-1 focus-within:ring-ring">
+                <span className="w-3 shrink-0 text-center font-mono text-[11px] text-muted-foreground">T</span>
+                <input
+                  type="number"
+                  step="0.05"
+                  value={tiefe}
+                  placeholder={gleicheTiefe !== null ? String(gleicheTiefe) : 'gemischt'}
+                  onChange={(e) => setTiefe(e.target.value)}
+                  className="w-full border-0 bg-transparent p-0 text-[13px] tabular-nums outline-none"
+                />
+              </div>
+            </div>
+            <Button size="sm" className="w-full" onClick={setzeGroesse}>
+              Auf alle anwenden
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Gemeinsam verschieben */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-1.5 text-sm">
+              <MoveHorizontal className="h-3.5 w-3.5" /> Verschieben (m)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex h-9 items-center gap-1.5 rounded-lg border bg-muted/30 px-2.5">
+                <span className="w-4 shrink-0 text-center font-mono text-[11px] text-muted-foreground">↔</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={dx}
+                  onChange={(e) => setDx(e.target.value)}
+                  className="w-full border-0 bg-transparent p-0 text-[13px] tabular-nums outline-none"
+                />
+              </div>
+              <div className="flex h-9 items-center gap-1.5 rounded-lg border bg-muted/30 px-2.5">
+                <span className="w-4 shrink-0 text-center font-mono text-[11px] text-muted-foreground">↕</span>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={dy}
+                  onChange={(e) => setDy(e.target.value)}
+                  className="w-full border-0 bg-transparent p-0 text-[13px] tabular-nums outline-none"
+                />
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="w-full" onClick={verschiebe}>
+              Auswahl versetzen
+            </Button>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Tore bleiben dabei an ihrer Außenwand und wandern nur daran entlang.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Abstände auf Bauplanmaß */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="flex items-center gap-1.5 text-sm">
+              <AlignHorizontalSpaceAround className="h-3.5 w-3.5" /> Abstände
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Select value={modus} onValueChange={(v) => setModus(v as VerteilModus)}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="achsabstand">Achsmaß (Mitte zu Mitte)</SelectItem>
+                <SelectItem value="luecke">Lichte Weite (Kante zu Kante)</SelectItem>
+                <SelectItem value="gleichmaessig">Gleichmäßig auf die Länge</SelectItem>
+              </SelectContent>
+            </Select>
+            {modus !== 'gleichmaessig' && (
+              <div className="flex h-9 items-center gap-1.5 rounded-lg border bg-muted/30 px-2.5">
+                <span className="shrink-0 font-mono text-[11px] text-muted-foreground">m</span>
+                <input
+                  type="number"
+                  step="0.05"
+                  value={abstand}
+                  onChange={(e) => setAbstand(e.target.value)}
+                  className="w-full border-0 bg-transparent p-0 text-[13px] tabular-nums outline-none"
+                />
+              </div>
+            )}
+            <Button size="sm" variant="outline" className="w-full" onClick={verteile}>
+              Verteilen
+            </Button>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Das erste Element der Reihe bleibt stehen, die übrigen rücken nach.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Ausrichten */}
+        <Card>
+          <CardHeader className="py-3">
+            <CardTitle className="text-sm">Bündig ausrichten</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-3 gap-2">
+            <Button size="sm" variant="outline" onClick={() => richteObjectsAus(selectedIds, 'start')}>
+              Anfang
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => richteObjectsAus(selectedIds, 'mitte')}>
+              Mitte
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => richteObjectsAus(selectedIds, 'ende')}>
+              Ende
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Button variant="ghost" size="sm" className="w-full" onClick={() => setSelectedIds([])}>
+          Auswahl aufheben
+        </Button>
+      </div>
+    </ScrollArea>
+  );
+}
+
 export function PropertiesPanel() {
   const selectedObject = useSelectedObject();
+  const selectedIds = useSelectedIds();
   const selectedGang = useSelectedGang();
   const selectedPathArea = useSelectedPathArea();
   const selectedConveyor = useSelectedConveyor();
@@ -289,6 +536,8 @@ export function PropertiesPanel() {
 
   const selectedPath = useTopisStore((s) => s.selectedPath);
 
+  // Mehrfachauswahl zuerst — das Einzel-Panel kann nur ein Objekt bedienen.
+  if (selectedIds.length > 1) return <MultiObjectProperties />;
   // Show gang properties
   if (selectedGang) return <GangProperties />;
   // Show path properties

@@ -503,6 +503,14 @@ export interface TopisState {
   objects: TopisObject[];
   objectIdCounter: number;
   selectedObject: TopisObject | null;
+  /**
+   * Mehrfachauswahl (Tester-Feedback Michael Laufenburg 27.09.2026): IDs aller
+   * markierten Objekte. Bei Einfachauswahl steht hier genau die ID von
+   * `selectedObject`, bei leerer Auswahl das leere Array — `selectedObject`
+   * bleibt also weiterhin die einzige Quelle für das Einzel-Panel.
+   * Wird wie `selectedObject` NICHT persistiert.
+   */
+  selectedIds: number[];
 
   // Paths
   paths: Path[];
