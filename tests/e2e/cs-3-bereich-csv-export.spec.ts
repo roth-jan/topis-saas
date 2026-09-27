@@ -12,12 +12,14 @@
 import { expect, test } from '@playwright/test';
 import { gotoTopis, patchLayoutState, openAuswertungDialog } from './helpers/topisPage';
 
-// FIXME: CSV-Export-Funktion existiert + erzeugt korrektes Format (im Code verifiziert,
-// Anchor wird jetzt ans DOM gehängt). Test scheitert an E2E-Mechanik: der CSV-Export-
-// Button im DialogFooter wird in Playwright nicht als "visible/enabled/stable" erkannt
-// (Download-Event feuert nicht). Braucht Untersuchung der Headless-Download-Erfassung
-// bzw. Sichtbarkeit des Footer-Buttons im scrollbaren Dialog.
-test.fixme('CS-3 BlockA with 2 gates + 1 Stellplatz → CSV row matches', async ({ page }) => {
+// Das frühere `test.fixme` hier lag NICHT an der Testmechanik, sondern am Knopf:
+// `DialogContent` hatte in diesem Dialog ein `max-h-[85vh]` ohne `overflow-y-auto`,
+// der DialogFooter lief deshalb aus dem Kasten heraus — gemessen bei 1280x720 auf
+// 755–791 px, also 71 px unter dem Bildschirmrand, ohne jeden scrollenden Bereich.
+// Playwright hat den Knopf zu Recht nicht als klickbar angesehen; ein Mensch hätte
+// ihn auch nicht erreicht. Behoben am 27.09.2026 in components/ui/dialog.tsx
+// (max-h + overflow gehören in die Grundausstattung).
+test('CS-3 BlockA with 2 gates + 1 Stellplatz → CSV row matches', async ({ page }) => {
   await gotoTopis(page);
 
   // Seed: 2 Tore + 1 Stellplatz so the dropdown can pick them

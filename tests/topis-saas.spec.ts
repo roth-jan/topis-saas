@@ -28,17 +28,31 @@ import { ensureWelcomeSuppressed } from './e2e/helpers/topisPage';
 const LANDING = '../';
 const EDITOR = '';
 
+// Der EINSTIEG in den Editor — nicht die Werbetexte.
+//
+// Diese zwei Tests waren am 27.09.2026 rot, und zwar seit der Neutextung der
+// Landingpage: Die Überschrift heißt nicht mehr „Hallenplanung, intelligent
+// optimiert", sondern „Ihre Umschlaghalle, in Minuten pro Colli gemessen.", und
+// der Knopf heißt „Hallenplan zeichnen" statt „Editor starten". Die App war in
+// Ordnung, der Test war veraltet — und niemand hat es gemerkt, weil die Suite
+// nicht regelmäßig lief (seit 27.09. nächtlich: ~/rc/klicktests.py).
+// Deshalb prüfen sie jetzt das, was wirklich halten muss: Es gibt genau EINEN
+// erkennbaren Weg von der Startseite in den Editor, und er führt dorthin. Ein
+// neuer Werbetext darf die Suite nicht mehr rot machen.
+const EDITOR_LINK = 'a[href$="/topis-saas/projekt/"]';
+
 test.describe('Smoke — Landing', () => {
-  test('Landing Page lädt', async ({ page }) => {
+  test('Landing Page lädt und führt sichtbar in den Editor', async ({ page }) => {
     await page.goto(LANDING);
-    await expect(page.locator('h1')).toContainText(/Hallenplanung/i);
-    await expect(page.getByRole('link', { name: 'Editor starten' }).first()).toBeVisible();
+    // Eine H1 mit Inhalt — leer wäre eine kaputt gerenderte Seite.
+    await expect(page.locator('h1').first()).not.toHaveText('');
+    await expect(page.locator(EDITOR_LINK).first()).toBeVisible();
   });
 
   test('Navigation zum Editor funktioniert (basePath-korrekt)', async ({ page }) => {
     await ensureWelcomeSuppressed(page); // Overlay im Editor unterdrücken
     await page.goto(LANDING);
-    await page.getByRole('link', { name: 'Editor starten' }).first().click();
+    await page.locator(EDITOR_LINK).first().click();
     await expect(page).toHaveURL(/\/topis-saas\/projekt\/?$/);
     await page.waitForSelector('canvas');
   });
