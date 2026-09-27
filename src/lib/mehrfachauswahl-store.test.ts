@@ -290,3 +290,87 @@ describe('deleteObjects', () => {
     expect(namen).toEqual(['Tor 2']);
   });
 });
+
+/**
+ * Regressions-Locks aus dem Cross-Model-Review vom 27.09.2026 (GPT-6 Astra über den
+ * Mehrfachauswahl-Diff). Alle drei Fälle waren vor dem Fix reproduzierbar rot.
+ */
+describe('Cross-Review 27.09.2026 — Astra-Funde', () => {
+  beforeEach(reset);
+
+  it('P2-1: Breitenänderung hält den Anker auf der Tormitte', () => {
+    const s = useTopisStore.getState();
+    const tor = s.addObject({
+      type: 'tor', name: 'T', x: 8, y: 0, width: 4, height: 1.5, side: 'north',
+      aussenwandRef: { wallIndex: 0, abstandS: 10, abstandE: 140 },
+    } as Omit<TopisObject, 'id'>);
+    useTopisStore.getState().updateObjects([tor.id], { width: 6 });
+    const t = useTopisStore.getState().objects[0];
+    // Vor dem Fix: x blieb 8, Mitte 11, abstandS 10 → Tor sprang beim nächsten reanchorTore
+    expect(t.x + t.width / 2).toBeCloseTo(t.aussenwandRef!.abstandS);
+  });
+
+  it('P2-1: gilt auch für die Sammelaktion über 20 Tore', () => {
+    const tore = toreAnNordwand(20);
+    useTopisStore.getState().updateObjects(tore.map((t) => t.id), { width: 4.2 });
+    for (const o of useTopisStore.getState().objects) {
+      expect(o.x + o.width / 2).toBeCloseTo(o.aussenwandRef!.abstandS);
+    }
+  });
+
+  it('P2-2: unvereinbarer Clamp bewegt nicht in die Gegenrichtung', () => {
+    useTopisStore.setState({
+      halls: [{ id: 1, shape: 'rect', width: 10, height: 10, name: 'H', walls: [], offsetX: 0, offsetY: 0, color: '#fff' }],
+      objects: [], objectIdCounter: 1,
+    });
+    const s = useTopisStore.getState();
+    // A ragt links raus, B rechts → die Grenzen widersprechen sich
+    const a = s.addObject({ type: 'stellplatz', name: 'A', x: -1, y: 1, width: 2, height: 2 } as Omit<TopisObject, 'id'>);
+    const b = s.addObject({ type: 'stellplatz', name: 'B', x: 9, y: 1, width: 2, height: 2 } as Omit<TopisObject, 'id'>);
+    const echt = useTopisStore.getState().moveObjects([a.id, b.id], 0.1, 0);
+    expect(echt.dx).toBe(0);
+    expect(useTopisStore.getState().objects.map((o) => o.x)).toEqual([-1, 9]);
+  });
+
+  it('P2-2: das Ergebnis hängt nicht von der Array-Reihenfolge ab', () => {
+    const baue = (reihenfolge: 'ab' | 'ba') => {
+      useTopisStore.setState({
+        halls: [{ id: 1, shape: 'rect', width: 10, height: 10, name: 'H', walls: [], offsetX: 0, offsetY: 0, color: '#fff' }],
+        objects: [], objectIdCounter: 1,
+      });
+      const st = useTopisStore.getState();
+      const erste = { type: 'stellplatz', name: 'A', x: -1, y: 1, width: 2, height: 2 };
+      const zweite = { type: 'stellplatz', name: 'B', x: 9, y: 1, width: 2, height: 2 };
+      const objs = reihenfolge === 'ab' ? [erste, zweite] : [zweite, erste];
+      const ids = objs.map((o) => st.addObject(o as Omit<TopisObject, 'id'>).id);
+      useTopisStore.getState().moveObjects(ids, 0.1, 0);
+      return useTopisStore.getState().objects.map((o) => `${o.name}:${o.x}`).sort().join(',');
+    };
+    expect(baue('ab')).toBe(baue('ba'));
+  });
+
+  it('P2-3: moveObjects meldet das tatsächlich ausgeführte Delta', () => {
+    const s = useTopisStore.getState();
+    // Halle ist 150 breit, Objekt bei x=140 mit Breite 10 → nach rechts geht nichts mehr
+    const o = s.addObject({ type: 'stellplatz', name: 'A', x: 140, y: 5, width: 10, height: 5 } as Omit<TopisObject, 'id'>);
+    expect(useTopisStore.getState().moveObjects([o.id], 50, 0)).toEqual({ dx: 0, dy: 0 });
+    const teil = useTopisStore.getState().moveObjects([o.id], -20, 0);
+    expect(teil.dx).toBeCloseTo(-20);
+  });
+
+  it('P2-3: Ziehen über den Rand und zurück landet wieder am Ausgangspunkt', () => {
+    const s = useTopisStore.getState();
+    const a = s.addObject({ type: 'stellplatz', name: 'A', x: 10, y: 5, width: 10, height: 5 } as Omit<TopisObject, 'id'>);
+    const b = s.addObject({ type: 'stellplatz', name: 'B', x: 30, y: 5, width: 10, height: 5 } as Omit<TopisObject, 'id'>);
+    const ids = [a.id, b.id];
+    // Drag-Schleife des Canvas: Bezugspunkt wandert um das AUSGEFÜHRTE Delta mit
+    let ref = 15;
+    const zieheNach = (ziel: number) => {
+      const echt = useTopisStore.getState().moveObjects(ids, ziel - ref, 0);
+      ref += echt.dx;
+    };
+    zieheNach(300); // weit über den Hallenrand hinaus
+    zieheNach(15);  // und zurück
+    expect(useTopisStore.getState().objects.map((o) => o.x)).toEqual([10, 30]);
+  });
+});

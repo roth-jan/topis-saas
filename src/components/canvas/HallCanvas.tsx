@@ -2464,6 +2464,22 @@ export function HallCanvas() {
     return ghosts;
   };
 
+  // Escape bricht einen laufenden Auswahlrahmen/Gruppen-Drag ab. Ohne das würde
+  // handleMouseUp beim Loslassen die gerade aufgehobene Auswahl erneut setzen
+  // (Cross-Review Astra 27.09.2026, P2-4).
+  useEffect(() => {
+    if (!marquee && !groupDragRef.current) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setMarquee(null);
+      groupDragRef.current = null;
+      setDragObject(null);
+      setIsDragging(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [marquee]);
+
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     // Close context menus on any click
     if (contextMenu) setContextMenu(null);
@@ -3195,8 +3211,12 @@ export function HallCanvas() {
       const dx = Math.round((world.x - ref.x) * 10) / 10;
       const dy = Math.round((world.y - ref.y) * 10) / 10;
       if (dx === 0 && dy === 0) return;
-      moveObjects(selectedIds, dx, dy, { snapshot: ref.snapshot });
-      groupDragRef.current = { x: ref.x + dx, y: ref.y + dy, snapshot: false };
+      // Der Store begrenzt das Delta am Hallenrand. Den Bezugspunkt um das
+      // AUSGEFÜHRTE Delta weitersetzen — sonst verschiebt ein Maus-Rundweg über
+      // den Rand hinaus die Reihe dauerhaft (Cross-Review Astra 27.09.2026, P2-3).
+      const echt = moveObjects(selectedIds, dx, dy, { snapshot: ref.snapshot });
+      if (echt.dx === 0 && echt.dy === 0) return;
+      groupDragRef.current = { x: ref.x + echt.dx, y: ref.y + echt.dy, snapshot: false };
     } else if (tool === 'select' && dragObject) {
       // Drag-Threshold: erst nach 3 px Maus-Bewegung als Verschieben werten
       // (verhindert versehentliches Verschieben beim Klicken — Nico 22.05.).

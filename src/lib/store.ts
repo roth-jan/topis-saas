@@ -91,14 +91,17 @@ function applyAnchorRules(
 
   if (
     (merged.type === 'tor' || merged.type === 'rampe') &&
-    updates.aussenwandRef !== undefined &&
     merged.aussenwandRef &&
     updates.x === undefined &&
-    updates.y === undefined
+    updates.y === undefined &&
+    (updates.aussenwandRef !== undefined || updates.width !== undefined || updates.height !== undefined)
   ) {
-    // Lastenheft 3.1.2 — Abstand S/E im Panel direkt geändert: Tor muss
-    // auf der Wand entlangwandern (Niko Schritt 5). x/y aus dem neuen
-    // Anker neu berechnen, sonst ändert sich nur die Zahl, nicht das Tor.
+    // Zwei Anlässe, die Box aus dem Anker neu zu bauen:
+    //  - Abstand S/E wurde im Panel geändert → Tor wandert auf der Wand (Niko Schritt 5).
+    //  - Nur die GRÖSSE wurde geändert → die Box muss um denselben Ankerpunkt wachsen.
+    //    Sonst zeigt abstandS nicht mehr auf die Tormitte und das Tor springt beim nächsten
+    //    reanchorTore zurück (Cross-Review Astra 27.09.2026, P2-1). Das trifft vor allem
+    //    die Sammelaktion „20 Tore auf gleiche Breite bringen".
     // Rampen (3.1.2.2) genauso, nur nach außen (Astra-Test 20.09.2026, C2).
     const box = merged.type === 'tor'
       ? torBoxFromAnchor(merged.aussenwandRef, walls, merged.width, merged.height)
@@ -175,7 +178,7 @@ interface TopisStore extends TopisState {
   toggleSelectedId: (id: number) => void;
   selectObjectsInRect: (rect: { x: number; y: number; width: number; height: number }) => number[];
   updateObjects: (ids: number[], updates: Partial<TopisObject>) => void;
-  moveObjects: (ids: number[], dx: number, dy: number, opts?: { snapshot?: boolean }) => void;
+  moveObjects: (ids: number[], dx: number, dy: number, opts?: { snapshot?: boolean }) => { dx: number; dy: number };
   deleteObjects: (ids: number[]) => void;
   verteileObjects: (ids: number[], modus: VerteilModus, wert?: number) => void;
   richteObjectsAus: (ids: number[], modus: 'start' | 'mitte' | 'ende') => void;
@@ -776,41 +779,62 @@ export const useTopisStore = create<TopisStore>()(
   },
 
   moveObjects: (ids, dx, dy, opts) => {
-    if (ids.length === 0 || (dx === 0 && dy === 0)) return;
+    if (ids.length === 0 || (dx === 0 && dy === 0)) return { dx: 0, dy: 0 };
+    const state = get();
+    const idSet = new Set(ids);
+    const activeHall = state.halls.find((h) => h.id === state.activeHallId);
+
+    // Gemeinsamer Clamp: die ganze Auswahl wird so weit begrenzt, dass kein
+    // Innen-Objekt aus der Halle rutscht — sonst zerfällt beim Anschlag die
+    // Anordnung, weil einzelne Objekte stehenbleiben und andere weiterlaufen.
+    //
+    // Als Intervall-SCHNITT über alle Objekte, nicht als Kette nacheinander
+    // angewandter Grenzen: sonst überschreibt ein spätes Objekt die Grenze eines
+    // frühen, und dieselbe Auswahl wandert je nach Array-Reihenfolge in
+    // verschiedene Richtungen (Cross-Review Astra 27.09.2026, P2-2).
+    const begrenze = (delta: number, achse: 'x' | 'y'): number => {
+      if (!activeHall) return delta;
+      let lo = -Infinity;
+      let hi = Infinity;
+      for (const o of state.objects) {
+        if (!idSet.has(o.id) || isOutdoorType(o.type)) continue;
+        const pos = achse === 'x' ? o.x : o.y;
+        const size = achse === 'x' ? o.width : o.height;
+        const grenze = achse === 'x' ? activeHall.width : activeHall.height;
+        lo = Math.max(lo, -pos);
+        hi = Math.min(hi, grenze - size - pos);
+      }
+      // Unvereinbar (Auswahl breiter als die Halle oder Objekte liegen bereits
+      // außerhalb): lieber gar nicht bewegen als in die Gegenrichtung springen.
+      if (lo > hi) return 0;
+      return Math.max(lo, Math.min(hi, delta));
+    };
+
+    const effDx = begrenze(dx, 'x');
+    const effDy = begrenze(dy, 'y');
+    if (effDx === 0 && effDy === 0) return { dx: 0, dy: 0 };
+
     // Beim Ziehen auf der Leinwand nur im ERSTEN Frame einen Snapshot ablegen —
     // sonst füllt ein einziger Drag den kompletten Undo-Stack.
     if (opts?.snapshot !== false) get().pushSnapshot();
-    const idSet = new Set(ids);
-    set((state) => {
-      const activeHall = state.halls.find((h) => h.id === state.activeHallId);
-      const walls = activeHall ? deriveWalls(activeHall) : [];
-      // Gemeinsamer Clamp: die ganze Auswahl wird so weit begrenzt, dass kein
-      // Innen-Objekt aus der Halle rutscht — sonst zerfällt beim Anschlag die
-      // Anordnung, weil einzelne Objekte stehenbleiben und andere weiterlaufen.
-      let effDx = dx;
-      let effDy = dy;
-      if (activeHall) {
-        for (const o of state.objects) {
-          if (!idSet.has(o.id) || isOutdoorType(o.type)) continue;
-          effDx = Math.max(effDx, -o.x);
-          effDx = Math.min(effDx, activeHall.width - o.width - o.x);
-          effDy = Math.max(effDy, -o.y);
-          effDy = Math.min(effDy, activeHall.height - o.height - o.y);
-        }
-      }
-      if (effDx === 0 && effDy === 0) return {};
-
-      const objects = state.objects.map((o) => {
+    set((innerState) => {
+      const hall = innerState.halls.find((h) => h.id === innerState.activeHallId);
+      const walls = hall ? deriveWalls(hall) : [];
+      const objects = innerState.objects.map((o) => {
         if (!idSet.has(o.id)) return o;
         const updates = { x: o.x + effDx, y: o.y + effDy };
         return applyAnchorRules({ ...o, ...updates }, updates, walls);
       });
-      const selectedObject = state.selectedObject
-        ? (objects.find((o) => o.id === state.selectedObject!.id) ?? state.selectedObject)
+      const selectedObject = innerState.selectedObject
+        ? (objects.find((o) => o.id === innerState.selectedObject!.id) ?? innerState.selectedObject)
         : null;
       return { objects, selectedObject };
     });
     ids.forEach((id) => get().scheduleRecomputeForObject(id));
+    // Das TATSÄCHLICH ausgeführte Delta — der Canvas setzt seinen Drag-Bezugspunkt
+    // darauf, sonst verschiebt ein Maus-Rundweg über den Hallenrand die Objekte
+    // dauerhaft (Cross-Review Astra 27.09.2026, P2-3).
+    return { dx: effDx, dy: effDy };
   },
 
   deleteObjects: (ids) => {

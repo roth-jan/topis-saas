@@ -164,6 +164,26 @@ test.describe('UC-16 Mehrfachauswahl', () => {
     }
   });
 
+  test('Escape während des Aufziehens verwirft den Rahmen', async ({ page }) => {
+    // Cross-Review Astra 27.09.2026 (P2-4): Escape leerte die Auswahl, ließ den
+    // Rahmen aber stehen — beim Loslassen wurde erneut markiert.
+    await seedTorreihe(page, 20);
+    const m = await getCanvasMapping(page);
+    const a = worldToPagePx(m, 0, 2);
+    const b = worldToPagePx(m, 25, 6);
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 6 });
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+
+    const markiert = await page.evaluate(() =>
+      (window as unknown as { __topisStore: { getState: () => { selectedIds: number[] } } })
+        .__topisStore.getState().selectedIds.length);
+    expect(markiert).toBe(0);
+  });
+
   test('Strg+A markiert alles, Escape hebt auf', async ({ page }) => {
     await seedTorreihe(page, 20);
     await page.locator('canvas').first().click({ position: { x: 400, y: 300 } });
