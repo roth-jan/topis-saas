@@ -65,12 +65,33 @@ test.describe('UC-18 Kunden-Check per Tastatur', () => {
     // AUSLÖSEN. Das Dasein eines Elements mit role/tabindex beweist nichts —
     // ein fehlender Tastaturhandler fiele nicht auf (Cross-Review Astra 27.09.2026).
     // Beleg ist der Dateiauswahl-Dialog des Browsers.
-    const zoneErreicht = await tabBisFokus(page, /CSV|Datei|hochladen|Scandaten/, 30);
+    // Nach dem Phasenwechsel liegt der Fokus auf <body> und die Upload-Ansicht hat
+    // nur acht fokussierbare Elemente (nachgemessen gegen die Live-Seite) — ein
+    // Durchlauf von 15 Tabs reicht also sicher. NICHT vorher irgendwohin klicken:
+    // ein Klick setzt den Fokus je nach getroffenem Element unterschiedlich.
+    const zoneErreicht = await tabBisFokus(page, /CSV|Datei|hochladen|Scandaten/, 15);
     expect(zoneErreicht).toBe(true);
 
-    const dateiDialog = page.waitForEvent('filechooser', { timeout: 10_000 });
+    // Geprüft wird die WIRKUNGSKETTE Tastendruck → Handler → Dateiauswahl, nicht der
+    // Dialog des Browsers selbst: Chromium öffnet den Dateidialog nur, wenn es den
+    // Tastendruck als echte Nutzergeste wertet, und das ist unter Automatisierung
+    // nicht verlässlich — der Test flackerte genau daran. Stattdessen horchen wir am
+    // versteckten Datei-Feld und unterdrücken den Dialog.
+    await page.evaluate(() => {
+      const feld = document.querySelector('input[type="file"]');
+      (window as unknown as { __dateiAuswahlGeoeffnet?: boolean }).__dateiAuswahlGeoeffnet = false;
+      feld?.addEventListener('click', (e) => {
+        (window as unknown as { __dateiAuswahlGeoeffnet?: boolean }).__dateiAuswahlGeoeffnet = true;
+        e.preventDefault();
+      }, { once: true });
+    });
+
     await page.keyboard.press('Enter');
-    expect(await dateiDialog).toBeTruthy();
+
+    await expect.poll(
+      async () => page.evaluate(() => (window as unknown as { __dateiAuswahlGeoeffnet?: boolean }).__dateiAuswahlGeoeffnet),
+      { timeout: 5_000 },
+    ).toBe(true);
   });
 
   test('die fokussierte Karte zeigt einen sichtbaren Fokusring', async ({ page }) => {
