@@ -27,17 +27,15 @@ async function tabBisFokus(page: import('@playwright/test').Page, label: RegExp,
 }
 
 test.describe('UC-18 Kunden-Check per Tastatur', () => {
-  test('alle drei Einstiegskarten sind per Tab erreichbar', async ({ page }) => {
-    await gotoCheck(page);
-    await page.locator('body').press('Tab'); // Einstieg in die Tab-Reihenfolge
-
-    const labels = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
-        .map((el) => el.getAttribute('aria-label') ?? ''));
-
-    expect(labels.some((l) => /Scandaten/.test(l))).toBe(true);
-    expect(labels.some((l) => /Eckdaten/.test(l))).toBe(true);
-    expect(labels.some((l) => /Demo/.test(l))).toBe(true);
+  test('alle drei Einstiegskarten bekommen per Tab wirklich den Fokus', async ({ page }) => {
+    // Es genügt NICHT, role/tabindex im DOM zu zählen: Eine Karte in einem inert-
+    // Container trägt dieselben Attribute und ist trotzdem nicht erreichbar
+    // (Cross-Review Astra 27.09.2026). Also jede Karte einzeln antabben.
+    for (const karte of [/Scandaten/, /Eckdaten/, /Demo/]) {
+      await gotoCheck(page);
+      const erreicht = await tabBisFokus(page, karte);
+      expect(erreicht, `Karte ${karte} per Tab erreichbar`).toBe(true);
+    }
   });
 
   test('Enter auf der Eckdaten-Karte öffnet die Eingabe', async ({ page }) => {
@@ -56,12 +54,17 @@ test.describe('UC-18 Kunden-Check per Tastatur', () => {
     expect(gefunden).toBe(true);
 
     await page.keyboard.press(' ');
-    // Upload-Phase: die Ablagezone ist selbst wieder per Tastatur bedienbar
-    await expect.poll(async () =>
-      page.evaluate(() =>
-        Array.from(document.querySelectorAll('[role="button"][tabindex="0"]'))
-          .some((el) => /CSV|Datei|hochladen|ablegen/i.test(el.getAttribute('aria-label') ?? el.textContent ?? ''))),
-    { timeout: 10_000 }).toBe(true);
+
+    // Die Ablagezone muss per Tastatur nicht nur ERREICHBAR sein, sondern auch
+    // AUSLÖSEN. Das Dasein eines Elements mit role/tabindex beweist nichts —
+    // ein fehlender Tastaturhandler fiele nicht auf (Cross-Review Astra 27.09.2026).
+    // Beleg ist der Dateiauswahl-Dialog des Browsers.
+    const zoneErreicht = await tabBisFokus(page, /CSV|Datei|hochladen|Scandaten/, 30);
+    expect(zoneErreicht).toBe(true);
+
+    const dateiDialog = page.waitForEvent('filechooser', { timeout: 10_000 });
+    await page.keyboard.press('Enter');
+    expect(await dateiDialog).toBeTruthy();
   });
 
   test('die fokussierte Karte zeigt einen sichtbaren Fokusring', async ({ page }) => {
@@ -69,18 +72,27 @@ test.describe('UC-18 Kunden-Check per Tastatur', () => {
     const gefunden = await tabBisFokus(page, /Demo/);
     expect(gefunden).toBe(true);
 
-    // focus-visible:ring-2 muss am fokussierten Element greifen — sonst sieht ein
-    // Tastaturnutzer nicht, wo er steht.
-    const ring = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement | null;
-      if (!el) return { klasse: '', schatten: '' };
-      return {
-        klasse: el.className ?? '',
-        schatten: window.getComputedStyle(el).boxShadow,
-      };
-    });
-    expect(ring.klasse).toContain('focus-visible:ring-2');
-    expect(ring.schatten).not.toBe('none');
+    // Gemessen wird, was der Mensch SIEHT — nicht, was im CSS steht.
+    // Ein Klassenname beweist nicht, dass die Regel wirkt, und „irgendein Schatten"
+    // bestünde die Prüfung auch bei einer Karte mit dauerhaftem Zierschatten
+    // (Cross-Review Astra 27.09.2026). Umgekehrt zeichnet die Karte ihren Ring gar
+    // nicht über box-shadow, eine CSS-Prüfung ginge also auch fälschlich schief.
+    // Deshalb: Bild der Karte ohne Fokus gegen Bild mit Fokus.
+    const karte = page.locator('[aria-label*="Demo ansehen"]');
+    const box = await karte.boundingBox();
+    expect(box).not.toBeNull();
+    const ausschnitt = { x: box!.x - 8, y: box!.y - 8, width: box!.width + 16, height: box!.height + 16 };
+
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.waitForTimeout(150);
+    const ohneFokus = await page.screenshot({ clip: ausschnitt });
+
+    const wieder = await tabBisFokus(page, /Demo/);
+    expect(wieder).toBe(true);
+    await page.waitForTimeout(150);
+    const mitFokus = await page.screenshot({ clip: ausschnitt });
+
+    expect(Buffer.compare(ohneFokus, mitFokus)).not.toBe(0);
   });
 
   test('Enter auf der Demo-Karte rechnet die Beispielhalle durch', async ({ page }) => {

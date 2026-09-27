@@ -44,37 +44,60 @@ async function seedStellplatz(page: import('@playwright/test').Page, breite = 12
 }
 
 test.describe('UC-17 Serie ziehen und Drehen', () => {
-  test('B3 — Alt+Ziehen legt eine Reihe von Kopien an, ohne Lücke', async ({ page }) => {
+  test('B3 — Alt+Ziehen legt genau die erwartete Reihe von Kopien an', async ({ page }) => {
     await gotoTopis(page);
     await seedStellplatz(page, 6, 3);
     await setView(page);
 
+    // Sollwerte VORHER aus der Serienregel ausrechnen, nicht hinterher aus dem
+    // Ergebnis herleiten — sonst bestätigt der Test sich selbst und bliebe auch
+    // dann grün, wenn nur eine einzige Kopie entsteht (Cross-Review Astra 27.09.2026).
+    // Regel im Canvas: Schritt = Breite + 1 m Fuge, Anzahl = floor(|dx| / Schritt) + 1,
+    // gemessen vom MITTELPUNKT des Originals bis zum Cursor.
+    const ORIG_X = 10, ORIG_Y = 20, BREITE = 6, SCHRITT = BREITE + 1;
+    const ZIEL_X = 45;
+    const dx = ZIEL_X - (ORIG_X + BREITE / 2);
+    const erwarteteAnzahl = Math.floor(dx / SCHRITT) + 1;
+    const erwartetePositionen = Array.from({ length: erwarteteAnzahl }, (_, i) => ORIG_X + i * SCHRITT);
+    expect(erwarteteAnzahl).toBeGreaterThan(2); // der Aufbau muss überhaupt eine Reihe ergeben
+
     const m = await getCanvasMapping(page);
-    // Vom Mittelpunkt des Stellplatzes (13|21.5) nach rechts über mehrere Platzbreiten
-    const start = worldToPagePx(m, 13, 21.5);
-    const ende = worldToPagePx(m, 45, 21.5);
+    const start = worldToPagePx(m, ORIG_X + BREITE / 2, ORIG_Y + 1.5);
+    const ende = worldToPagePx(m, ZIEL_X, ORIG_Y + 1.5);
+    // Bildausschnitt rechts vom Original — dort müssen die Geister-Kopien erscheinen.
+    const vorschauRegion = {
+      x: Math.round(start.x + 20), y: Math.round(start.y - 30),
+      width: Math.round(ende.x - start.x - 20), height: 60,
+    };
+
+    const vorher = await page.screenshot({ clip: vorschauRegion });
 
     await page.keyboard.down('Alt');
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     await page.mouse.move((start.x + ende.x) / 2, start.y, { steps: 6 });
     await page.mouse.move(ende.x, ende.y, { steps: 6 });
+
+    // Noch GEHALTEN: die Vorschau muss jetzt sichtbar sein. Ohne diese Prüfung
+    // bliebe der Test grün, wenn die Geister-Kopien gar nicht gezeichnet würden.
+    const waehrend = await page.screenshot({ clip: vorschauRegion });
+    expect(Buffer.compare(vorher, waehrend)).not.toBe(0);
+    // Erst nach dem Loslassen liegen die Kopien im Datenbestand
+    expect(await objekte(page, 'stellplatz')).toHaveLength(1);
+
     await page.mouse.up();
     await page.keyboard.up('Alt');
 
     await expect.poll(async () => (await objekte(page, 'stellplatz')).length, { timeout: 5_000 })
-      .toBeGreaterThan(1);
+      .toBe(erwarteteAnzahl);
 
     const plaetze = await objekte(page, 'stellplatz');
-    // Alle liegen auf derselben Höhe und in gleichmäßigem Achsabstand (Breite + 1 m Fuge)
-    for (const p of plaetze) expect(p.y).toBeCloseTo(20, 1);
-    for (let i = 1; i < plaetze.length; i++) {
-      expect(plaetze[i].x - plaetze[i - 1].x).toBeCloseTo(7, 1);
-    }
-    // Keine Kopie fehlt: die Reihe ist lückenlos vom Original bis zum letzten Platz
-    const spanne = plaetze[plaetze.length - 1].x - plaetze[0].x;
-    expect(plaetze.length).toBe(Math.round(spanne / 7) + 1);
-    // Und keine doppelten IDs (der Batch-Import vergibt frische Nummern)
+    plaetze.forEach((p, i) => {
+      expect(p.x).toBeCloseTo(erwartetePositionen[i], 1);
+      expect(p.y).toBeCloseTo(ORIG_Y, 1);
+      expect(p.width).toBeCloseTo(BREITE, 1);
+    });
+    // Keine doppelten IDs (der Batch-Import vergibt frische Nummern)
     const ids = plaetze.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
@@ -92,8 +115,14 @@ test.describe('UC-17 Serie ziehen und Drehen', () => {
     await page.mouse.move(ende.x, ende.y, { steps: 8 });
     await page.mouse.up();
 
+    // Konkrete Zielposition prüfen, nicht bloß „irgendwo weiter rechts": Der Greifpunkt
+    // sitzt 3 m / 1.5 m innerhalb des Objekts, dieser Versatz muss erhalten bleiben.
+    // Ein Drag, der das Objekt auf eine falsche Stelle setzt, fiele sonst nicht auf
+    // (Cross-Review Astra 27.09.2026).
     await expect.poll(async () => (await objekte(page, 'stellplatz'))[0].x, { timeout: 5_000 })
-      .toBeGreaterThan(20);
+      .toBeCloseTo(42, 1);
+    const [verschoben] = await objekte(page, 'stellplatz');
+    expect(verschoben.y).toBeCloseTo(20, 1);
     expect(await objekte(page, 'stellplatz')).toHaveLength(1);
   });
 
@@ -122,6 +151,8 @@ test.describe('UC-17 Serie ziehen und Drehen', () => {
     await seedStellplatz(page, 12, 3);
     await selectObjectByName(page, 'SP 1');
 
+    const vorher = (await objekte(page, 'stellplatz'))[0];
+
     // Nach jedem Tastendruck auf den Zustand warten statt auf die Uhr — sonst
     // geht ein 'r' verloren, bevor React die vorige Drehung verarbeitet hat.
     for (let i = 1; i <= 4; i++) {
@@ -134,5 +165,10 @@ test.describe('UC-17 Serie ziehen und Drehen', () => {
     expect(o.width).toBe(12);
     expect(o.height).toBe(3);
     expect(o.rotation).toBe(0);
+    // Auch die POSITION muss wieder stimmen. Ohne diese Prüfung bliebe der Test
+    // grün, wenn eine der vier Drehungen das Objekt nebenbei verschiebt
+    // (Cross-Review Astra 27.09.2026).
+    expect(o.x).toBeCloseTo(vorher.x, 2);
+    expect(o.y).toBeCloseTo(vorher.y, 2);
   });
 });
