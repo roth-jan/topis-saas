@@ -353,6 +353,7 @@ npm run build                    # Static Export nach out/ (Default-basePath /to
 - Canvas rendert ALLE Elemente - neue Typen brauchen: Rendering + Hit-Detection + Properties Panel
 - Bei neuen selektierbaren Elementen: gegenseitigen Ausschluss in ALLEN select*-Actions beachten
 - Heatmap-Daten (heatmapConfig, betriebsAnalyse) MÜSSEN in Canvas useCallback/useEffect Deps stehen
+- **Mehrfachauswahl ist Maus-only** (Rahmen aufziehen, Shift-Klick, Gruppen-Drag). Auf Touch belegt ein Finger das Verschieben der Ansicht — bewusste Grenze, TOPIS wird am PC bedient. Ersatzweg auf Touch: „alle markieren" je Typgruppe in der ObjectList, dann das Sammel-Panel (MultiObjectProperties).
 
 ## Cloud-Backend & Daten-Migration (seit 08.06.2026)
 

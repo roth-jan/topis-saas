@@ -163,6 +163,7 @@ MA-Stunden und FTE **verdoppelt**.
 - Impressum/Datenschutz verlinken auf `#` (Rechtstext steht aus).
 - Kennzahlen-Seite kann Vorlagen-Werte zeigen (Kunden-Check schreibt nicht in die Stores).
 - Multi-Halle (mehrere Hallen auf einem Gelände) hat keine UI.
+- **Mehrfachauswahl auf Touch-Geräten (seit 27.09.2026):** Auf iPad/Tablet gibt es keinen Auswahlrahmen — ein Finger verschiebt die Ansicht, kurzes Tippen wählt ein einzelnes Objekt, und eine Shift-Taste zum Dazunehmen fehlt. Bewusst so gelassen: TOPIS wird am PC bedient (Hallenplanung mit Bauplan daneben). Der Ersatzweg funktioniert auch per Finger: „alle markieren“ je Typgruppe in der Objektliste, danach das komplette Sammel-Panel rechts.
 - Format-übertragen, Druck-/Bildschirm-Sichtbarkeit, prozentuale Relationsverteilung: nur im Datenmodell, noch ohne Bedienelement.
 
 ---
