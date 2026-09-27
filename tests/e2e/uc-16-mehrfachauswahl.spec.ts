@@ -13,7 +13,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { gotoTopis, patchLayoutState, readLayoutState, loadHallWithWalls } from './helpers/topisPage';
-import { getCanvasMapping, worldToPagePx } from './helpers/canvas';
+import { getCanvasMapping, worldToPagePx, setView } from './helpers/canvas';
 
 interface Tor {
   id: number;
@@ -81,8 +81,13 @@ test.describe('UC-16 Mehrfachauswahl', () => {
 
   test('Auswahlrahmen über die Torreihe markiert mehrere Tore', async ({ page }) => {
     await seedTorreihe(page, 20);
-    // Rahmen über die ersten Tore: x 0…25 m, y -2…6 m
-    await ziehRahmen(page, { x: 0, y: 2 }, { x: 25, y: 6 });
+    await setView(page);
+    // Rahmen über die ersten Tore. Die Tore liegen an der Nordwand zwischen y = 0
+    // und y = 1.5 — der Rahmen muss diesen Streifen schneiden. Der Startpunkt muss
+    // dabei mehr als 2 m von jedem Objekt entfernt liegen: so groß ist die
+    // Fangtoleranz der Hit-Erkennung, sonst packt der Klick das Tor und zieht es,
+    // statt einen Rahmen aufzuziehen.
+    await ziehRahmen(page, { x: 1, y: -4 }, { x: 25, y: 4 });
 
     await expect.poll(async () =>
       page.evaluate(() => (window as unknown as { __topisStore: { getState: () => { selectedIds: number[] } } })
@@ -168,9 +173,10 @@ test.describe('UC-16 Mehrfachauswahl', () => {
     // Cross-Review Astra 27.09.2026 (P2-4): Escape leerte die Auswahl, ließ den
     // Rahmen aber stehen — beim Loslassen wurde erneut markiert.
     await seedTorreihe(page, 20);
+    await setView(page);
     const m = await getCanvasMapping(page);
-    const a = worldToPagePx(m, 0, 2);
-    const b = worldToPagePx(m, 25, 6);
+    const a = worldToPagePx(m, 1, -4);
+    const b = worldToPagePx(m, 25, 4);
     await page.mouse.move(a.x, a.y);
     await page.mouse.down();
     await page.mouse.move(b.x, b.y, { steps: 6 });
