@@ -8,8 +8,10 @@ export const metadata: Metadata = { title: 'Datenschutzerklärung · TOPIS' };
 // Aufbau wie roth-logistikberatung.de/datenschutz, beschreibt NUR den tatsächlichen Stack
 // (Stand 22.09.2026, per grep geprüft): statischer Export auf Hetzner (Nürnberg), keine Cookies,
 // kein Tracking, Schriften selbst gehostet (next/font), Hallen-Check ohne Netzwerkaufruf.
-// Externe Dienste nur: Supabase (Login/Cloud, eu-central-1) und OpenAI gpt-4o-mini über die
-// Edge Function nl-to-layout (KI-Hallenbau). Kommt ein Dienst dazu → hier ergänzen.
+// Externe Dienste nur: Supabase (Login/Cloud, eu-central-1), OpenAI gpt-4o-mini über die
+// Edge Function nl-to-layout (KI-Hallenbau) und seit 29.09.2026 Sentry (Fehlerüberwachung,
+// EU-Region Frankfurt; überträgt NUR im Fehlerfall, ohne IP, ohne Bildschirmaufzeichnung,
+// ohne Konsolen-Inhalte — siehe components/system/SentryInit.tsx). Kommt ein Dienst dazu → hier ergänzen.
 export default function DatenschutzPage() {
   return (
     <LegalPage title="Datenschutzerklärung" stand="September 2026">
@@ -28,7 +30,7 @@ export default function DatenschutzPage() {
       <ul>
         <li><strong>Hallen-Check, Prozessmodell und Hallenplan laufen vollständig in Ihrem Browser.</strong> Hochgeladene Scandaten, Eckdaten und Hallenpläne werden nicht an uns übertragen.</li>
         <li>Es werden <strong>keine Cookies</strong> gesetzt und <strong>keine Analyse-, Tracking- oder Werbedienste</strong> eingesetzt.</li>
-        <li>Personenbezogene Daten verarbeiten wir nur, wenn Sie ein <strong>Benutzerkonto</strong> anlegen, die <strong>KI-Beschreibung</strong> einer Halle nutzen oder uns <strong>per E-Mail</strong> schreiben – sowie in Form technisch notwendiger Server-Logfiles.</li>
+        <li>Personenbezogene Daten verarbeiten wir nur, wenn Sie ein <strong>Benutzerkonto</strong> anlegen, die <strong>KI-Beschreibung</strong> einer Halle nutzen oder uns <strong>per E-Mail</strong> schreiben – sowie in Form technisch notwendiger Server-Logfiles und, falls ein Programmfehler auftritt, einer automatischen <strong>Fehlermeldung ohne Ihre IP-Adresse</strong> (Abschnitt&nbsp;9).</li>
       </ul>
 
       <h2>3. Hosting und Server-Logfiles</h2>
@@ -110,14 +112,28 @@ export default function DatenschutzPage() {
         Daten, wenn die Anfrage erledigt ist und keine gesetzlichen Aufbewahrungsfristen entgegenstehen.
       </p>
 
-      <h2>9. Keine Cookies, kein Tracking, keine externen Dienste beim Aufruf</h2>
+      <h2>9. Fehlerüberwachung</h2>
+      <p>
+        Damit wir Programmfehler bemerken, ohne dass Sie uns schreiben müssen, meldet die Anwendung Abstürze
+        automatisch an den Dienst Sentry (Functional Software,&nbsp;Inc.). Die Daten werden in einem Rechenzentrum
+        in Frankfurt am Main verarbeitet (EU-Region). Übertragen wird <strong>nur im Fehlerfall</strong> und nur,
+        was zur Einordnung nötig ist: die Fehlermeldung mit technischer Herkunft, die aufgerufene Adresse, Browser
+        und Betriebssystem sowie die Kennung der eingesetzten Programmfassung. <strong>Ihre IP-Adresse wird nicht
+        gespeichert</strong>, es wird <strong>kein Bildschirminhalt aufgezeichnet</strong>, und Inhalte, die Sie in
+        der Anwendung eingeben oder planen, werden nicht übermittelt. Rechtsgrundlage ist Art.&nbsp;6 Abs.&nbsp;1
+        lit.&nbsp;f DSGVO; unser berechtigtes Interesse ist der sichere und fehlerfreie Betrieb der Anwendung.
+        Soweit ein Zugriff aus den USA nicht ausgeschlossen werden kann, erfolgt dieser auf Grundlage der
+        EU-Standardvertragsklauseln.
+      </p>
+
+      <h2>10. Keine Cookies, kein Tracking, keine externen Dienste beim Aufruf</h2>
       <ul>
         <li>Es werden <strong>keine Cookies</strong> gesetzt; ein Cookie-Banner ist daher nicht erforderlich.</li>
         <li>Es kommen <strong>keine Webanalyse-Dienste</strong> (z.&nbsp;B. Google Analytics), <strong>keine Tag-Manager</strong> und <strong>kein Profiling</strong> zum Einsatz.</li>
         <li>Schriftarten werden von unserem eigenen Server ausgeliefert; es werden <strong>keine externen Schriftarten-, Karten- oder Captcha-Dienste</strong> nachgeladen.</li>
       </ul>
 
-      <h2>10. Ihre Rechte</h2>
+      <h2>11. Ihre Rechte</h2>
       <p>Im Rahmen der gesetzlichen Bestimmungen haben Sie jederzeit das Recht auf:</p>
       <ul>
         <li><strong>Auskunft</strong> über Ihre gespeicherten Daten (Art.&nbsp;15 DSGVO)</li>
@@ -133,7 +149,7 @@ export default function DatenschutzPage() {
         Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Kavalleriestraße 2–4, 40213 Düsseldorf.
       </p>
 
-      <h2>11. Aktualität</h2>
+      <h2>12. Aktualität</h2>
       <p>
         Es gilt die jeweils aktuelle, in dieser Anwendung veröffentlichte Fassung. Wenn wir TOPIS weiterentwickeln
         oder sich rechtliche Vorgaben ändern, passen wir diese Datenschutzerklärung an.
