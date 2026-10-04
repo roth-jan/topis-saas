@@ -1,5 +1,6 @@
 'use client';
 
+import { protokolliere } from '@/lib/nutzung';
 import { useState, useMemo } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
@@ -175,6 +176,7 @@ export function WegeberechnungDialog() {
     setWegeCoverage(coverage);
     if (realDists.length > 0) {
       setVerteilweg(realDists.reduce((a, b) => a + b, 0) / realDists.length);
+      protokolliere('verteilweg_gesetzt', { quelle: 'wegeberechnung', abdeckung: coverage });
     } else {
       setVerteilweg(0);
     }
@@ -246,6 +248,7 @@ export function WegeberechnungDialog() {
       const abdeckung = totalColli / (totalColli + fallbackColli);
       setVerteilweg(gewVerteilweg);
       setWegeCoverage(abdeckung);
+      protokolliere('verteilweg_gesetzt', { quelle: 'gewichtet', abdeckung });
       if (abdeckung < 0.8) {
         toast.warning(`Gewichteter Verteilweg ${gewVerteilweg.toFixed(1)} m aus nur ${Math.round(abdeckung * 100)} % der Colli (${fallbackColli} Colli ohne echten Weg blieben unberücksichtigt) — nicht belastbar.`, { duration: 8000 });
       } else {

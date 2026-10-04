@@ -40,6 +40,7 @@ import { StartTueren, type CockpitVorbelegung } from './StartTueren';
 import { NeuerMonatDialog } from './NeuerMonatDialog';
 import { VersionenDialog } from './VersionenDialog';
 import { VerteilwegBruecke } from './VerteilwegBruecke';
+import { protokolliere } from '@/lib/nutzung';
 
 /**
  * Prozessmodell-Cockpit: TOPIS als BESSERE Excel.
@@ -194,10 +195,13 @@ export function CockpitWorkspace() {
     }
     try {
       const buf = await file.arrayBuffer();
-      if (uebernehmenAusDatei(buf, file.name)) {
+      const ok = uebernehmenAusDatei(buf, file.name);
+      protokolliere('pm_excel_import', { ok });
+      if (ok) {
         toast.success('Excel in natives TOPIS-Modell übernommen — ab jetzt voll editierbar.');
       }
     } catch (err) {
+      protokolliere('pm_excel_import', { ok: false });
       toast.error('Import fehlgeschlagen: ' + (err as Error).message);
     } finally {
       if (fileRef.current) fileRef.current.value = '';
@@ -206,6 +210,7 @@ export function CockpitWorkspace() {
 
   /** UX-Paket 2: Layout-Verteilweg in alle „ø Verteilweg"-Knoten übernehmen. */
   const verteilwegUebernehmen = (wegM: number) => {
+    protokolliere('pm_verteilweg_uebernommen');
     setNativ((m) => {
       if (!m) return m;
       let neu = m;
@@ -220,10 +225,12 @@ export function CockpitWorkspace() {
   // --- Editier-Handler (natives Modell) ---
   const editGroesse = (g: ModellGroesse, value: number) => {
     if (!g.nativId) return;
+    protokolliere('pm_wert_geaendert');
     setNativ((m) => (m ? setzeKnotenWert(m, g.nativId!, value) : m));
   };
   const editSchritt = (s: ModellSchritt, feld: SchrittFeld, wert: string | number | null) => {
     if (!s.nativId) return;
+    protokolliere('pm_schritt_geaendert', { feld: String(feld) });
     setNativ((m) => (m ? setzeSchrittFeld(m, s.nativId!, feld, wert) : m));
   };
   const schrittNeu = (blockNativId: string, nachSchrittNativId?: string) => {
@@ -236,6 +243,7 @@ export function CockpitWorkspace() {
   };
 
   const resetEdits = () => {
+    protokolliere('pm_zurueckgesetzt');
     if (importStandRef.current) setNativ(structuredClone(importStandRef.current));
   };
 
@@ -248,6 +256,7 @@ export function CockpitWorkspace() {
     }
     try {
       const diffs = exportDiffs(nativ, importStandRef.current);
+      protokolliere('pm_excel_export', { aenderungen: diffs.length });
       const { datei, ersetzteZellen, nichtGefunden } = exportiereMitOverrides(rawFileRef.current, diffs);
       if (nichtGefunden.length > 0) {
         toast.warning(`${nichtGefunden.length} Zelle(n) konnten nicht zurückgeschrieben werden.`);
@@ -292,6 +301,7 @@ export function CockpitWorkspace() {
       // Das NATIVE Modell (aktueller Stand inkl. Ihrer Änderungen) ist die
       // gespeicherte Wahrheit; die Original-Datei geht als Beleg mit.
       const { row, versionFehler } = await saveProzessmodellMonat(rawFileRef.current, fileName, view, nativ);
+      protokolliere('pm_cloud_gespeichert', { mit_datei: Boolean(rawFileRef.current), fremd: fremdGeladen });
       toast.success(`Monat ${row.monat} gespeichert (TOPIS-Modell${rawFileRef.current ? ' + Original-Datei' : ''})`);
       if (versionFehler) {
         toast.warning(`Achtung: Versionshistorie konnte nicht geschrieben werden (${versionFehler}) — dieser Stand fehlt im Verlauf.`);
@@ -311,6 +321,7 @@ export function CockpitWorkspace() {
   const ladeMonat = async (m: CloudProzessmodellMonat) => {
     if (!verlustOk(`Monat ${m.monat} laden`)) return;
     const seq = ++ladeSeqRef.current;
+    protokolliere('pm_modell_geladen', { art: 'cloud', fremd: m.owner !== uid });
     try {
       if (m.modell) {
         // Natives Modell ist die Wahrheit; Datei (falls da) nur für Export nachladen.
@@ -411,6 +422,7 @@ export function CockpitWorkspace() {
                       modell={nativ}
                       onNeuerMonat={(m) => {
                         if (!verlustOk(`neuen Monat ${m.monat} anlegen`)) return;
+                        protokolliere('pm_modell_geladen', { art: 'neuer_monat' });
                         uebernehmenNativ(m);
                         toast.success(`Monat ${m.monat} angelegt — Mengen prüfen, dann speichern.`);
                       }}
@@ -449,6 +461,7 @@ export function CockpitWorkspace() {
               vorbelegung={vorbelegung}
               onExcel={() => fileRef.current?.click()}
               onModell={(m) => {
+                protokolliere('pm_modell_geladen', { art: 'vorlage' });
                 uebernehmenNativ(m);
                 toast.success(`Modell „${m.name}" erzeugt — Mengen, Parameter und Schritte sind frei anpassbar.`);
               }}
@@ -478,7 +491,10 @@ export function CockpitWorkspace() {
               <VerteilwegBruecke
                 modell={view}
                 onUebernehmen={verteilwegUebernehmen}
-                onSchliessen={() => setBrueckeZu(true)}
+                onSchliessen={() => {
+                  protokolliere('pm_verteilweg_verworfen');
+                  setBrueckeZu(true);
+                }}
               />
             )}
             {/* KPI-Zeile */}
@@ -534,6 +550,7 @@ export function CockpitWorkspace() {
         onClose={() => setVersionenMonat(null)}
         onWiederherstellen={(m, v) => {
           if (!verlustOk('Version wiederherstellen')) return;
+          protokolliere('pm_modell_geladen', { art: 'version' });
           uebernehmenNativ(m);
           setVersionenMonat(null);
           toast.success(

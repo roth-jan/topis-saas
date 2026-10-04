@@ -5,6 +5,7 @@ import { useTopisStore } from '@/lib/store';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { useBetriebsdatenStore } from '@/lib/betriebsdaten-store';
 import { getTemplate, getTemplateParameter } from '@/lib/data/prozessmodell-templates';
+import { markiereLadevorgang, protokolliere } from '@/lib/nutzung';
 
 /**
  * Registry aller verfügbaren ProjektVorlagen.
@@ -25,6 +26,8 @@ export const PROJEKT_VORLAGEN: ProjektVorlage[] = [
 export function ladeProjektVorlage(id: string): ProjektVorlage | undefined {
   const vorlage = PROJEKT_VORLAGEN.find(v => v.id === id);
   if (!vorlage) return undefined;
+  markiereLadevorgang();
+  protokolliere('vorlage_geladen', { vorlage: vorlage.id });
 
   // 1. Layout laden (Halle + Objekte + Gänge)
   const { resetState, updateHall, addObject, setGaenge, clearSimAuftraege } = useTopisStore.getState();

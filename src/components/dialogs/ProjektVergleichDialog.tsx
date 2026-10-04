@@ -1,5 +1,6 @@
 'use client';
 
+import { markiereLadevorgang } from '@/lib/nutzung';
 import { useState } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
@@ -97,6 +98,7 @@ export function ProjektVergleichDialog() {
   // Handle load snapshot
   const handleLoadSnapshot = (type: 'vorher' | 'nachher') => {
     if (confirm(`Aktuellen Zustand durch "${type === 'vorher' ? 'Vorher' : 'Nachher'}" ersetzen?`)) {
+      markiereLadevorgang();
       loadSnapshot(type);
       toast.success(`${type === 'vorher' ? 'Vorher' : 'Nachher'}-Zustand geladen`);
     }

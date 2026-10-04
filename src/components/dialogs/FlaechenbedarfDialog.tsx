@@ -1,5 +1,6 @@
 'use client';
 
+import { protokolliere } from '@/lib/nutzung';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -240,6 +241,7 @@ export function FlaechenbedarfDialog() {
                       variant="outline"
                       onClick={() => {
                         useProzessmodellStore.getState().setVerteilweg(verteilwegAnalyse.gesamtGewichteterWegM);
+                        protokolliere('verteilweg_gesetzt', { quelle: 'flaechenbedarf' });
                         toast.success(
                           `Verteilweg ${verteilwegAnalyse.gesamtGewichteterWegM.toFixed(1)}m in Prozessmodell übernommen`
                         );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { Fachbegriff } from '@/components/ui/fachbegriff';
 import { generateRecordsFromEckdaten, generateDemoRecords } from '@/lib/eckdaten-analyse';
 import { datum } from '@/lib/format';
 import { SiteFooter } from '@/components/SiteFooter';
+import { markiereLadevorgang, protokolliere } from '@/lib/nutzung';
 import type { Eckdaten } from '@/lib/eckdaten-analyse';
 
 import type { ScandatenRecord } from '@/types/scandaten';
@@ -75,6 +76,14 @@ export default function CheckPage() {
   const [analyseSchritt, setAnalyseSchritt] = useState(0);
   const [ergebnis, setErgebnis] = useState<AnalyseErgebnis | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Nutzungsprotokoll: welche Stufe des Checks erreicht wurde (Einstieg, Analyse,
+  // Ergebnis, Fehler) — Start-Auswahl ohne Fehler ist schon „seite_geoeffnet".
+  useEffect(() => {
+    if (phase === 'choose' && !error) return;
+    protokolliere('check_phase', { phase, quelle: datenquelle, fehler: Boolean(error) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur Phasenwechsel zählen
+  }, [phase]);
   const [dateiName, setDateiName] = useState<string>('');
   const [dateiInfo, setDateiInfo] = useState<string>('');
 
@@ -350,6 +359,8 @@ export default function CheckPage() {
 
   // ============ Editor-Übernahme ============
   const handleOpenEditor = useCallback(() => {
+    markiereLadevorgang();
+    protokolliere('check_editor_geoeffnet', { quelle: datenquelle });
     if (!ergebnis) return;
     const { layout, records, analyse } = ergebnis;
 

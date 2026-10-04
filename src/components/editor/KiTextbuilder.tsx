@@ -5,6 +5,7 @@
 // Pfad für Fuzzy-Sprache wird später eingehängt (gleiche Datenform LayoutParams).
 // Spec: topis/SPEC-KI-TEXTBUILDER-2026-07-25.md
 
+import { markiereLadevorgang, protokolliere } from '@/lib/nutzung';
 import { useState } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { validateParams, paramsToLayout, findLayoutCollisions, FLAECHEN, type ValidationResult } from '@/lib/nl-layout';
@@ -63,6 +64,8 @@ export function KiTextbuilder() {
   const apply = () => {
     if (!result?.ok || !built) return;
     if (dropped > 0 && !confirmPartial) return; // Teilresultat muss bestätigt werden
+    protokolliere('ki_textbuilder', { objekte: built.objects.length, verworfen: dropped });
+    markiereLadevorgang(); // die KI-Objekte nicht zusätzlich als „eingefügt" zählen
     resetState(); // v1: „createHall" ersetzt das aktuelle Layout (wie der Assistent).
     updateHall(1, { width: built.hall.width, height: built.hall.height, name: built.hall.name });
     const created = addObjects(built.objects);

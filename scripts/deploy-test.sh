@@ -15,8 +15,11 @@ WT="$(mktemp -d)/gh-pages-wt"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 
 echo "→ TEST-Deploy von Branch '$BRANCH' nach GitHub Pages …"
-echo "→ Build (Default-basePath /topis-saas) …"
-npm run build
+echo "→ Build (Default-basePath /topis-saas, Nutzungsprotokoll als 'test') …"
+# Nutzungsprotokoll: Test-Ereignisse getrennt von Produktion markieren (src/lib/nutzung.ts).
+NEXT_PUBLIC_SENTRY_RELEASE="topis@$(git rev-parse --short HEAD)" \
+  NEXT_PUBLIC_TOPIS_UMGEBUNG=test \
+  npm run build
 
 echo "→ gh-pages-Worktree + rsync …"
 rm -rf "$WT"

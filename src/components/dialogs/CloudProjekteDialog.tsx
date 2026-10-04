@@ -1,5 +1,6 @@
 'use client';
 
+import { protokolliere, protokolliereVorNeuladen } from '@/lib/nutzung';
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth';
 import {
@@ -49,6 +50,7 @@ export function CloudProjekteDialog({
     const name = newName.trim() || 'Neues Layout';
     try {
       await createLayout(name);
+      protokolliere('layout_cloud_gespeichert', { neu: true });
       setNewName('');
       toast.success(`„${name}" in Cloud gespeichert`);
       refresh();
@@ -59,12 +61,13 @@ export function CloudProjekteDialog({
     try {
       const data = await loadLayout(l.id);
       toast.success(`„${l.name}" wird geladen…`);
+      await protokolliereVorNeuladen('layout_cloud_geladen', { fremd: l.owner !== user?.id });
       applyLayoutData(data); // reloaded die Seite
     } catch (e) { toast.error('Laden fehlgeschlagen: ' + (e as Error).message); }
   };
 
   const handleSave = async (l: CloudLayout) => {
-    try { await saveLayout(l.id); toast.success(`„${l.name}" aktualisiert`); refresh(); }
+    try { await saveLayout(l.id); protokolliere('layout_cloud_gespeichert', { neu: false }); toast.success(`„${l.name}" aktualisiert`); refresh(); }
     catch (e) { toast.error('Speichern fehlgeschlagen: ' + (e as Error).message); }
   };
 

@@ -21,6 +21,7 @@ echo "→ Build (basePath='', Fehlerüberwachung an, Stand $RELEASE)"
 TOPIS_BASE_PATH="" \
   NEXT_PUBLIC_SENTRY_DSN="$SENTRY_DSN_TOPIS" \
   NEXT_PUBLIC_SENTRY_RELEASE="$RELEASE" \
+  NEXT_PUBLIC_TOPIS_UMGEBUNG=prod \
   npm run build
 
 echo "→ Upload nach /opt/topis/www"

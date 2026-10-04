@@ -1,5 +1,6 @@
 'use client';
 
+import { protokolliere } from '@/lib/nutzung';
 import { useState } from 'react';
 import { useTopisStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
@@ -100,6 +101,7 @@ export function HallenAssistentDialog() {
   };
 
   const applyLayout = () => {
+    protokolliere('assistent_fertig');
     // Reset current state
     resetState();
 

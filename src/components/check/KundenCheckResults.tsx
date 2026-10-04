@@ -1,5 +1,6 @@
 'use client';
 
+import { protokolliere } from '@/lib/nutzung';
 import type { Hall, TopisObject, Gang } from '@/types/topis';
 import type { ScandatenRecord } from '@/types/scandaten';
 import type { GesamtErgebnis } from '@/types/prozessmodell';
@@ -213,6 +214,7 @@ export function KundenCheckResults({
                 }),
               );
             } catch { /* Storage gesperrt → Formular startet leer */ }
+            protokolliere('check_zum_prozessmodell');
             window.location.href = appUrl('/cockpit/');
           }}
         />

@@ -105,6 +105,7 @@ import { useProzessmodellStore } from '@/lib/prozessmodell-store';
 import { DEMO_SCENARIOS } from '@/lib/showcase';
 import { printLayout, exportReport } from '@/lib/export';
 import { PROJEKT_VORLAGEN, ladeProjektVorlage } from '@/lib/projekt-vorlagen';
+import { markiereLadevorgang, protokolliere } from '@/lib/nutzung';
 import {
   MousePointer2,
   Hand,
@@ -484,6 +485,7 @@ export function Toolbar() {
       const content = await openFileDialog('.json,.topis');
       const newState = importFromJSON(content);
       if (newState) {
+        markiereLadevorgang();
         loadState(newState);
         toast.success('Projekt erfolgreich importiert');
       } else {
@@ -661,7 +663,11 @@ export function Toolbar() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-transparent'
                 }`}
                 style={{ fontWeight: phase === p.id ? 600 : 500 }}
-                onClick={() => !externalHref && setPhase(p.id as Phase)}
+                onClick={() => {
+                  if (externalHref) return;
+                  protokolliere('phase_gewechselt', { phase: p.id });
+                  setPhase(p.id as Phase);
+                }}
               >
                 {p.label}
               </Button>

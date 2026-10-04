@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/auth";
 import { ChunkReloadGuard } from "@/components/system/ChunkReloadGuard";
 import { SentryInit } from "@/components/system/SentryInit";
+import { NutzungInit } from "@/components/system/NutzungInit";
 
 // tweakcn „Elegant Luxury": Poppins als durchgängige Sans/Display-Schrift,
 // Libre Baskerville als elegante Serife, IBM Plex Mono für technische Werte.
@@ -48,6 +49,7 @@ export default function RootLayout({
         >
           <ChunkReloadGuard />
           <SentryInit />
+          <NutzungInit />
           <AuthProvider>
             {children}
           </AuthProvider>
