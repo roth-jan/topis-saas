@@ -1,6 +1,6 @@
 'use client';
 
-import { protokolliere } from '@/lib/nutzung';
+import { protokolliereVorNeuladen } from '@/lib/nutzung';
 import type { Hall, TopisObject, Gang } from '@/types/topis';
 import type { ScandatenRecord } from '@/types/scandaten';
 import type { GesamtErgebnis } from '@/types/prozessmodell';
@@ -200,7 +200,7 @@ export function KundenCheckResults({
         <BeratungCTA
           bewertung={ampelBewertung}
           onOpenEditor={onOpenEditor}
-          onOpenCockpit={() => {
+          onOpenCockpit={async () => {
             // Eckdaten-Übergabe an die ROTH-Vorlagen-Tür des Cockpits:
             // Colli/Tag aus der Analyse × 21 Standard-Arbeitstage als
             // VORSCHLAG (im Formular editierbar, nichts wird erfunden).
@@ -214,7 +214,8 @@ export function KundenCheckResults({
                 }),
               );
             } catch { /* Storage gesperrt → Formular startet leer */ }
-            protokolliere('check_zum_prozessmodell');
+            // Harte Navigation bricht laufende Anfragen ab → kurz warten (max. 800 ms).
+            await protokolliereVorNeuladen('check_zum_prozessmodell');
             window.location.href = appUrl('/cockpit/');
           }}
         />

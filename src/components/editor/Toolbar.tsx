@@ -506,6 +506,7 @@ export function Toolbar() {
   };
 
   const handleOpen = () => {
+    markiereLadevorgang();
     const saved = localStorage.getItem('topis-project');
     if (saved) {
       const newState = importFromJSON(saved);
@@ -590,6 +591,7 @@ export function Toolbar() {
 
   // Szenario laden
   const handleLoadScenario = (scenarioKey: string) => {
+    markiereLadevorgang();
     const scenario = DEMO_SCENARIOS[scenarioKey];
     if (!scenario) {
       toast.error('Szenario nicht gefunden');

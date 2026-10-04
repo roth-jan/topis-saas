@@ -122,19 +122,23 @@ export function erzeugeProtokoll(env: ProtokollUmgebung) {
       if (!art || !env.umgebung || env.automatisiert()) return;
       if (gesamt >= DECKEL_GESAMT || (zaehler.get(ereignis) ?? 0) >= DECKEL_JE_EREIGNIS) return;
       const t = env.jetzt();
+      const bereinigt = bereinigeDetail(detail);
+      // Gedrosselt wird je Ereignis UND Detail: „Werkzeug tor" und „Werkzeug bereich"
+      // kurz hintereinander sind zwei Aussagen, zehnmal „tor" ist eine.
+      const drosselSchluessel = ereignis + '|' + JSON.stringify(bereinigt);
       if (art === 'gedrosselt') {
-        const vorher = zuletzt.get(ereignis);
+        const vorher = zuletzt.get(drosselSchluessel);
         if (vorher !== undefined && t - vorher < DROSSEL_MS) return;
       }
       if (!(await env.angemeldet())) return;
       // Zählen erst NACH der Anmeldeprüfung: anonyme Phasen verbrauchen keinen Deckel.
-      zuletzt.set(ereignis, t);
+      zuletzt.set(drosselSchluessel, t);
       zaehler.set(ereignis, (zaehler.get(ereignis) ?? 0) + 1);
       gesamt++;
       await env.sende({
         sitzung,
         ereignis,
-        detail: bereinigeDetail(detail),
+        detail: bereinigt,
         pfad: env.pfad(),
         umgebung: env.umgebung,
         version: env.version,

@@ -81,7 +81,9 @@ export default function CheckPage() {
   // Ergebnis, Fehler) — Start-Auswahl ohne Fehler ist schon „seite_geoeffnet".
   useEffect(() => {
     if (phase === 'choose' && !error) return;
-    protokolliere('check_phase', { phase, quelle: datenquelle, fehler: Boolean(error) });
+    // datenquelle wird erst beim Analyse-Start gesetzt → für die Einstiegsmasken aus der Phase ableiten.
+    const quelle = phase === 'upload' ? 'scandaten' : phase === 'eckdaten' ? 'eckdaten' : datenquelle;
+    protokolliere('check_phase', { phase, quelle, fehler: Boolean(error) });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur Phasenwechsel zählen
   }, [phase]);
   const [dateiName, setDateiName] = useState<string>('');

@@ -37,7 +37,7 @@ export function NutzungInit() {
 
     const abmelden = useTopisStore.subscribe((s, vorher) => {
       if (s.currentTool !== vorher.currentTool && s.currentTool !== "select") {
-        protokolliere("werkzeug_gewaehlt", { werkzeug: String(s.currentTool) });
+        protokolliere("werkzeug_gewaehlt", { werkzeug: String(s.currentTool).toLowerCase() });
       }
       const rueck = s.redoStack.length > vorher.redoStack.length;
       if (rueck) protokolliere("rueckgaengig");

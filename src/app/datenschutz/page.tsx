@@ -132,7 +132,8 @@ export default function DatenschutzPage() {
         Wenn Sie mit einem Benutzerkonto angemeldet sind, protokolliert TOPIS, <strong>welche Funktionen</strong> Sie
         verwenden – zum Beispiel „Hallen-Check-Ergebnis angezeigt“, „Excel ins Prozessmodell importiert“,
         „Werkzeug Tor gewählt, 12 Tore eingefügt“ oder „Verteilweg übernommen“ – jeweils mit Zeitpunkt, der Seite der
-        Anwendung, einer zufälligen Kennung der Sitzung, die bei jedem Neuladen neu entsteht, und Ihrem Benutzerkonto.
+        Anwendung, der Kennung der eingesetzten Programmfassung, einer zufälligen Kennung der Sitzung, die bei jedem
+        Neuladen neu entsteht, und Ihrem Benutzerkonto.
         Wir verwenden diese Angaben, um zu verstehen, wie TOPIS tatsächlich genutzt wird, wo Abläufe hängen und was wir
         verbessern müssen.
       </p>

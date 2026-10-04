@@ -126,3 +126,13 @@ describe('Nutzungsprotokoll — Ereignisname', () => {
 });
 
 vi.restoreAllMocks();
+
+describe('Nutzungsprotokoll — Drosselung je Detail (Berater 04.10.)', () => {
+  it('verschiedene Werkzeuge kurz hintereinander zählen einzeln, gleiches Werkzeug gedrosselt', async () => {
+    const { p, gesendet } = aufbau();
+    await p.protokolliere('werkzeug_gewaehlt', { werkzeug: 'tor' });
+    await p.protokolliere('werkzeug_gewaehlt', { werkzeug: 'bereich' });
+    await p.protokolliere('werkzeug_gewaehlt', { werkzeug: 'tor' });
+    expect(gesendet.map((z) => (z.detail as { werkzeug: string }).werkzeug)).toEqual(['tor', 'bereich']);
+  });
+});
