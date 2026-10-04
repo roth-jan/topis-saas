@@ -153,7 +153,8 @@ export default function CheckPage() {
           // berechnet sind). Kalibriert an AS: ~0.5×Breite + 0.4×Tiefe landet im realen Band
           // (~139 m bei 150 m Halle). Vorher 0.9×Breite → deutliche Überschätzung.
           const geschaetzterWeg = Math.round(layout.hall.width * 0.5 + layout.hall.height * 0.4);
-          return { ...p, aktuellerWert: geschaetzterWeg, quelle: 'layout' as const };
+          // 'berechnet', nicht 'layout': reine Geometrie-Schätzung, keine Wegeberechnung.
+          return { ...p, aktuellerWert: geschaetzterWeg, quelle: 'berechnet' as const };
         }
         return { ...p };
       });
@@ -369,7 +370,8 @@ export default function CheckPage() {
     const verteilweg = Math.round(layout.hall.width * 0.5 + layout.hall.height * 0.4);
     const param = SE_STANDARD_PARAMETER.map((p) => {
       if (p.id === 'colliProTag') return { ...p, aktuellerWert: ergebnis.colliProTag };
-      if (p.id === 'verteilweg') return { ...p, aktuellerWert: verteilweg };
+      // Geometrie-Schätzung → 'berechnet' (nicht 'layout': keine echte Wegeberechnung).
+      if (p.id === 'verteilweg') return { ...p, aktuellerWert: verteilweg, quelle: 'berechnet' as const };
       return { ...p };
     });
     ladeModell(PROZESSMODELL_SE, param);

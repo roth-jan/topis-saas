@@ -148,7 +148,7 @@ export const GEIS_NUERNBERG_SE_PARAMETER: ProzessParameter[] = [
   { id: 'scanZeitProColli', name: 'Scan-Zeit pro Colli', einheit: 'Sek', standardwert: 25.2, aktuellerWert: 25.2, quelle: 'eingabe', kategorie: 'scanner' },
   { id: 'labelAufklebenZeit', name: 'Label aufkleben', einheit: 'Sek', standardwert: 0, aktuellerWert: 0, quelle: 'eingabe', kategorie: 'scanner', beschreibung: 'In Scan-Zeit enthalten (Relationsplatz ansagen)' },
   { id: 'problemColliAnteil', name: 'Problem-Colli Anteil', einheit: '%', standardwert: 0.8, aktuellerWert: 0.8, quelle: 'eingabe', kategorie: 'scanner' },
-  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 101, aktuellerWert: 101, quelle: 'layout', kategorie: 'verteiler', beschreibung: 'Gemessen: 101m (Stapler, gewichtet nach Colli)' },
+  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 101, aktuellerWert: 101, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Gemessen: 101m (Stapler, gewichtet nach Colli)' },
   { id: 'schnellaeuferGeschwindigkeit', name: 'Verteilgeschwindigkeit (Stapler)', einheit: 'm/s', standardwert: 2.7, aktuellerWert: 2.7, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Geis Nürnberg: 100% Stapler-Verteilung' },
   { id: 'colliAbstellenZeit', name: 'Colli abstellen', einheit: 'Sek', standardwert: 10.4, aktuellerWert: 10.4, quelle: 'eingabe', kategorie: 'verteiler' },
   { id: 'colliProFahrt', name: 'Colli pro Verteiler-Fahrt', einheit: 'Cll/Fahrt', standardwert: 1.46, aktuellerWert: 1.46, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Gemessen: 1.46 Colli/Bewegung (Stapler-Verteilung)' },

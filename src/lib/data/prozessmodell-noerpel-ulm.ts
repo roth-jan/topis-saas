@@ -149,7 +149,7 @@ export const NOERPEL_ULM_SE_PARAMETER: ProzessParameter[] = [
   { id: 'scanZeitProColli', name: 'Scan-Zeit pro Colli', einheit: 'Sek', standardwert: 14.2, aktuellerWert: 14.2, quelle: 'eingabe', kategorie: 'scanner' },
   { id: 'labelAufklebenZeit', name: 'Label aufkleben', einheit: 'Sek', standardwert: 0, aktuellerWert: 0, quelle: 'eingabe', kategorie: 'scanner' },
   { id: 'problemColliAnteil', name: 'Problem-Colli Anteil', einheit: '%', standardwert: 8.5, aktuellerWert: 8.5, quelle: 'eingabe', kategorie: 'scanner' },
-  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 105.8, aktuellerWert: 105.8, quelle: 'layout', kategorie: 'verteiler', beschreibung: 'Gemessen: 105.8m (Schnellläufer, gewichtet, Außenspur)' },
+  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 105.8, aktuellerWert: 105.8, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Gemessen: 105.8m (Schnellläufer, gewichtet, Außenspur)' },
   { id: 'schnellaeuferGeschwindigkeit', name: 'Verteilgeschwindigkeit (Schnellläufer)', einheit: 'm/s', standardwert: 1.99, aktuellerWert: 1.99, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Nörpel: Schnellläufer (langsamer als AS Stapler)' },
   { id: 'colliAbstellenZeit', name: 'Colli abstellen', einheit: 'Sek', standardwert: 5.0, aktuellerWert: 5.0, quelle: 'eingabe', kategorie: 'verteiler' },
   { id: 'colliProFahrt', name: 'Colli pro Verteiler-Fahrt', einheit: 'Cll/Fahrt', standardwert: 1.63, aktuellerWert: 1.63, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Gemessen: 1.63 Colli/Bewegung (Schnellläufer), 1.16 Stopps' },

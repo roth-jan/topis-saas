@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Route, X } from 'lucide-react';
 import { useProzessmodellStore } from '@/lib/prozessmodell-store';
+import { layoutVerteilweg } from '@/lib/verteilweg-quelle';
 import type { AsProzessModell } from '@/lib/prozessmodell-excel-modell';
 
 /**
@@ -25,10 +26,9 @@ export function VerteilwegBruecke({
   onSchliessen: () => void;
 }) {
   // Layout-Verteilweg aus dem Editor-Store (nur wenn wirklich aus Layout berechnet).
-  const layoutWeg = useProzessmodellStore((s) => {
-    const p = s.parameter.find((x) => x.id === 'verteilweg');
-    return p && p.quelle === 'layout' ? p.aktuellerWert : null;
-  });
+  // 'layout' setzt NUR setVerteilweg (Wegeberechnung/Distanzmatrix/Flächenbedarf);
+  // Vorlagen, Overrides und Handeingaben tragen 'eingabe'.
+  const layoutWeg = useProzessmodellStore((s) => layoutVerteilweg(s.parameter));
 
   // Aktueller Verteilweg-Wert im Cockpit-Modell (erste passende Größe).
   const cockpitWeg = useMemo(() => {

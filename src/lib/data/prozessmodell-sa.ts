@@ -62,7 +62,7 @@ export const SA_STANDARD_PARAMETER: ProzessParameter[] = [
   { id: 'colliProQm', name: 'Colli pro qm Stellfläche', einheit: 'Cll/qm', standardwert: 1.25, aktuellerWert: 1.25, quelle: 'eingabe', kategorie: 'allgemein' },
 
   // Kommissionierer
-  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 120.0, aktuellerWert: 120.0, quelle: 'layout', kategorie: 'kommissionierer', beschreibung: 'Durchschnittlicher Kommissionierweg (aus Layout)' },
+  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 120.0, aktuellerWert: 120.0, quelle: 'eingabe', kategorie: 'kommissionierer', beschreibung: 'Durchschnittlicher Kommissionierweg (aus Layout)' },
   { id: 'schnellaeuferGeschwindigkeit', name: 'Kommissionier-Geschwindigkeit', einheit: 'm/s', standardwert: 2.44, aktuellerWert: 2.44, quelle: 'eingabe', kategorie: 'kommissionierer' },
   { id: 'colliProFahrt', name: 'Colli pro Kommissionier-Fahrt', einheit: 'Cll/Fahrt', standardwert: 2.0, aktuellerWert: 2.0, quelle: 'eingabe', kategorie: 'kommissionierer', beschreibung: 'Batch: Wie viele Colli pro Fahrt' },
 

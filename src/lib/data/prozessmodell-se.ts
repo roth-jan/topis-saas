@@ -84,7 +84,7 @@ export const SE_STANDARD_PARAMETER: ProzessParameter[] = [
   { id: 'problemColliAnteil', name: 'Problem-Colli Anteil', einheit: '%', standardwert: 5.0, aktuellerWert: 5.0, quelle: 'eingabe', kategorie: 'scanner' },
 
   // Verteiler
-  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 138.8, aktuellerWert: 138.8, quelle: 'layout', kategorie: 'verteiler', beschreibung: 'Colli-gewichteter Durchschnittsweg (aus Layout)' },
+  { id: 'verteilweg', name: 'Gewichteter Verteilweg', einheit: 'm', standardwert: 138.8, aktuellerWert: 138.8, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Colli-gewichteter Durchschnittsweg (aus Layout)' },
   { id: 'schnellaeuferGeschwindigkeit', name: 'Verteilgeschwindigkeit (Schnelläufer/Ameise)', einheit: 'm/s', standardwert: 2.44, aktuellerWert: 2.44, quelle: 'eingabe', kategorie: 'verteiler' },
   { id: 'colliAbstellenZeit', name: 'Colli abstellen', einheit: 'Sek', standardwert: 3.0, aktuellerWert: 3.0, quelle: 'eingabe', kategorie: 'verteiler' },
   { id: 'colliProFahrt', name: 'Colli pro Verteiler-Fahrt', einheit: 'Cll/Fahrt', standardwert: 3.39, aktuellerWert: 3.39, quelle: 'eingabe', kategorie: 'verteiler', beschreibung: 'Batch: Wie viele Colli pro Verteiler-Fahrt (teilt Wegzeit)' },

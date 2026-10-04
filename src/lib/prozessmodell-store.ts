@@ -6,6 +6,7 @@ import { createDebouncedLocalStorage } from '@/lib/debounced-storage';
 import type { ProzessmodellConfig, ProzessParameter, GesamtErgebnis, AbteilungDefinition } from '@/types/prozessmodell';
 import { PROZESSMODELL_SE, SE_STANDARD_PARAMETER } from '@/lib/data/prozessmodell-se';
 import { berechneMinProColli, type FFZMixEintrag } from '@/lib/prozessrechner';
+import { migriereVerteilwegQuelle } from '@/lib/verteilweg-quelle';
 
 /** Standard-FFZ-Mix basierend auf AS Gersthofen 2020 (Präsentation Prozessmodell UPDATE) */
 const DEFAULT_FFZ_MIX: FFZMixEintrag[] = [
@@ -65,7 +66,14 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
 
   updateParameter: (id, wert) => {
     set((state) => ({
-      parameter: state.parameter.map((p) => (p.id === id ? { ...p, aktuellerWert: wert } : p)),
+      // Handeingabe: ein von Hand gesetzter Wert ist nicht mehr „aus dem Layout
+      // berechnet" → Herkunft 'layout' fällt auf 'eingabe' zurück (sonst böte die
+      // Cockpit-Brücke den Hand-Wert als Layout-Ergebnis an). Andere Herkünfte bleiben.
+      parameter: state.parameter.map((p) =>
+        p.id === id
+          ? { ...p, aktuellerWert: wert, ...(p.quelle === 'layout' ? { quelle: 'eingabe' as const } : {}) }
+          : p
+      ),
     }));
     // Auto-Berechnung
     get().berechne();
@@ -170,10 +178,14 @@ export const useProzessmodellStore = create<ProzessmodellState>()(
     storage: createJSONStorage(() => createDebouncedLocalStorage()),
     // Schema-Version: bei Datenform-Änderungen erhöhen + Migrationsschritt unten.
     // Gilt für localStorage UND Cloud-Layouts. Muster siehe store.ts.
-    version: 1,
+    version: 2,
     migrate: (persisted: unknown, fromVersion: number) => {
-      const s = persisted as Record<string, unknown>;
+      let s = persisted as Record<string, unknown>;
       if (fromVersion < 1) { /* Baseline, keine Transformation */ }
+      // v1 → v2 (04.10.2026): verteilweg.quelle 'layout' stand hartkodiert in den
+      // Vorlagen → Altdaten nicht unterscheidbar, konservativ auf 'eingabe'.
+      // Die Cockpit-Brücke meldet sich erst nach der nächsten echten Wegeberechnung.
+      if (fromVersion < 2) { s = migriereVerteilwegQuelle(s) as Record<string, unknown>; }
       return s;
     },
     partialize: (state) => ({
