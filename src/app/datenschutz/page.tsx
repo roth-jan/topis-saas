@@ -11,10 +11,11 @@ export const metadata: Metadata = { title: 'Datenschutzerklärung · TOPIS' };
 // Externe Dienste nur: Supabase (Login/Cloud, eu-central-1), OpenAI gpt-4o-mini über die
 // Edge Function nl-to-layout (KI-Hallenbau) und seit 29.09.2026 Sentry (Fehlerüberwachung,
 // EU-Region Frankfurt; überträgt NUR im Fehlerfall, ohne IP, ohne Bildschirmaufzeichnung,
-// ohne Konsolen-Inhalte — siehe components/system/SentryInit.tsx). Kommt ein Dienst dazu → hier ergänzen.
+// ohne Konsolen-Inhalte — siehe components/system/SentryInit.tsx) und seit 04.10.2026 das eigene
+// Nutzungsprotokoll (nur angemeldet, ohne Inhalte — siehe lib/nutzung.ts, Abschnitt 10). Kommt ein Dienst dazu → hier ergänzen.
 export default function DatenschutzPage() {
   return (
-    <LegalPage title="Datenschutzerklärung" stand="September 2026">
+    <LegalPage title="Datenschutzerklärung" stand="Oktober 2026">
       <h2 className="!mt-0">1. Verantwortliche Stelle</h2>
       <p>Verantwortlich für die Datenverarbeitung in dieser Anwendung im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:</p>
       <p>
@@ -29,8 +30,8 @@ export default function DatenschutzPage() {
       <h2>2. Das Wichtigste in Kürze</h2>
       <ul>
         <li><strong>Hallen-Check, Prozessmodell und Hallenplan laufen vollständig in Ihrem Browser.</strong> Hochgeladene Scandaten, Eckdaten und Hallenpläne werden nicht an uns übertragen.</li>
-        <li>Es werden <strong>keine Cookies</strong> gesetzt und <strong>keine Analyse-, Tracking- oder Werbedienste</strong> eingesetzt.</li>
-        <li>Personenbezogene Daten verarbeiten wir nur, wenn Sie ein <strong>Benutzerkonto</strong> anlegen, die <strong>KI-Beschreibung</strong> einer Halle nutzen oder uns <strong>per E-Mail</strong> schreiben – sowie in Form technisch notwendiger Server-Logfiles und, falls ein Programmfehler auftritt, einer automatischen <strong>Fehlermeldung ohne Ihre IP-Adresse</strong> (Abschnitt&nbsp;9).</li>
+        <li>Es werden <strong>keine Cookies</strong> gesetzt und <strong>keine Analyse-, Tracking- oder Werbedienste Dritter</strong> eingesetzt. Ohne Anmeldung wird Ihre Nutzung nicht erfasst.</li>
+        <li>Personenbezogene Daten verarbeiten wir nur, wenn Sie ein <strong>Benutzerkonto</strong> anlegen, die <strong>KI-Beschreibung</strong> einer Halle nutzen oder uns <strong>per E-Mail</strong> schreiben – sowie in Form technisch notwendiger Server-Logfiles und, falls ein Programmfehler auftritt, einer automatischen <strong>Fehlermeldung ohne Ihre IP-Adresse</strong> (Abschnitt&nbsp;9). Wenn Sie <strong>angemeldet</strong> sind, protokollieren wir zusätzlich, welche Funktionen Sie nutzen – ohne Inhalte (Abschnitt&nbsp;10).</li>
       </ul>
 
       <h2>3. Hosting und Server-Logfiles</h2>
@@ -126,14 +127,37 @@ export default function DatenschutzPage() {
         EU-Standardvertragsklauseln.
       </p>
 
-      <h2>10. Keine Cookies, kein Tracking, keine externen Dienste beim Aufruf</h2>
+      <h2>10. Nutzungsprotokoll für angemeldete Nutzer</h2>
+      <p>
+        Wenn Sie mit einem Benutzerkonto angemeldet sind, protokolliert TOPIS, <strong>welche Funktionen</strong> Sie
+        verwenden – zum Beispiel „Hallen-Check-Ergebnis angezeigt“, „Excel ins Prozessmodell importiert“,
+        „Werkzeug Tor gewählt, 12 Tore eingefügt“ oder „Verteilweg übernommen“ – jeweils mit Zeitpunkt, der Seite der
+        Anwendung, einer zufälligen Kennung der Sitzung, die bei jedem Neuladen neu entsteht, und Ihrem Benutzerkonto.
+        Wir verwenden diese Angaben, um zu verstehen, wie TOPIS tatsächlich genutzt wird, wo Abläufe hängen und was wir
+        verbessern müssen.
+      </p>
+      <p>
+        <strong>Nicht protokolliert</strong> werden Inhalte: keine Hallenpläne, keine Namen von Hallen, Bereichen,
+        Dateien oder Kunden, keine eingegebenen Werte oder Mengen. Ihre IP-Adresse wird im Protokoll nicht gespeichert.
+        Für das Protokoll wird nichts auf Ihrem Gerät abgelegt oder ausgelesen; genutzt wird nur die ohnehin bestehende
+        Anmeldung. <strong>Ohne Anmeldung findet keine Protokollierung statt.</strong>
+      </p>
+      <p>
+        Die Daten liegen beim selben Dienst wie Ihr Konto (Supabase, Rechenzentrum Frankfurt am Main, siehe
+        Abschnitt&nbsp;6), sind nur für uns einsehbar und werden nach <strong>12 Monaten automatisch gelöscht</strong>;
+        mit Ihrem Konto werden sie sofort gelöscht. Rechtsgrundlage ist Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f DSGVO; unser
+        berechtigtes Interesse ist die Verbesserung der Anwendung. Sie können jederzeit widersprechen – eine formlose
+        E-Mail an <a href={`mailto:${ANBIETER.email}`}>{ANBIETER.email}</a> genügt.
+      </p>
+
+      <h2>11. Keine Cookies, keine Analysedienste Dritter, keine externen Dienste beim Aufruf</h2>
       <ul>
         <li>Es werden <strong>keine Cookies</strong> gesetzt; ein Cookie-Banner ist daher nicht erforderlich.</li>
-        <li>Es kommen <strong>keine Webanalyse-Dienste</strong> (z.&nbsp;B. Google Analytics), <strong>keine Tag-Manager</strong> und <strong>kein Profiling</strong> zum Einsatz.</li>
+        <li>Es kommen <strong>keine Webanalyse-Dienste Dritter</strong> (z.&nbsp;B. Google Analytics), <strong>keine Tag-Manager</strong>, <strong>keine Werbedienste</strong> und <strong>kein Profiling</strong> zum Einsatz. Das Nutzungsprotokoll nach Abschnitt&nbsp;10 betreiben wir selbst, nur für angemeldete Nutzer und nur zur Verbesserung der Anwendung.</li>
         <li>Schriftarten werden von unserem eigenen Server ausgeliefert; es werden <strong>keine externen Schriftarten-, Karten- oder Captcha-Dienste</strong> nachgeladen.</li>
       </ul>
 
-      <h2>11. Ihre Rechte</h2>
+      <h2>12. Ihre Rechte</h2>
       <p>Im Rahmen der gesetzlichen Bestimmungen haben Sie jederzeit das Recht auf:</p>
       <ul>
         <li><strong>Auskunft</strong> über Ihre gespeicherten Daten (Art.&nbsp;15 DSGVO)</li>
@@ -149,7 +173,7 @@ export default function DatenschutzPage() {
         Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Kavalleriestraße 2–4, 40213 Düsseldorf.
       </p>
 
-      <h2>12. Aktualität</h2>
+      <h2>13. Aktualität</h2>
       <p>
         Es gilt die jeweils aktuelle, in dieser Anwendung veröffentlichte Fassung. Wenn wir TOPIS weiterentwickeln
         oder sich rechtliche Vorgaben ändern, passen wir diese Datenschutzerklärung an.
